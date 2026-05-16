@@ -64,7 +64,7 @@ satelliteCostMaterial = 25;
 bundlerCostMaterial = 50;
 laserSatelliteCostMaterial = 50;
 refineryCostMaterial = 250;
-smartCollectorCostMaterial = 500;
+smartCollectorCostMaterial = 100000;
 
 drillRateUpgradeCost = 10;
 collectionRadiusUpgradeCost = 10;
@@ -410,12 +410,12 @@ function mainThread() {
 
                 // Transfer power to the winning target
                 if (p.powerStored > 0) {
-                    p.powerStored -= 1;
+                    p.powerStored -= 0.1;
                     
                     if (targetType === 'ship') {
-                        energy += 1;
+                        energy += 0.1;
                     } else if (targetType === 'collector') {
-                        closestCollector.battery += 1;
+                        closestCollector.battery += 0.1;
                     }
                 }
             }
@@ -479,39 +479,6 @@ function mainThread() {
 
                 for (let j = 0; j < planet.collectors.length; j++) {
                     let b = planet.collectors[j];
-
-                    if (b.battery > 0) {
-
-                        bundlerPosition = polarToCartesian(b.radius, b.angle);
-
-                        distance = calculateDistance(materialPosition, bundlerPosition);
-
-                        if (distance <= 15**2) {
-                            planet.materialsToCollect.splice(i, 1);
-                            i--;
-                            // b.mineralsStored += Math.floor(p.value);
-                            material += p.value;
-                        } 
-
-                        if (distance <= collectionRadius**2) {
-                            p.timeInTractorBeam += 0.05;
-
-                            // start moving towards bundler
-                            p.radius += (b.radius + 5 - p.radius) * Math.min(p.timeInTractorBeam, 1);
-
-                            // Magically wraps the difference between -PI and PI
-                            let angleDiff = Math.atan2(Math.sin(b.angle - p.angle), Math.cos(b.angle - p.angle));
-                            
-                            p.angle += (angleDiff * Math.min(p.timeInTractorBeam, 1)) + toRadians(0.5);
-                            
-                        }
-                    }
-                }
-
-                // Distance to smart collectors
-
-                for (let j = 0; j < planet.smartCollectors.length; j++) {
-                    let b = planet.smartCollectors[j];
 
                     if (b.battery > 0) {
 
@@ -679,10 +646,12 @@ function mainThread() {
 
             p.productionTimer += dt;
 
-            if (p.productionTimer >= 3000) { 
-                p.powerStored += 1;
+            if (p.productionTimer >= 300) { 
+                p.powerStored += 0.1;
                 p.productionTimer = 0;
             }
+
+            p.powerStored = Math.min(p.powerStored, 500);
             
             if (drawThisPlanet) canvasDrawSatellites(p);
         }
@@ -789,46 +758,30 @@ function mainThread() {
 
             // collectors orbit faster if they are closer to the planet
             p.angle += p.orbitSpeed;
-            p.angle = p.angle % toRadians(360);
-
-            // If the bundler has power and at least 50 material (could be more) push a bundle out
-            // DELETED FOR NOW - use later for other mechanic maybe
-            // if (p.battery > 0) {
-            //     if (p.mineralsStored > 50) { 
-            //         bundles.push({
-            //             radius: p.radius,
-            //             angle: p.angle,
-            //             rotation: p.angle,
-            //             rotationSpeed: p.rotationSpeed,
-            //             mineralsAmount: p.mineralsStored,
-            //             timeInTractorBeam: 0,
-            //         });
-
-            //         p.mineralsStored = 0; 
-            //     }
-            // }        
+            p.angle = p.angle % toRadians(360);   
             
             if (drawThisPlanet) canvasDrawBundler(p);
         }
 
         // Draw smart collectors
+        // CRYSTAL COLLECTORS
         for (let i = 0; i < planet.smartCollectors.length; i++) {
             let sc = planet.smartCollectors[i];  
 
             let closestMaterial = null;
             let closestDistance = 10000000000000;
 
-            // Go through the materials
+            // Go through the crystals
             // Check which are in range
             // Check which is closest
             // Move towards it
             if (sc.battery > 0) {
-                for (let j = 0; j < planet.materialsToCollect.length; j++) {
-                    let m = planet.materialsToCollect[j];
+                for (let j = 0; j < planet.crystals.length; j++) {
+                    let m = planet.crystals[j];
 
 
-                    if (m.value < 3) continue;
-                    if (m.radius > 450) continue;
+                    // if (m.value < 3) continue;
+                    // if (m.radius > 450) continue;
                 
 
                     materialPosition = polarToCartesian(m.radius, m.angle);
@@ -878,7 +831,7 @@ function mainThread() {
 
                     if (totalDist > 0.1) {
                         // --- TWEAK THESE TWO ---
-                        const maxSpeed = Math.min(0.75, sc.battery);  // Constant travel speed in pixels
+                        const maxSpeed = Math.min(0.3, sc.battery);  // Constant travel speed in pixels
                         const easing = 0.1;    // How soon it starts slowing down (0.1 = 10% of distance)
                         
                         // 4. Determine Step Size (Constant Speed + Easing)
@@ -899,16 +852,16 @@ function mainThread() {
                     if (sc.angle > Math.PI) sc.angle -= Math.PI * 2;
                     if (sc.angle < -Math.PI) sc.angle += Math.PI * 2;
 
-                    ctx.save();
-                    ctx.strokeStyle = `rgba(255,255,255, ${Math.min(sc.battery, 0.3)})`;
-                    ctx.beginPath();
-                    ctx.moveTo(polarToCartesian(sc.radius, sc.angle).x, polarToCartesian(sc.radius, sc.angle).y);
-                    ctx.lineTo(polarToCartesian(closestMaterial.radius, closestMaterial.angle).x, polarToCartesian(closestMaterial.radius, closestMaterial.angle).y);
-                    ctx.lineWidth = 2;
-                    ctx.setLineDash([]);
-                    ctx.stroke();
-                    ctx.fillStyle = "rgb(255 255 255)";
-                    ctx.restore();
+                    // ctx.save();
+                    // ctx.strokeStyle = `rgba(255,255,255, ${Math.min(sc.battery, 0.3)})`;
+                    // ctx.beginPath();
+                    // ctx.moveTo(polarToCartesian(sc.radius, sc.angle).x, polarToCartesian(sc.radius, sc.angle).y);
+                    // ctx.lineTo(polarToCartesian(closestMaterial.radius, closestMaterial.angle).x, polarToCartesian(closestMaterial.radius, closestMaterial.angle).y);
+                    // ctx.lineWidth = 2;
+                    // ctx.setLineDash([]);
+                    // ctx.stroke();
+                    // ctx.fillStyle = "rgb(255 255 255)";
+                    // ctx.restore();
                 }
             }
 
@@ -1006,13 +959,15 @@ function mainThread() {
         for (let i = 0; i < planet.crystals.length; i++) {
             let p = planet.crystals[i];
 
+            if (!p) continue;
+
+            crystalPosition = polarToCartesian(p.radius, p.angle);
+
 
             p.rotation += p.rotationSpeed;
 
             // Don't need to calculate crystals if ship isn't on this planet
             if (drawThisPlanet) {
-                const crystalPosition = polarToCartesian(p.radius, p.angle);
-
                 distance = calculateDistance(crystalPosition, shipPosition);
 
                 if (distance <= 15**2) {
@@ -1020,11 +975,12 @@ function mainThread() {
                     planet.crystals.splice(i, 1);
                     i--;
                     crystal += Math.floor(p.crystalAmount);
+                    continue;
 
                 } 
 
                 // 4. Check if distance is 10 or less
-                if (distance <= collectionRadius**2) {
+                if (distance <= (collectionRadius**2)) {
                     
                     p.timeInTractorBeam += 0.05;
 
@@ -1037,11 +993,41 @@ function mainThread() {
                     p.angle += (angleDiff * Math.min(p.timeInTractorBeam, 1)) + toRadians(0.5);
                     
                 }
-                
-                canvasDrawCrystal(p);
             }
 
-            
+            // Distance to smart collectors
+
+            for (let j = 0; j < planet.smartCollectors.length; j++) {
+                let b = planet.smartCollectors[j];
+
+                if (b.battery > 0) {
+
+                    bundlerPosition = polarToCartesian(b.radius, b.angle);
+
+                    distance = calculateDistance(crystalPosition, bundlerPosition);
+
+                    if (distance <= 15**2) {
+                        planet.crystals.splice(i, 1);
+                        i--;
+                        crystal += Math.floor(p.crystalAmount);
+                    } 
+
+                    if (distance <= collectionRadius**2) {
+                        p.timeInTractorBeam += 0.05;
+
+                        // start moving towards bundler
+                        p.radius += (b.radius + 5 - p.radius) * Math.min(p.timeInTractorBeam, 1);
+
+                        // Magically wraps the difference between -PI and PI
+                        let angleDiff = Math.atan2(Math.sin(b.angle - p.angle), Math.cos(b.angle - p.angle));
+                        
+                        p.angle += (angleDiff * Math.min(p.timeInTractorBeam, 1)) + toRadians(0.5);
+                        
+                    }
+                }
+            }
+
+            if (drawThisPlanet) canvasDrawCrystal(p);
         }
 
 
@@ -2195,6 +2181,23 @@ deviceMenuOneButton.forEach(button => {
 
 
 
+function updateLabels() {
+    document.getElementById("drillCostMaterial").innerHTML = formatNumber(drillCostMaterial);
+    document.getElementById("satelliteCostMaterial").innerHTML = formatNumber(satelliteCostMaterial);
+    document.getElementById("bundlerCostMaterial").innerHTML = formatNumber(bundlerCostMaterial);
+    document.getElementById("laserSatelliteCostMaterial").innerHTML = formatNumber(laserSatelliteCostMaterial);
+    document.getElementById("refineryCostMaterial").innerHTML = formatNumber(refineryCostMaterial);
+    document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(smartCollectorCostMaterial);
+    
+    document.getElementById("drillRateUpgradeCost").innerHTML = formatNumber(drillRateUpgradeCost);
+    document.getElementById("drillLevel").innerHTML = "LVL " + formatNumber(drillLevel).toString();
+    document.getElementById("collectionRadiusUpgradeCost").innerHTML = formatNumber(collectionRadiusUpgradeCost);
+    document.getElementById("collectionRadiusLevel").innerHTML = "LVL " + formatNumber(collectionRadiusLevel).toString();
+
+    document.getElementById("refineChainUpgradeCost").innerHTML = formatNumber(refineChainUpgradeCost);
+    document.getElementById("refineChainLevel").innerHTML = "LVL " + formatNumber(refineChainLevel).toString();
+}
+
 
 
 
@@ -2218,20 +2221,7 @@ holdButtons.forEach(button => {
         // button.innerHTML = defaultText;
         
         // updating = true;
-        document.getElementById("drillCostMaterial").innerHTML = drillCostMaterial;
-        document.getElementById("satelliteCostMaterial").innerHTML = satelliteCostMaterial;
-        document.getElementById("bundlerCostMaterial").innerHTML = bundlerCostMaterial;
-        document.getElementById("laserSatelliteCostMaterial").innerHTML = laserSatelliteCostMaterial;
-        document.getElementById("refineryCostMaterial").innerHTML = refineryCostMaterial;
-        document.getElementById("smartCollectorCostMaterial").innerHTML = smartCollectorCostMaterial;
-        
-        document.getElementById("drillRateUpgradeCost").innerHTML = drillRateUpgradeCost;
-        document.getElementById("drillLevel").innerHTML = "LVL " + drillLevel.toString();
-        document.getElementById("collectionRadiusUpgradeCost").innerHTML = collectionRadiusUpgradeCost;
-        document.getElementById("collectionRadiusLevel").innerHTML = "LVL " + collectionRadiusLevel.toString();
-
-        document.getElementById("refineChainUpgradeCost").innerHTML = refineChainUpgradeCost;
-        document.getElementById("refineChainLevel").innerHTML = "LVL " + refineChainLevel.toString();
+        updateLabels();
     };
 
     // The animation loop that runs every frame while held
@@ -2395,8 +2385,6 @@ function saveGame() {
         flightRadius,
         targetRadius,
         shipRotation,
-        // planetRotation,
-        // planetOrbit,
 
         // Progress & Costs
         drillCostMaterial,
@@ -2414,15 +2402,6 @@ function saveGame() {
         refineChainLevel,
         refineChainUpgradeCost,
 
-        // Arrays
-        // drills,
-        // satellites,
-        // collectors,
-        // laserSatellites,
-        // planets,
-        // materialsToCollect,
-        // bundles,
-        // crystals
         planets,
     };
 
@@ -2444,8 +2423,6 @@ function loadGame() {
     flightRadius = state.flightRadius;
     targetRadius = state.targetRadius;
     shipRotation = state.shipRotation;
-    // planetRotation = state.planetRotation;
-    // planetOrbit = state.planetOrbit;
     
     drillCostMaterial = state.drillCostMaterial;
     satelliteCostMaterial = state.satelliteCostMaterial;
@@ -2475,6 +2452,7 @@ function loadGame() {
 }
 
 loadGame();
+updateLabels();
 
 // Start 
 window.requestAnimationFrame(mainThread);
