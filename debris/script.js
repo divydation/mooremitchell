@@ -177,8 +177,10 @@ let currentPlanet = planets[0];
 
 const ambientMusic = new Audio('background.mp3');
 ambientMusic.loop = true;
-ambientMusic.play();
 
+document.addEventListener('click', () => {
+    ambientMusic.play();
+}, { once: true });
 
 
 
