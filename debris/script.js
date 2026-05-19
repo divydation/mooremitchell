@@ -167,6 +167,15 @@ planets.push({
 let currentPlanet = planets[0];
 
 
+const bgMusic = new Howl({
+  src: ['background.mp3'],
+  loop: true,
+  volume: 0.5,
+  preload: true
+});
+
+bgMusic.play();
+
 
 function mainThread() {
     // Clear canvas
