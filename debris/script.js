@@ -169,18 +169,16 @@ let currentPlanet = planets[0];
 
 // const bgMusic = new Howl({
 //   src: ['background.mp3'],
-//   loop: true,
+//   sprite: {
+//     // [Start Time, Duration, Loop]
+//     // Example: Starts at 0ms, plays for 29900ms, loops back to 0
+//     mainLoop: [0, 31000, true] 
+//   },
 //   volume: 0.5,
 //   preload: true
 // });
+
 // bgMusic.play();
-
-const ambientMusic = new Audio('background.mp3');
-ambientMusic.loop = true;
-
-document.addEventListener('click', () => {
-    ambientMusic.play();
-}, { once: true });
 
 
 
