@@ -199,6 +199,55 @@ unlockEvents.forEach(event => {
 
 
 
+// 1. Load your single note
+const sweepNote = new Howl({
+  src: ['effect.mp3'],
+  volume: 0.3 // Keep volume lower since notes will overlap rapidly
+});
+
+// 2. Define your orbital boundaries and rate limits
+const MIN_RADIUS = 100; // Closest orbit
+const MAX_RADIUS = 450; // Furthest orbit
+const MAX_RATE = 3.0;   // High pitch/fast (closest to planet)
+const MIN_RATE = 0.5;   // Low pitch/slow (furthest from planet)
+
+// 3. Helper function: Map radius to rate (Linear Interpolation)
+function getRateFromRadius(currentRadius) {
+  // Clamp the radius just in case the ship overshoots
+  const clampedRadius = Math.max(MIN_RADIUS, Math.min(MAX_RADIUS, currentRadius));
+  
+  // Calculate how far along the radius the ship is (0.0 to 1.0)
+  const progress = (clampedRadius - MIN_RADIUS) / (MAX_RADIUS - MIN_RADIUS);
+  
+  // Invert the mapping: closer radius = higher rate
+  return MAX_RATE - (progress * (MAX_RATE - MIN_RATE));
+}
+
+// 4. Game loop execution variables
+let lastNoteTime = 0;
+const NOTE_INTERVAL = 200; // Trigger a note every 80ms while moving
+
+// Call this inside your main update/movement function when the radius changes
+function playRiserSweep(currentRadius) {
+  const now = performance.now();
+  
+  // Only play the next note if enough time has passed (throttle)
+  if (now - lastNoteTime > NOTE_INTERVAL) {
+    const currentRate = getRateFromRadius(currentRadius);
+    
+    // Play the sound and capture its unique ID
+    const soundId = sweepNote.play();
+    
+    // Apply the dynamically calculated rate specifically to this instance
+    sweepNote.rate(currentRate, soundId);
+    
+    lastNoteTime = now;
+  }
+}
+
+
+
+
 
 function mainThread() {
     // Clear canvas
@@ -226,10 +275,12 @@ function mainThread() {
 
     if (riseButtonHeld) {
         targetRadius += 2;
+        playRiserSweep(flightRadius);
     }
 
     if (dropButtonHeld) {
         targetRadius -= 2;
+        playRiserSweep(flightRadius);
     }
 
     if (boostButtonHeld && targetBoost < 5) {
