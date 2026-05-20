@@ -167,18 +167,18 @@ planets.push({
 let currentPlanet = planets[0];
 
 
-// const bgMusic = new Howl({
-//   src: ['background.mp3'],
-//   sprite: {
-//     // [Start Time, Duration, Loop]
-//     // Example: Starts at 0ms, plays for 29900ms, loops back to 0
-//     mainLoop: [0, 31000, true] 
-//   },
-//   volume: 0.5,
-//   preload: true
-// });
+const bgMusic = new Howl({
+  src: ['background.gg'],
+  sprite: {
+    // [Start Time, Duration, Loop]
+    // Example: Starts at 0ms, plays for 29900ms, loops back to 0
+    mainLoop: [32000, 64000, true] 
+  },
+  volume: 0.5,
+  preload: true
+});
 
-// bgMusic.play();
+bgMusic.play();
 
 
 
