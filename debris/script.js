@@ -225,7 +225,7 @@ function getRateFromRadius(currentRadius) {
 
 // 4. Game loop execution variables
 let lastNoteTime = 0;
-const NOTE_INTERVAL = 80; // Trigger a note every 80ms while moving
+const NOTE_INTERVAL = 125; // Trigger a note every 80ms while moving
 
 // Call this inside your main update/movement function when the radius changes
 function playRiserSweep(currentRadius) {
