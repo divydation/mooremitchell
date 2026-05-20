@@ -168,20 +168,33 @@ let currentPlanet = planets[0];
 
 
 const bgMusic = new Howl({
-  src: ['background.ogg'],
+  // 1. Order matters: Browser tries OGG first, falls back to MP3 for iOS
+  src: ['background.mp3'], 
   sprite: {
-    // [Offset in ms, Duration in ms, Loop]
-    // Starts at 32s, plays for 32s (ending at the 64s mark), and loops perfectly.
     mainLoop: [32000, 32000, true] 
   },
   volume: 0.5,
   preload: true
 });
 
-document.addEventListener('click', function() {
-  // You MUST pass the string name of the sprite to play it
-  bgMusic.play('mainLoop');
-}, { once: true });
+// 2. Listen for both mouse clicks and mobile screen taps
+const unlockEvents = ['click', 'touchstart'];
+
+function startAudio() {
+  if (!bgMusic.playing()) {
+    bgMusic.play('mainLoop');
+  }
+  
+  // Clean up: remove the listeners once the audio starts so it doesn't re-trigger
+  unlockEvents.forEach(event => {
+    document.removeEventListener(event, startAudio);
+  });
+}
+
+// Attach the listeners to the document
+unlockEvents.forEach(event => {
+  document.addEventListener(event, startAudio, { once: true });
+});
 
 
 
