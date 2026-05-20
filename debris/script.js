@@ -170,16 +170,17 @@ let currentPlanet = planets[0];
 const bgMusic = new Howl({
   src: ['background.ogg'],
   sprite: {
-    // [Start Time, Duration, Loop]
-    // Example: Starts at 0ms, plays for 29900ms, loops back to 0
-    mainLoop: [32000, 64000, true] 
+    // [Offset in ms, Duration in ms, Loop]
+    // Starts at 32s, plays for 32s (ending at the 64s mark), and loops perfectly.
+    mainLoop: [32000, 32000, true] 
   },
   volume: 0.5,
   preload: true
 });
 
 document.addEventListener('click', function() {
-  bgMusic.play();
+  // You MUST pass the string name of the sprite to play it
+  bgMusic.play('mainLoop');
 }, { once: true });
 
 
