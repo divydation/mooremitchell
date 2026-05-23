@@ -66,6 +66,28 @@ laserSatelliteCostMaterial = 50;
 refineryCostMaterial = 250;
 smartCollectorCostMaterial = 100000;
 
+const baseCosts = {
+    drillCostMaterial: 5,
+    satelliteCostMaterial: 25,
+    bundlerCostMaterial: 50,
+    laserSatelliteCostMaterial: 50,
+    refineryCostMaterial: 250,
+    smartCollectorCostMaterial: 100000
+};
+
+const getBaseDevices = () => ({
+    drills: [],
+    refineries: [],
+    materialsToCollect: [],
+    satellites: [],
+    collectors: [],
+    smartCollectors: [],
+    bundles: [],
+    crystals: [],
+    comets: [],
+    laserSatellites: [],
+});
+
 drillRateUpgradeCost = 10;
 collectionRadiusUpgradeCost = 10;
 refineChainUpgradeCost = 10;
@@ -104,16 +126,10 @@ planets.push({
     selected: false,
     color: "#EF233C",
     description: "Home",
-    drills: [],
-    refineries: [],
-    materialsToCollect: [],
-    satellites: [],
-    collectors: [],
-    smartCollectors: [],
-    bundles: [],
-    crystals: [],
-    comets: [],
-    laserSatellites: [],
+    unlocked: true,
+    cost: 0,
+    ...getBaseDevices(),
+    ...baseCosts
 });
 
 planets.push({
@@ -128,16 +144,10 @@ planets.push({
     selected: false,
     color: "#2375ef",
     description: "Closer to the sun - great for solar power.",
-    drills: [],
-    refineries: [],
-    materialsToCollect: [],
-    satellites: [],
-    collectors: [],
-    smartCollectors: [],
-    bundles: [],
-    crystals: [],
-    comets: [],
-    laserSatellites: [],
+    unlocked: false,
+    cost: 250,
+    ...getBaseDevices(),
+    ...baseCosts
 });
 
 planets.push({
@@ -152,19 +162,21 @@ planets.push({
     selected: true,
     color: "#ef6a23",
     description: "The large mass attracts more comets.",
-    drills: [],
-    refineries: [],
-    materialsToCollect: [],
-    satellites: [],
-    collectors: [],
-    smartCollectors: [],
-    bundles: [],
-    crystals: [],
-    comets: [],
-    laserSatellites: [],
+    unlocked: false,
+    cost: 150,
+    ...getBaseDevices(),
+    ...baseCosts
 });
 
 let currentPlanet = planets[0];
+
+let probes = [];
+
+
+
+// ------ //
+// MUSIC //
+// ----- //
 
 
 const bgMusic = new Howl({
@@ -195,8 +207,6 @@ function startAudio() {
 unlockEvents.forEach(event => {
   document.addEventListener(event, startAudio, { once: true });
 });
-
-
 
 
 // 1. Load your single note
@@ -246,7 +256,9 @@ function playRiserSweep(currentRadius) {
 }
 
 
-
+// -----------
+// MAIN THREAD
+// -----------
 
 
 function mainThread() {
@@ -298,10 +310,10 @@ function mainThread() {
     if (riseButtonHeld || dropButtonHeld || boostButtonHeld) {
         // Add flame particle
         fire.push({
-            radius: flightRadius + 6 + Math.random() * 10 - 5,
+            radius: flightRadius + 7 + Math.random() * 10 - 5,
             angle: shipRotation,
             life: Math.random() * 40,
-            size: 12,
+            size: 10,
             color: Math.floor(Math.random() * 60),
             alpha: 1,
         });
@@ -333,6 +345,46 @@ function mainThread() {
     shipRotation += shipRotationSpeed;
     shipRotation = shipRotation % toRadians(360);
 
+
+    for (let i = 0; i < probes.length; i++) {
+        let p = probes[i];
+
+        if (p.probeProgress < 1.0) {
+            // Track the previous progress so we know exactly how much distance is left
+            let prevProgress = p.probeProgress;
+            
+            p.probeProgress += p.probeSpeed;
+            if (p.probeProgress > 1.0) p.probeProgress = 1.0; 
+
+            // 1. UPDATE RADIUS
+            let r1 = p.originPlanet.orbitRadius;
+            let r2 = p.targetPlanet.orbitRadius;
+            p.currentRadius = r1 + (r2 - r1) * p.probeProgress;
+
+            // 2. CALCULATE SHORTEST PATH FROM PROBE TO TARGET
+            let targetAngle = p.targetPlanet.currentOrbitRotation;
+            let diff = targetAngle - p.currentAngle;
+
+            // Force the difference to be between -180 and 180 degrees
+            while (diff > Math.PI) diff -= Math.PI * 2;
+            while (diff < -Math.PI) diff += Math.PI * 2;
+
+            // 3. APPLY ROTATION
+            let remainingProgress = 1.0 - prevProgress;
+            if (remainingProgress > 0) {
+                // Calculate what fraction of the remaining angle we need to cover this frame
+                let stepFraction = p.probeSpeed / remainingProgress;
+                
+                // Move the probe's angle by that fraction (capped at 1.0 so it snaps perfectly at the end)
+                p.currentAngle += diff * Math.min(stepFraction, 1.0); 
+            }
+        }
+
+        if (p.probeProgress == 1.0) {
+            probes.splice(i, 1);
+            i--;
+        }
+    }
     
 
     
@@ -1531,6 +1583,42 @@ function spawnComet(planet) {
 
 let ringOffset = 0;
 
+function getProbePosition(planetA, planetB, t) {
+    let sunX = 500;
+    let sunY = 500;
+
+    let r1 = planetA.orbitRadius;
+    let r2 = planetB.orbitRadius;
+
+    let startAngle = planetA.currentOrbitRotation % (Math.PI * 2);
+    let endAngle = planetB.currentOrbitRotation % (Math.PI * 2);
+
+    if (startAngle < 0) startAngle += Math.PI * 2;
+    if (endAngle < 0) endAngle += Math.PI * 2;
+
+    let diff = endAngle - startAngle;
+    if (diff > Math.PI) {
+        diff -= Math.PI * 2;
+    } else if (diff < -Math.PI) {
+        diff += Math.PI * 2;
+    }
+    
+    let drawEnd = startAngle + diff;
+
+    // Calculate exact coordinates based on progress 't'
+    let currentAngle = startAngle + (drawEnd - startAngle) * t;
+    let currentRadius = r1 + (r2 - r1) * t;
+
+    return {
+        x: sunX + Math.cos(currentAngle) * currentRadius,
+        y: sunY + Math.sin(currentAngle) * currentRadius
+    };
+}
+
+
+//
+// SOLAR SYSTEM
+//
 
 function drawSolarSystem() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
@@ -1563,13 +1651,22 @@ function drawSolarSystem() {
 
     }
 
-    // Draw pathway between current and selected planet
     ctx.strokeStyle = "rgba(255,255,255,0.5";
     ctx.lineWidth = 3;
-    // ctx.lineWidth = 2; // Optional: ensure the line is visible
-    // ctx.strokeStyle = "rgba(0, 255, 255, 0.6)"; // Optional: cyan glow
     ctx.lineDashOffset = ringOffset;
     ctx.setLineDash([3,3]);
+
+    if (selectedPlanet != null && !selectedPlanet.unlocked) {
+        document.getElementById("travelButton").style.display = "none";
+        document.getElementById("unlockButton").style.display = "flex";
+        console.log(selectedPlanet);
+        document.getElementById("unlockPlanetCost").innerHTML = selectedPlanet.cost;
+    }
+
+    if (selectedPlanet != null && selectedPlanet.unlocked) {
+        document.getElementById("travelButton").style.display = "flex";
+        document.getElementById("unlockButton").style.display = "none";
+    }
 
 
     if (activePlanet != null && selectedPlanet != null) {
@@ -1609,7 +1706,7 @@ function drawSolarSystem() {
         ctx.beginPath();
 
 
-        const segments = 20; 
+        const segments = 40; 
         for (let i = 0; i <= segments; i++) {
             let t = i / segments;
             
@@ -1627,8 +1724,27 @@ function drawSolarSystem() {
             }
         }
 
-        ctx.stroke();
+        // ctx.stroke();
+
+        for (let i = 0; i < probes.length; i++) {
+            let p = probes[i];
+
+            if (!p.originPlanet || !p.targetPlanet) continue;
+
+            // Calculate x and y directly from the probe's internal state
+            let x = 500 + Math.cos(p.currentAngle) * p.currentRadius;
+            let y = 500 + Math.sin(p.currentAngle) * p.currentRadius;
+
+            // Draw the probe as a 5x5 square
+            ctx.fillStyle = "rgba(255, 255, 255, 1)";
+            ctx.fillRect(x - 2.5, y - 2.5, 5, 5); 
+        }
+
+        
+
+        
         ctx.restore();
+
     }
 
 
@@ -1685,19 +1801,64 @@ function drawSolarSystem() {
 }
 
 
+// Deploy probe
+function deployProbe() {
+    // 1. Identify the origin and target
+    let origin = currentPlanet; 
+    let target = planets.find(p => p.selected);
+
+    if (origin && target) {
+        // 2. Calculate the shortest angle difference (Delta Theta)
+        let startAngle = origin.currentOrbitRotation % (Math.PI * 2);
+        let endAngle = target.currentOrbitRotation % (Math.PI * 2);
+
+        if (startAngle < 0) startAngle += Math.PI * 2;
+        if (endAngle < 0) endAngle += Math.PI * 2;
+
+        let diff = endAngle - startAngle;
+        if (diff > Math.PI) diff -= Math.PI * 2;
+        else if (diff < -Math.PI) diff += Math.PI * 2;
+
+        // 3. Approximate the physical distance of the spiral path
+        let dr = target.orbitRadius - origin.orbitRadius;
+        let avgRadius = (origin.orbitRadius + target.orbitRadius) / 2;
+        
+        let pathDistance = Math.sqrt((dr * dr) + Math.pow(avgRadius * diff, 2));
+
+        // 4. Define your desired constant speed (pixels per frame)
+        let constantSpeed = 0.2; 
+        
+        // 5. Calculate the fractional speed for 't'
+        // Avoid division by zero if planets are perfectly aligned
+        let calculatedSpeed = pathDistance > 0 ? (constantSpeed / pathDistance) : 0.001;
+
+        probes.push({
+            probeProgress: 0,
+            probeSpeed: calculatedSpeed, 
+            originPlanet: origin,       
+            targetPlanet: target,       
+            currentAngle: origin.currentOrbitRotation, 
+            currentRadius: origin.orbitRadius          
+        });
+    }
+}
+
+
 
 // Deploying
 
 function deploy() {
-    if (material < drillCostMaterial) return;
-    material -= drillCostMaterial;
-    drillCostMaterial = Math.floor(drillCostMaterial * 1.2);
+    price = currentPlanet.drillCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.drillCostMaterial = Math.floor(price * 1.2);
+    console.log(price)
 
     currentPlanet.drills.push({
         radius: flightRadius + 12.5,
         angle: shipRotation,
         tangentVelocity: 0,
-        inwardsVelocity: 0.2,
+        inwardsVelocity: 0.3,
         arrived: false,
         materialStored: 0,
         productionTimer: 0,
@@ -1706,9 +1867,10 @@ function deploy() {
 }
 
 function deployRefinery() {
-    if (material < refineryCostMaterial) return;
-    material -= refineryCostMaterial;
-    refineryCostMaterial = Math.floor(refineryCostMaterial * 1.2);
+    price = currentPlanet.refineryCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.refineryCostMaterial = Math.floor(price * 1.2);
 
     currentPlanet.refineries.push({
         radius: flightRadius + 12.5,
@@ -1722,10 +1884,10 @@ function deployRefinery() {
 }
 
 function deploySatellite() {
-    // Material
-    if (material < satelliteCostMaterial) return;
-    material -= satelliteCostMaterial;
-    satelliteCostMaterial = Math.floor(satelliteCostMaterial * 1.1);
+    price = currentPlanet.satelliteCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.satelliteCostMaterial = Math.floor(price * 1.1);
 
     currentPlanet.satellites.push({
         radius: flightRadius + 10,
@@ -1737,10 +1899,10 @@ function deploySatellite() {
 }
 
 function deployBundler() {
-    // Material
-    if (material < bundlerCostMaterial) return;
-    material -= bundlerCostMaterial;
-    bundlerCostMaterial = Math.floor(bundlerCostMaterial * 1.1);
+    price = currentPlanet.bundlerCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.bundlerCostMaterial = Math.floor(price * 1.1);
 
     currentPlanet.collectors.push({
         radius: flightRadius + 10,
@@ -1754,10 +1916,10 @@ function deployBundler() {
 }
 
 function deploySmartCollector() {
-    // Material
-    if (material < smartCollectorCostMaterial) return;
-    material -= smartCollectorCostMaterial;
-    smartCollectorCostMaterial = Math.floor(smartCollectorCostMaterial * 1.1);
+    price = currentPlanet.smartCollectorCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.smartCollectorCostMaterial = Math.floor(price * 1.1);
 
     currentPlanet.smartCollectors.push({
         radius: flightRadius + 6,
@@ -1771,10 +1933,10 @@ function deploySmartCollector() {
 }
 
 function deployLaserSatellite() {
-    // Material
-    if (material < laserSatelliteCostMaterial) return;
-    material -= laserSatelliteCostMaterial;
-    laserSatelliteCostMaterial = Math.floor(laserSatelliteCostMaterial * 1.1);
+    price = currentPlanet.laserSatelliteCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.laserSatelliteCostMaterial = Math.floor(price * 1.1);
 
     currentPlanet.laserSatellites.push({
         radius: flightRadius + 6,
@@ -1792,7 +1954,7 @@ function deployLaserSatellite() {
 function upgradeDrillRate() {
     if (crystal < drillRateUpgradeCost) return;
     crystal -= drillRateUpgradeCost;
-    drillRateUpgradeCost = Math.floor(drillRateUpgradeCost * 2);
+    drillRateUpgradeCost = Math.floor(drillRateUpgradeCost * 1.5);
 
     drillProductionRate = drillProductionRate / 1.25;
     drillLevel++;
@@ -1801,7 +1963,7 @@ function upgradeDrillRate() {
 function upgradeCollectionLevel() {
     if (crystal < collectionRadiusUpgradeCost) return;
     crystal -= collectionRadiusUpgradeCost;
-    collectionRadiusUpgradeCost = Math.floor(collectionRadiusUpgradeCost * 2);
+    collectionRadiusUpgradeCost = Math.floor(collectionRadiusUpgradeCost * 1.5);
 
     collectionRadius = collectionRadius * 1.1;
     collectionRadiusLevel++;
@@ -1810,7 +1972,7 @@ function upgradeCollectionLevel() {
 function upgradeRefineChainLevel() {
     if (crystal < refineChainUpgradeCost) return;
     crystal -= refineChainUpgradeCost;
-    refineChainUpgradeCost = Math.floor(refineChainUpgradeCost * 2);
+    refineChainUpgradeCost = Math.floor(refineChainUpgradeCost * 1.5);
 
     refineChainCount += 1;
     refineChainLevel++;
@@ -1874,6 +2036,52 @@ riseButton.addEventListener('contextmenu', (event) => {
   event.preventDefault();
 });
 
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'r' || e.key === 'R') && !e.repeat) {
+    e.preventDefault();
+    // Fires your existing 'pointerdown' listener directly on the element
+    riseButton.dispatchEvent(new PointerEvent('pointerdown'));
+  }
+
+  if ((e.key === 'd' || e.key === 'D') && !e.repeat) {
+    e.preventDefault();
+    // Fires your existing 'pointerdown' listener directly on the element
+    dropButton.dispatchEvent(new PointerEvent('pointerdown'));
+  }
+
+  if ((e.key === 'b' || e.key === 'B') && !e.repeat) {
+    e.preventDefault();
+    // Fires your existing 'pointerdown' listener directly on the element
+    boostButton.dispatchEvent(new PointerEvent('pointerdown'));
+  }
+
+  if ((e.key === 'p' || e.key === 'P') && !e.repeat) {
+    e.preventDefault();
+    deployProbe(); 
+  }
+});
+
+document.addEventListener('keyup', (e) => {
+  if (e.key === 'r' || e.key === 'R') {
+    e.preventDefault();
+    // Fires your existing 'pointerup' listener directly on the element
+    riseButton.dispatchEvent(new PointerEvent('pointerup'));
+  }
+
+  if ((e.key === 'd' || e.key === 'D') && !e.repeat) {
+    e.preventDefault();
+    // Fires your existing 'pointerdown' listener directly on the element
+    dropButton.dispatchEvent(new PointerEvent('pointerup'));
+  }
+
+  if ((e.key === 'b' || e.key === 'B') && !e.repeat) {
+    e.preventDefault();
+    // Fires your existing 'pointerdown' listener directly on the element
+    boostButton.dispatchEvent(new PointerEvent('pointerup'));
+  }
+});
+
+
 const dropButton = document.getElementById("dropButton");
 
 dropButtonHeld = false;
@@ -1895,6 +2103,8 @@ dropButton.addEventListener('pointerleave', (e) => {
         reset(e);
     }
 });
+
+
 
 dropButton.addEventListener('contextmenu', (event) => {
   event.preventDefault();
@@ -2265,15 +2475,19 @@ deviceMenuOneButton.forEach(button => {
 
 
 function updateLabels() {
-    document.getElementById("drillCostMaterial").innerHTML = formatNumber(drillCostMaterial);
-    document.getElementById("satelliteCostMaterial").innerHTML = formatNumber(satelliteCostMaterial);
-    document.getElementById("bundlerCostMaterial").innerHTML = formatNumber(bundlerCostMaterial);
-    document.getElementById("laserSatelliteCostMaterial").innerHTML = formatNumber(laserSatelliteCostMaterial);
-    document.getElementById("refineryCostMaterial").innerHTML = formatNumber(refineryCostMaterial);
-    document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(smartCollectorCostMaterial);
+    // DEPLOY
+    document.getElementById("drillCostMaterial").innerHTML = formatNumber(currentPlanet.drillCostMaterial);
+    document.getElementById("satelliteCostMaterial").innerHTML = formatNumber(currentPlanet.satelliteCostMaterial);
+    document.getElementById("bundlerCostMaterial").innerHTML = formatNumber(currentPlanet.bundlerCostMaterial);
+    document.getElementById("laserSatelliteCostMaterial").innerHTML = formatNumber(currentPlanet.laserSatelliteCostMaterial);
+    document.getElementById("refineryCostMaterial").innerHTML = formatNumber(currentPlanet.refineryCostMaterial);
+    document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(currentPlanet.smartCollectorCostMaterial);
     
+
+    // UPGRADES
     document.getElementById("drillRateUpgradeCost").innerHTML = formatNumber(drillRateUpgradeCost);
     document.getElementById("drillLevel").innerHTML = "LVL " + formatNumber(drillLevel).toString();
+
     document.getElementById("collectionRadiusUpgradeCost").innerHTML = formatNumber(collectionRadiusUpgradeCost);
     document.getElementById("collectionRadiusLevel").innerHTML = "LVL " + formatNumber(collectionRadiusLevel).toString();
 
@@ -2350,6 +2564,8 @@ holdButtons.forEach(button => {
             } else if (button.id == "travelButton") {
                 clearHelp();
                 travelToSelectedPlanet();
+            } else if (button.id == "unlockButton") {
+                deployProbe();
             }
 
             resetBar();
