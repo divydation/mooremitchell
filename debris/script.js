@@ -240,7 +240,7 @@ planets.push({
     landedProbes: 0,
     solarFactor: 0,
     cometFactor: 2,
-    gravityFactor: 0.3,
+    gravityFactor: 0.4,
     ...getBaseDevices(),
     ...baseCosts
 });
