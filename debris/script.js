@@ -196,7 +196,7 @@ planets.push({
     landedProbes: 0,
     solarFactor: 0.9,
     cometFactor: 3,
-    gravityFactor: 0.3,
+    gravityFactor: 0.2,
     ...getBaseDevices(),
     ...baseCosts
 });
@@ -240,7 +240,7 @@ planets.push({
     landedProbes: 0,
     solarFactor: 0,
     cometFactor: 2,
-    gravityFactor: 0.4,
+    gravityFactor: 0.3,
     ...getBaseDevices(),
     ...baseCosts
 });
@@ -694,7 +694,7 @@ function mainThread() {
                 distance = calculateDistance(materialPosition, shipPosition);
 
                 p.value *= 1.005;
-                // p.value = Math.min(p.value, 100); // Don't let them be worth more than 100
+                p.value = Math.min(p.value, 10000); // Don't let them be worth more than 10000
 
                 if (distance <= 225 && drawThisPlanet) {
                     planet.materialsToCollect.splice(i, 1);
