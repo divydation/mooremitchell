@@ -162,6 +162,24 @@ button > svg {
     transition: 0.2s;
 } */
 
+.playButton {
+    width: 20vw;
+    height: 10vw;
+    font-size: 3vw;
+    border-radius: 2vw;
+    outline: none;
+    border: none;
+    background: rgba(100,100,100,0.5);
+    color: white;
+    font-family: "Silkscreen";
+    touch-action: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1vw;
+}
+
 .wideButton {
     width: 42vw;
 }
@@ -276,4 +294,55 @@ button > svg {
     right: 10px;
     top: 0;
     font-size: 1vw;
+}
+
+
+.changelog {
+    display: none;
+    width: 80vw;
+    height: 80vh;
+    position: absolute;
+    z-index: 5000;
+    background-color: rgb(15, 15, 15);
+    margin-left: 10vw;
+    margin-top: 10vh;
+    border-radius: 5vw;
+    box-shadow: 0 0 100vw black;
+    /* border: rgba(0,0,0,0.1) 100vw solid; */
+    box-sizing: border-box;
+
+    /* display: flex; */
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    gap: 3vw;
+}
+
+.titleBlock {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    /* gap: 3vw; */
+}
+
+.title {
+    font-size: 5vw;
+    color: #EF233C;
+}
+
+.subtitle {
+    font-size: 3vw;
+    color: gray;
+}
+
+.changelist {
+    width: 60%;
+    font-size: 2vw;
+    display: flex;
+    flex-direction: column;
+    align-items: left;
+    justify-content: center;
+    gap: 1vw;
 }

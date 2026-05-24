@@ -3,6 +3,19 @@ const ctx = canvas.getContext("2d");
 
 document.body.classList.add("stop-scrolling");
 
+document.fonts.load('400 40px "Silkscreen"').then(() => {
+// 4. Configure the canvas text styling
+// Note: Always include the fallback font (sans-serif) here as well
+ctx.font = '400 40px "Silkscreen", sans-serif';
+
+// Set text alignment (optional, defaults to 'left')
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+
+}).catch((err) => {
+    console.error("Font failed to load: ", err);
+});
+
 
 // Set the canvas to the height of the device screen
 screenHeight = document.body.offsetHeight;
@@ -20,6 +33,13 @@ if (screenWidth > screenHeight) {
     canvas.style.width = "100vw";
     canvas.height = screenHeight;
 }
+
+
+let showUpdateBox = true;
+document.getElementById("changelog").style.display = "flex";
+
+
+
 
 
 let flightRadius = 200;
@@ -52,6 +72,7 @@ let shipPosition = {
 
 // Particles
 let fire = [];
+let probeParticles = [];
 
 
 view = "planet";
@@ -115,10 +136,32 @@ updating = true;
 let planets = [];
 
 planets.push({
+    name: "bluePlanet",
+    radius: 70,
+    orbitRadius: 75,
+    orbitSpeed: 0.006,
+    currentOrbitRotation: Math.random()*toRadians(360),
+    rotationSpeed: 0.01,
+    currentRotation: 0,
+    hasShip: false,
+    selected: false,
+    color: "#2375ef",
+    description: "Closer to the sun - great for solar power.",
+    unlocked: false,
+    neededProbes: 10,
+    landedProbes: 0,
+    solarFactor: 2,
+    cometFactor: 0.3,
+    gravityFactor: 0.05,
+    ...getBaseDevices(),
+    ...baseCosts
+});
+
+planets.push({
     name: "redPlanet",
     radius: 100,
-    orbitRadius: 200,
-    orbitSpeed: 0.001,
+    orbitRadius: 115,
+    orbitSpeed: 0.0015,
     currentOrbitRotation: Math.random()*toRadians(360),
     rotationSpeed: 0.002,
     currentRotation: 0,
@@ -127,33 +170,19 @@ planets.push({
     color: "#EF233C",
     description: "Home",
     unlocked: true,
-    cost: 0,
-    ...getBaseDevices(),
-    ...baseCosts
-});
-
-planets.push({
-    name: "bluePlanet",
-    radius: 70,
-    orbitRadius: 100,
-    orbitSpeed: 0.0001,
-    currentOrbitRotation: Math.random()*toRadians(360),
-    rotationSpeed: 0.001,
-    currentRotation: 0,
-    hasShip: false,
-    selected: false,
-    color: "#2375ef",
-    description: "Closer to the sun - great for solar power.",
-    unlocked: false,
-    cost: 250,
+    neededProbes: 0,
+    landedProbes: 0,
+    solarFactor: 1,
+    cometFactor: 1,
+    gravityFactor: 0.1,
     ...getBaseDevices(),
     ...baseCosts
 });
 
 planets.push({
     name: "orangePlanet",
-    radius: 120,
-    orbitRadius: 260,
+    radius: 150,
+    orbitRadius: 170,
     orbitSpeed: 0.0003,
     currentOrbitRotation: Math.random()*toRadians(360),
     rotationSpeed: 0.003,
@@ -163,12 +192,60 @@ planets.push({
     color: "#ef6a23",
     description: "The large mass attracts more comets.",
     unlocked: false,
-    cost: 150,
+    neededProbes: 5,
+    landedProbes: 0,
+    solarFactor: 0.9,
+    cometFactor: 3,
+    gravityFactor: 0.3,
     ...getBaseDevices(),
     ...baseCosts
 });
 
-let currentPlanet = planets[0];
+planets.push({
+    name: "purplePlanet",
+    radius: 75,
+    orbitRadius: 220,
+    orbitSpeed: 0.0002,
+    currentOrbitRotation: Math.random()*toRadians(360),
+    rotationSpeed: 0.006,
+    currentRotation: 0,
+    hasShip: false,
+    selected: false,
+    color: "#9b5de5",
+    description: "So pretty... is it made of Crystal?",
+    unlocked: false,
+    neededProbes: 7,
+    landedProbes: 0,
+    solarFactor: 0.7,
+    cometFactor: 0.4,
+    gravityFactor: 0.1,
+    ...getBaseDevices(),
+    ...baseCosts
+});
+
+planets.push({
+    name: "greenPlanet",
+    radius: 110,
+    orbitRadius: 265,
+    orbitSpeed: 0.0001,
+    currentOrbitRotation: Math.random()*toRadians(360),
+    rotationSpeed: 0.006,
+    currentRotation: 0,
+    hasShip: false,
+    selected: false,
+    color: "#29BF12",
+    description: "Little light means no power... what could be found here?",
+    unlocked: false,
+    neededProbes: 25,
+    landedProbes: 0,
+    solarFactor: 0,
+    cometFactor: 2,
+    gravityFactor: 0.4,
+    ...getBaseDevices(),
+    ...baseCosts
+});
+
+let currentPlanet = planets[1];
 
 let probes = [];
 
@@ -279,6 +356,8 @@ function mainThread() {
 
     shipX = 500 + (flightRadius + 12.5) * Math.cos(shipRotation);
     shipY = 500 + (flightRadius + 12.5) * Math.sin(shipRotation);
+
+    
     
     shipPosition = {
         x: shipX,
@@ -378,11 +457,39 @@ function mainThread() {
                 // Move the probe's angle by that fraction (capped at 1.0 so it snaps perfectly at the end)
                 p.currentAngle += diff * Math.min(stepFraction, 1.0); 
             }
+
+            p.productionTimer += dt;
+
+            if (p.productionTimer >= 500) { 
+                p.productionTimer = 0; // Reset the timer
+
+                probeParticles.push({
+                    radius: p.currentRadius,
+                    angle: p.currentAngle,
+                    // life: Math.random() * 40,
+                    // size: 10,
+                    // color: Math.floor(Math.random() * 60),
+                    alpha: 1,
+                });
+            }
         }
 
         if (p.probeProgress == 1.0) {
             probes.splice(i, 1);
             i--;
+            p.targetPlanet.landedProbes += 1;
+            // console.log(planets[2]);
+        }
+    }
+
+    for (let j = 0; j < probeParticles.length; j++) {
+        let g = probeParticles[j];
+
+        g.alpha -= 0.0025;
+
+        if (g.alpha == 0) {
+            probeParticles.splice(j, 1);
+            j--;
         }
     }
     
@@ -399,12 +506,18 @@ function mainThread() {
         p.currentRotation += p.rotationSpeed;
         p.currentOrbitRotation += p.orbitSpeed;
         planet.currentRotation = planet.currentRotation % toRadians(360);
+
+
+        // Unlock if needed
+        if (p.landedProbes == p.neededProbes) {
+            p.unlocked = true;
+        }
         
 
         // Set current updates to this planet
         planet = p;
 
-        randomNumber = Math.floor(Math.random() * 2000);
+        randomNumber = Math.floor(Math.random() * 2000 / p.cometFactor);
         if (randomNumber == 1) {
             spawnComet(planet);
             // console.log("Spawned a comet on planet " + planet.name)
@@ -475,6 +588,8 @@ function mainThread() {
 
         for (let i = 0; i < planet.satellites.length; i++) {
             let p = planet.satellites[i];
+
+            if (planet.solarFactor == 0) break;
 
             // 1. Get the satellite's current position
             const satPos = polarToCartesian(p.radius, p.angle);
@@ -579,7 +694,7 @@ function mainThread() {
                 distance = calculateDistance(materialPosition, shipPosition);
 
                 p.value *= 1.005;
-                p.value = Math.min(p.value, 100); // Don't let them be worth more than 100
+                // p.value = Math.min(p.value, 100); // Don't let them be worth more than 100
 
                 if (distance <= 225 && drawThisPlanet) {
                     planet.materialsToCollect.splice(i, 1);
@@ -676,10 +791,11 @@ function mainThread() {
 
 
             if (p.radius > planet.radius && !p.arrived) {
-                p.radius -= (p.inwardsVelocity * (300 / p.radius) ** 2);
+                // p.radius -= (p.inwardsVelocity * (300 / p.radius) ** 2);
+                p.radius -= (planet.gravityFactor * 2 * (300 / p.radius) ** 2);
                 p.radius = Math.max(p.radius, planet.radius);
-                p.angle = p.angle + toRadians(p.tangentVelocity * (300 / p.radius) ** 2);
-                p.angle = p.angle % toRadians(360);
+                // p.angle = p.angle + toRadians(p.tangentVelocity * (300 / p.radius) ** 2);
+                // p.angle = p.angle % toRadians(360);
             } else {
                 p.arrived = true;
                 p.angle = p.angle + planet.rotationSpeed;
@@ -694,7 +810,7 @@ function mainThread() {
                         radius: p.radius+6,
                         angle: p.angle,
                         rotation: 0,
-                        radiusChange: 0.5,
+                        radiusChange: 0.6 - planet.gravityFactor,
                         angleChange: 0,
                         alpha: 1,
                         timeInTractorBeam: 0,
@@ -782,7 +898,7 @@ function mainThread() {
             p.productionTimer += dt;
 
             if (p.productionTimer >= 300) { 
-                p.powerStored += 0.1;
+                p.powerStored += 0.1 * planet.solarFactor;
                 p.productionTimer = 0;
             }
 
@@ -1623,9 +1739,17 @@ function getProbePosition(planetA, planetB, t) {
 function drawSolarSystem() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); 
 
-    const scale = 0.1;
+    const scale = 0.15;
     let activePlanet = null;
     selectedPlanet = null;
+
+    ctx.save();
+
+    zoomLevel = 1.7;
+    ctx.translate(500, 500);
+    ctx.scale(zoomLevel, zoomLevel);
+    ctx.translate(-500, -500);
+    
 
     // Draw shadows so no overlap
     for (let i = 0; i < planets.length; i++) {
@@ -1659,8 +1783,7 @@ function drawSolarSystem() {
     if (selectedPlanet != null && !selectedPlanet.unlocked) {
         document.getElementById("travelButton").style.display = "none";
         document.getElementById("unlockButton").style.display = "flex";
-        console.log(selectedPlanet);
-        document.getElementById("unlockPlanetCost").innerHTML = selectedPlanet.cost;
+        // document.getElementById("unlockPlanetCost").innerHTML = selectedPlanet.cost;
     }
 
     if (selectedPlanet != null && selectedPlanet.unlocked) {
@@ -1676,6 +1799,8 @@ function drawSolarSystem() {
 
         let planetA = activePlanet;
         let planetB = selectedPlanet;
+
+        updateHelp(selectedPlanet.description);
 
         // Use variables directly to ensure we know which is Start and which is End
         let r1 = planetA.orbitRadius;
@@ -1726,25 +1851,78 @@ function drawSolarSystem() {
 
         // ctx.stroke();
 
+        // Draw green particles
+        for (let j = 0; j < probeParticles.length; j++) {
+            let g = probeParticles[j];
+            particleX = polarToCartesian(g.radius, g.angle).x;
+            particleY = polarToCartesian(g.radius, g.angle).y;
+
+            ctx.save();
+            ctx.translate(particleX, particleY);
+            ctx.rotate(g.angle);
+            ctx.fillStyle = `rgba(50, 210, 150, ${g.alpha})`;
+            ctx.fillRect(-1.5*g.alpha, -1.5*g.alpha, 3*g.alpha, 3*g.alpha); 
+            ctx.restore();
+        }
+
         for (let i = 0; i < probes.length; i++) {
             let p = probes[i];
 
             if (!p.originPlanet || !p.targetPlanet) continue;
 
-            // Calculate x and y directly from the probe's internal state
             let x = 500 + Math.cos(p.currentAngle) * p.currentRadius;
             let y = 500 + Math.sin(p.currentAngle) * p.currentRadius;
 
-            // Draw the probe as a 5x5 square
+            ctx.save();
+            ctx.translate(x, y);
+
+            ctx.save();
+
+            let radarLength = 10;
+            let sweepAngle = (p.radarAngle || (Date.now() / 600)) % (Math.PI * 2); 
+            let trailAngle = Math.PI / 2; 
+
+            // Rotate the canvas to the current sweep position
+            ctx.rotate(sweepAngle);
+
+            // Draw fading trail behind the line
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.arc(0, 0, radarLength, -trailAngle, 0);
+            ctx.closePath();
+
+            let gradient = ctx.createConicGradient(-trailAngle, 0, 0);
+            let solidStop = trailAngle / (Math.PI * 2);
+            // gradient.addColorStop(0, "rgba(50, 210, 150, 0)"); 
+            // gradient.addColorStop(trailAngle / (Math.PI * 2), "rgba(50, 210, 150, 0.5)"); 
+
+            gradient.addColorStop(0, "rgba(50, 210, 150, 0)"); 
+            gradient.addColorStop(solidStop, "rgba(50, 210, 150, 0.75)"); 
+            gradient.addColorStop(solidStop + 0.001, "rgba(50, 210, 150, 0)"); 
+            gradient.addColorStop(1, "rgba(50, 210, 150, 0)");
+            
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            // Draw the solid leading edge
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(radarLength, 0); 
+            ctx.setLineDash([]);
+            ctx.strokeStyle = "rgba(50, 210, 150, 1)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.restore();
+
+            ctx.rotate(p.currentAngle);
             ctx.fillStyle = "rgba(255, 255, 255, 1)";
-            ctx.fillRect(x - 2.5, y - 2.5, 5, 5); 
+            ctx.fillRect(-2.5, -2.5, 5, 5); 
+            ctx.restore();
         }
 
         
-
-        
         ctx.restore();
-
     }
 
 
@@ -1774,7 +1952,7 @@ function drawSolarSystem() {
 
         if (p.selected) {
             ctx.beginPath();
-            ctx.arc(p.orbitRadius, 0, p.radius*scale*2, 0, Math.PI*2, 1);
+            ctx.arc(p.orbitRadius, 0, p.radius*scale+3, 0, Math.PI*2, 1);
             ctx.strokeStyle = "rgba(255,255,255,0.5";
             ctx.lineWidth = 3;
             ctx.lineDashOffset = ringOffset;
@@ -1791,21 +1969,51 @@ function drawSolarSystem() {
         }
 
         ctx.restore();
+
+        
     }
 
     // Draw sun
-    ctx.fillStyle = "#efcd23";
+    ctx.fillStyle = "#FFE347";
     ctx.beginPath();
     ctx.arc(500, 500, 50, 0, Math.PI*2, 1);
     ctx.fill();
+
+    for (let i = 0; i < planets.length; i++) {
+        let p = planets[i];
+
+        if (!p.unlocked && p.selected) {
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            planetX = polarToCartesian(p.orbitRadius, p.currentOrbitRotation).x;
+            planetY = polarToCartesian(p.orbitRadius, p.currentOrbitRotation).y;
+            ctx.fillStyle = "rgba(255,255,255,0.5";
+            ctx.font = '400 20px "Silkscreen", sans-serif';
+            let text = p.landedProbes + "/" + p.neededProbes;
+            ctx.fillText(text, planetX, planetY + p.radius*scale+15);
+            ctx.restore();
+        }
+    }
+
+    ctx.restore();
 }
 
 
 // Deploy probe
 function deployProbe() {
+
+    price = 100;
+    if (energy < price) return;
+    energy -= price;
+    // currentPlanet.drillCostMaterial = Math.floor(price * 1.2);
+    // console.log(price)
+
     // 1. Identify the origin and target
     let origin = currentPlanet; 
     let target = planets.find(p => p.selected);
+
+    console.log(target);
 
     if (origin && target) {
         // 2. Calculate the shortest angle difference (Delta Theta)
@@ -1826,7 +2034,7 @@ function deployProbe() {
         let pathDistance = Math.sqrt((dr * dr) + Math.pow(avgRadius * diff, 2));
 
         // 4. Define your desired constant speed (pixels per frame)
-        let constantSpeed = 0.2; 
+        let constantSpeed = 0.3; 
         
         // 5. Calculate the fractional speed for 't'
         // Avoid division by zero if planets are perfectly aligned
@@ -1838,7 +2046,9 @@ function deployProbe() {
             originPlanet: origin,       
             targetPlanet: target,       
             currentAngle: origin.currentOrbitRotation, 
-            currentRadius: origin.orbitRadius          
+            currentRadius: origin.orbitRadius,  
+            productionTimer: 0, 
+            particles: [],  
         });
     }
 }
@@ -1852,13 +2062,12 @@ function deploy() {
     if (material < price) return;
     material -= price;
     currentPlanet.drillCostMaterial = Math.floor(price * 1.2);
-    console.log(price)
 
     currentPlanet.drills.push({
         radius: flightRadius + 12.5,
         angle: shipRotation,
         tangentVelocity: 0,
-        inwardsVelocity: 0.3,
+        inwardsVelocity: currentPlanet.gravityFactor,
         arrived: false,
         materialStored: 0,
         productionTimer: 0,
@@ -2177,7 +2386,7 @@ document.getElementById("nextPlanetButton").addEventListener('pointerdown', (eve
                 } while (planets[nextIndex].hasShip);
 
                 planets[nextIndex].selected = true;
-                updateHelp(planets[nextIndex].description);
+                // updateHelp(planets[nextIndex].description);
                 break;
             }
         }
@@ -2199,7 +2408,7 @@ document.getElementById("previousPlanetButton").addEventListener('pointerdown', 
                 } while (planets[prevIndex].hasShip);
 
                 planets[prevIndex].selected = true;
-                updateHelp(planets[prevIndex].description);
+                // updateHelp(planets[prevIndex].description);
                 break;
             }
         }
@@ -2259,6 +2468,17 @@ function travelToSelectedPlanet() {
         }
     }
 }
+
+
+
+// Play  button
+document.getElementById("playButton").addEventListener('pointerdown', (event) => {
+    setTimeout(() => {
+        showUpdateBox = false;
+        document.getElementById("changelog").style.display = "none";
+        saveGame();
+    }, 200);
+});
 
 
 // All buttons
@@ -2686,11 +2906,11 @@ function saveGame() {
         shipRotation,
 
         // Progress & Costs
-        drillCostMaterial,
-        satelliteCostMaterial,
-        bundlerCostMaterial,
-        laserSatelliteCostMaterial,
-        refineryCostMaterial,
+        // drillCostMaterial,
+        // satelliteCostMaterial,
+        // bundlerCostMaterial,
+        // laserSatelliteCostMaterial,
+        // refineryCostMaterial,
         drillRateUpgradeCost,
         collectionRadiusUpgradeCost,
         drillProductionRate,
@@ -2702,6 +2922,10 @@ function saveGame() {
         refineChainUpgradeCost,
 
         planets,
+        probes,
+        probeParticles,
+
+        showUpdateBox,
     };
 
     localStorage.setItem("spaceMiningSave", JSON.stringify(gameState));
@@ -2723,11 +2947,11 @@ function loadGame() {
     targetRadius = state.targetRadius;
     shipRotation = state.shipRotation;
     
-    drillCostMaterial = state.drillCostMaterial;
-    satelliteCostMaterial = state.satelliteCostMaterial;
-    bundlerCostMaterial = state.bundlerCostMaterial;
-    laserSatelliteCostMaterial = state.laserSatelliteCostMaterial;
-    refineryCostMaterial = state.refineryCostMaterial;
+    // drillCostMaterial = state.drillCostMaterial;
+    // satelliteCostMaterial = state.satelliteCostMaterial;
+    // bundlerCostMaterial = state.bundlerCostMaterial;
+    // laserSatelliteCostMaterial = state.laserSatelliteCostMaterial;
+    // refineryCostMaterial = state.refineryCostMaterial;
 
 
     drillRateUpgradeCost = state.drillRateUpgradeCost;
@@ -2742,6 +2966,22 @@ function loadGame() {
     refineChainUpgradeCost = state.refineChainUpgradeCost;
 
     planets = state.planets;
+    probes = state.probes;
+    probeParticles = state.probeParticles;
+
+    showUpdateBox = state.showUpdateBox;
+
+    if (showUpdateBox) {
+        document.getElementById("changelog").style.display = "flex";
+    } else {
+        document.getElementById("changelog").style.display = "none";
+    }
+
+    for (let i = 0; i < probes.length; i++) {
+        let p = probes[i];
+        p.originPlanet = planets.find(planet => planet.name === p.originPlanet.name);
+        p.targetPlanet = planets.find(planet => planet.name === p.targetPlanet.name);
+    }
 
     // console.log("Game Loaded!");
     for (let i = 0; i < planets.length; i++) {
