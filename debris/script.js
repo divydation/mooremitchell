@@ -474,7 +474,7 @@ function mainThread() {
             }
         }
 
-        if (p.probeProgress == 1.0) {
+        if (p.probeProgress >= 1) {
             probes.splice(i, 1);
             i--;
             p.targetPlanet.landedProbes += 1;
@@ -485,9 +485,9 @@ function mainThread() {
     for (let j = 0; j < probeParticles.length; j++) {
         let g = probeParticles[j];
 
-        g.alpha -= 0.0025;
+        g.alpha -= 0.002;
 
-        if (g.alpha == 0) {
+        if (g.alpha <= 0) {
             probeParticles.splice(j, 1);
             j--;
         }
