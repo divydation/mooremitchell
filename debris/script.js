@@ -694,7 +694,7 @@ function mainThread() {
                 distance = calculateDistance(materialPosition, shipPosition);
 
                 p.value *= 1.005;
-                p.value = Math.min(p.value, 10000); // Don't let them be worth more than 10000
+                p.value = Math.min(p.value, 2000); // Don't let them be worth more than 1000
 
                 if (distance <= 225 && drawThisPlanet) {
                     planet.materialsToCollect.splice(i, 1);
