@@ -738,7 +738,7 @@ function mainThread() {
 
                     if (b.battery > 0) {
 
-                        bundlerPosition = polarToCartesian(b.radius, b.angle);
+                        bundlerPosition = {x: b.x, y: b.y};
 
                         distance = calculateDistance(materialPosition, bundlerPosition);
 
@@ -1063,6 +1063,11 @@ function mainThread() {
             // collectors orbit faster if they are closer to the planet
             p.angle += p.orbitSpeed;
             p.angle = p.angle % toRadians(360);   
+
+            // CACHE THE COORDINATES HERE
+            let coords = polarToCartesian(p.radius, p.angle);
+            p.x = coords.x;
+            p.y = coords.y;
             
             if (drawThisPlanet) canvasDrawBundler(p);
         }
