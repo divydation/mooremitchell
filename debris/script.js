@@ -505,7 +505,7 @@ function mainThread() {
         // Rotate and orbit this planet
         p.currentRotation += p.rotationSpeed;
         p.currentOrbitRotation += p.orbitSpeed;
-        planet.currentRotation = planet.currentRotation % toRadians(360);
+        p.currentRotation = p.currentRotation % toRadians(360);
 
 
         // Unlock if needed
@@ -748,6 +748,7 @@ function mainThread() {
                             i--;
                             // b.mineralsStored += Math.floor(p.value);
                             material += p.value;
+                            break;
                         } 
 
                         if (distance <= collectionRadius**2) {
@@ -857,7 +858,7 @@ function mainThread() {
 
             // 1. Calculate the chain ONCE when the timer crosses the threshold
             if (p.productionTimer >= timer && p.productionTimer < (timer + dt)) { 
-                p.currentChain = [p];
+                p.currentChain = [];
                 for (let t = 0; t < refineChainCount; t++) {
                     if (p.currentChain[t] == null) break; 
                     let newMaterial = findClosestMaterial(p.currentChain[t], planet.materialsToCollect);
@@ -894,7 +895,7 @@ function mainThread() {
 
                     // If you collected the very first material, the chain is empty (just the refinery).
                     // In that case, abort and restart immediately.
-                    if (p.currentChain.length <= 1) {
+                    if (p.currentChain.length === 0) {
                         p.currentChain = null;
                         p.productionTimer = 0; 
                     } else if (drawThisPlanet) {
@@ -924,13 +925,11 @@ function mainThread() {
                 if (p.currentChain) {
                     for (let d = 0; d < p.currentChain.length; d++) {
                         let h = p.currentChain[d];
-                        if (h !== p) { 
-                            h.refined = true;
-                            h.value = h.value * 1.5;
-                            
-                            // CLEAR THE TARGETED FLAG 
-                            h.isTargeted = false; 
-                        }
+                        h.refined = true;
+                        h.value = h.value * 1.5;
+                        
+                        // CLEAR THE TARGETED FLAG 
+                        h.isTargeted = false; 
                     }
                 }
                 p.productionTimer = 0;
@@ -3051,10 +3050,7 @@ function loadGame() {
     }
 
     // console.log("Game Loaded!");
-    for (let i = 0; i < planets.length; i++) {
-        let p = planets[i];
-        if (p.hasShip) currentPlanet = p;
-    }
+    currentPlanet = planets.find(p => p.hasShip);
 }
 
 loadGame();
