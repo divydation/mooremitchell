@@ -697,6 +697,7 @@ function mainThread() {
                 p.value = Math.min(p.value, 1000); // Don't let them be worth more than 1000
 
                 if (distance <= 225 && drawThisPlanet) {
+                    p.isDestroyed = true;
                     planet.materialsToCollect.splice(i, 1);
                     i--;
                     material += Math.floor(p.value);
@@ -718,9 +719,14 @@ function mainThread() {
 
                 p.radius += p.radiusChange;
 
+                let cartesian = polarToCartesian(p.radius, p.angle);
+                p.x = cartesian.x;
+                p.y = cartesian.y;
+
                 if (p.radius > 600 || p.radius < 10) p.alpha -= 0.1;
 
                 if (p.alpha < 0) {
+                    p.isDestroyed = true;
                     planet.materialsToCollect.splice(i, 1);
                     i--;
                 }
@@ -737,6 +743,7 @@ function mainThread() {
                         distance = calculateDistance(materialPosition, bundlerPosition);
 
                         if (distance <= 15**2) {
+                            p.isDestroyed = true;
                             planet.materialsToCollect.splice(i, 1);
                             i--;
                             // b.mineralsStored += Math.floor(p.value);
@@ -841,30 +848,67 @@ function mainThread() {
 
             p.productionTimer += dt;
 
-            refineryPosition = polarToCartesian(p.radius, p.angle);
+            // Cache the refinery's X/Y coordinates so the distance function doesn't have to calculate them
+            let refineryCartesian = polarToCartesian(p.radius, p.angle);
+            p.x = refineryCartesian.x;
+            p.y = refineryCartesian.y;
 
-            timer = 4000;
-            let chainMaterials = [p];
+            let timer = 4000;
 
-            if (p.productionTimer >= timer) { 
+            // 1. Calculate the chain ONCE when the timer crosses the threshold
+            if (p.productionTimer >= timer && p.productionTimer < (timer + dt)) { 
+                p.currentChain = [p];
+                for (let t = 0; t < refineChainCount; t++) {
+                    if (p.currentChain[t] == null) break; 
+                    let newMaterial = findClosestMaterial(p.currentChain[t], planet.materialsToCollect);
+                    if (newMaterial == null) break;
+                    
+                    // MARK AS TARGETED SO OTHER REFINERIES IGNORE IT
+                    newMaterial.isTargeted = true;
+                    
+                    p.currentChain.push(newMaterial);
+                }
+            }
 
-                    for (t = 0; t < refineChainCount; t++) {
-                        if (chainMaterials[t] == null) break; // Stop chaining
-                        newMaterial = findClosestMaterial(chainMaterials[t], planet.materialsToCollect);
-                        if (newMaterial == null) break;
-                        chainMaterials.push(newMaterial);
+            // 2. Draw the lines using the cached chain every frame while firing
+            if (p.productionTimer >= timer) {
+                if (p.currentChain) {
+                    
+                    // CHECK FOR BROKEN LINKS AND TRUNCATE THE CHAIN
+                    for (let d = 0; d < p.currentChain.length; d++) {
+                        if (p.currentChain[d].isDestroyed) {
+                            
+                            // A link was destroyed! 
+                            // First, free all the surviving materials AFTER this broken link
+                            for (let freeIndex = d + 1; freeIndex < p.currentChain.length; freeIndex++) {
+                                if (p.currentChain[freeIndex]) {
+                                    p.currentChain[freeIndex].isTargeted = false;
+                                }
+                            }
+                            
+                            // Next, cut the chain off right at the broken link
+                            p.currentChain.splice(d); 
+                            break; // Stop checking, the chain is cut
+                        }
                     }
 
-                    if (drawThisPlanet) {
+                    // If you collected the very first material, the chain is empty (just the refinery).
+                    // In that case, abort and restart immediately.
+                    if (p.currentChain.length <= 1) {
+                        p.currentChain = null;
+                        p.productionTimer = 0; 
+                    } else if (drawThisPlanet) {
+                        // The chain (or what's left of it) is intact, draw the lasers
                         ctx.save();
                         ctx.strokeStyle = `rgba(0, 255, 213, ${Math.random()})`;
                         ctx.beginPath();
-                        ctx.moveTo(polarToCartesian(p.radius, p.angle).x, polarToCartesian(p.radius, p.angle).y);
+                        ctx.moveTo(p.x, p.y); 
 
-                        for (d = 0; d < chainMaterials.length; d++) {
-                            h = chainMaterials[d];
-                            
-                            ctx.lineTo(polarToCartesian(h.radius, h.angle).x, polarToCartesian(h.radius, h.angle).y);
+                        for (let d = 0; d < p.currentChain.length; d++) {
+                            let h = p.currentChain[d];
+                            let hX = h.x !== undefined ? h.x : polarToCartesian(h.radius, h.angle).x;
+                            let hY = h.y !== undefined ? h.y : polarToCartesian(h.radius, h.angle).y;
+                            ctx.lineTo(hX, hY);
                         }
 
                         ctx.lineWidth = (p.productionTimer - timer)/400 + (Math.random() * 5 - 2);
@@ -873,15 +917,24 @@ function mainThread() {
                         ctx.restore();
                     }
                 }
-            
+            }
 
+            // 3. Finalize the refinement and reset the timer
             if (p.productionTimer >= (timer+1000)) { 
-                for (d = 0; d < chainMaterials.length; d++) {
-                    h = chainMaterials[d]
-                    h.refined = true;
-                    h.value = h.value * 1.5;
+                if (p.currentChain) {
+                    for (let d = 0; d < p.currentChain.length; d++) {
+                        let h = p.currentChain[d];
+                        if (h !== p) { 
+                            h.refined = true;
+                            h.value = h.value * 1.5;
+                            
+                            // CLEAR THE TARGETED FLAG 
+                            h.isTargeted = false; 
+                        }
+                    }
                 }
                 p.productionTimer = 0;
+                p.currentChain = null; // Clear the cache
             }
 
             if (drawThisPlanet) canvasDrawRefinery(p);
@@ -1022,6 +1075,8 @@ function mainThread() {
             let closestMaterial = null;
             let closestDistance = 10000000000000;
 
+            smartCollectorPosition = polarToCartesian(sc.radius, sc.angle);
+
             // Go through the crystals
             // Check which are in range
             // Check which is closest
@@ -1036,7 +1091,7 @@ function mainThread() {
                 
 
                     materialPosition = polarToCartesian(m.radius, m.angle);
-                    smartCollectorPosition = polarToCartesian(sc.radius, sc.angle);
+                    
 
                     distance = calculateDistance(smartCollectorPosition, materialPosition);
 
@@ -1414,27 +1469,31 @@ function findClosestMaterial(object, materialsArray) {
     let closestMaterial = null;
     let closestDistance = 10000000000000;
 
-    objectPosition = polarToCartesian(object.radius, object.angle);
-
     // Find the closest material
     for (let j = 0; j < materialsArray.length; j++) {
         let m = materialsArray[j];
 
-        // Skip any materials that are already refined
-        if (m.refined) continue;
+        // Skip any materials that are already refined OR currently targeted by another refinery
+        if (m.refined || m.isTargeted) continue;
 
         // Skip if it is the same as itself
-        if (m == object) continue;
+        if (m === object) continue;
 
         // Skip if it is closer to planet than itself
         if (m.radius < object.radius) continue;
 
-        
-        materialPosition = polarToCartesian(m.radius, m.angle);
+        // USE CACHED X/Y COORDINATES TO BYPASS EXPENSIVE MATH
+        // Fallback to 0 if undefined to prevent NaN errors
+        let objX = object.x || 0;
+        let objY = object.y || 0;
+        let mX = m.x || 0;
+        let mY = m.y || 0;
 
-        distance = calculateDistance(objectPosition, materialPosition);
+        let dx = objX - mX;
+        let dy = objY - mY;
+        let distance = (dx * dx) + (dy * dy);
 
-        // Skip any materials that are too far away
+        // Skip any materials that are too far away (10,000 is 100 squared)
         if (distance > 10000) continue;
 
         if (distance < closestDistance) {
@@ -1454,7 +1513,8 @@ function findClosestMaterial(object, materialsArray) {
 
 function canvasDrawMaterials(p) {
     ctx.save();
-    ctx.translate(polarToCartesian(p.radius, p.angle).x, polarToCartesian(p.radius, p.angle).y);
+    // ctx.translate(polarToCartesian(p.radius, p.angle).x, polarToCartesian(p.radius, p.angle).y);
+    ctx.translate(p.x, p.y);
     
     if (p.refined) {
         ctx.fillStyle = `rgba(8, 247, 208, ${p.alpha})`;
@@ -1491,7 +1551,9 @@ function canvasDrawRefinery(p) {
 
 function canvasDrawSatellites(p) {
     ctx.save();
-    ctx.translate(polarToCartesian(p.radius, p.angle).x, polarToCartesian(p.radius, p.angle).y);
+    // ctx.translate(polarToCartesian(p.radius, p.angle).x, polarToCartesian(p.radius, p.angle).y);
+    let coords = polarToCartesian(p.radius, p.angle);
+    ctx.translate(coords.x, coords.y);
     ctx.rotate(currentPlanet.currentOrbitRotation);
     const satelliteSize = 20;
     const wingWidth = 5;
