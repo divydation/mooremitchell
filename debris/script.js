@@ -858,16 +858,24 @@ function mainThread() {
 
             // 1. Calculate the chain ONCE when the timer crosses the threshold
             if (p.productionTimer >= timer && p.productionTimer < (timer + dt)) { 
-                p.currentChain = [];
+                p.currentChain = []; 
+                
+                // Start the first search from the refinery itself
+                let searchOrigin = p; 
+
                 for (let t = 0; t < refineChainCount; t++) {
-                    if (p.currentChain[t] == null) break; 
-                    let newMaterial = findClosestMaterial(p.currentChain[t], planet.materialsToCollect);
-                    if (newMaterial == null) break;
+                    // Search using the current origin
+                    let newMaterial = findClosestMaterial(searchOrigin, planet.materialsToCollect);
                     
-                    // MARK AS TARGETED SO OTHER REFINERIES IGNORE IT
+                    // If nothing is in range, stop building the chain
+                    if (newMaterial == null) break; 
+                    
+                    // Lock it so other refineries ignore it
                     newMaterial.isTargeted = true;
-                    
                     p.currentChain.push(newMaterial);
+                    
+                    // The NEXT search will start from this newly found material
+                    searchOrigin = newMaterial; 
                 }
             }
 
