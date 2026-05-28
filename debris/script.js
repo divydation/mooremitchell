@@ -681,44 +681,43 @@ function mainThread() {
             ctx.restore();
         }
         
+        // Clear the grid for this frame
+        SpatialGrid.clear();
 
         // Draw materials floating
+        let aliveCount = 0; // THE POINTER: Tracks how many materials are still alive
+
         for (let i = 0; i < planet.materialsToCollect.length; i++) {
             let p = planet.materialsToCollect[i];
+            if (p == null) continue;
 
-                if (p == null) continue;
+            const materialPosition = polarToCartesian(p.radius, p.angle);
+            let distance = calculateDistance(materialPosition, shipPosition);
 
-                // 1. Get the material's current position
-                const materialPosition = polarToCartesian(p.radius, p.angle);
+            p.value *= 1.005;
+            p.value = Math.min(p.value, 1000); 
 
-                distance = calculateDistance(materialPosition, shipPosition);
+            let materialSurvived = true; // Tracks if the material makes it to the next frame
 
-                p.value *= 1.005;
-                p.value = Math.min(p.value, 1000); // Don't let them be worth more than 1000
+            // 1. Check Ship Collection
+            if (distance <= 225 && drawThisPlanet) {
+                p.isDestroyed = true;
+                material += Math.floor(p.value);
+                materialSurvived = false; 
+            } 
 
-                if (distance <= 225 && drawThisPlanet) {
-                    p.isDestroyed = true;
-                    planet.materialsToCollect.splice(i, 1);
-                    i--;
-                    material += Math.floor(p.value);
-                } 
-
-                if (distance <= collectionRadius**2  && drawThisPlanet) {
-                    
+            // 2. Physics & Out of Bounds (Only if it survived the ship)
+            if (materialSurvived) {
+                if (distance <= collectionRadius**2 && drawThisPlanet) {
                     p.timeInTractorBeam += 0.05;
-
-                    // start moving towards ship
                     p.radius += (flightRadius + 7.5 - p.radius) * Math.min(p.timeInTractorBeam, 1);
-
-                    // Magically wraps the difference between -PI and PI
                     let angleDiff = Math.atan2(Math.sin(shipRotation - p.angle), Math.cos(shipRotation - p.angle));
-                    
                     p.angle += (angleDiff * Math.min(p.timeInTractorBeam, 1)) + toRadians(0.5);
-                    
                 } 
 
                 p.radius += p.radiusChange;
 
+                // Cache the final Cartesian coordinates for next frame's distance checks
                 let cartesian = polarToCartesian(p.radius, p.angle);
                 p.x = cartesian.x;
                 p.y = cartesian.y;
@@ -727,70 +726,49 @@ function mainThread() {
 
                 if (p.alpha < 0) {
                     p.isDestroyed = true;
-                    planet.materialsToCollect.splice(i, 1);
-                    i--;
+                    materialSurvived = false;
                 }
+            }
 
-                // Distance to collectors
-
+            // 3. Check Collectors (Only if it survived physics)
+            if (materialSurvived) {
                 for (let j = 0; j < planet.collectors.length; j++) {
                     let b = planet.collectors[j];
-
                     if (b.battery > 0) {
+                        let bundlerPosition = {x: b.x, y: b.y};
+                        let bundlerDistance = calculateDistance(materialPosition, bundlerPosition);
 
-                        bundlerPosition = {x: b.x, y: b.y};
-
-                        distance = calculateDistance(materialPosition, bundlerPosition);
-
-                        if (distance <= 15**2) {
+                        if (bundlerDistance <= 15**2) {
                             p.isDestroyed = true;
-                            planet.materialsToCollect.splice(i, 1);
-                            i--;
-                            // b.mineralsStored += Math.floor(p.value);
                             material += p.value;
-                            break;
+                            materialSurvived = false;
+                            break; // Stop checking other collectors, this rock is dead
                         } 
 
-                        if (distance <= collectionRadius**2) {
+                        if (bundlerDistance <= collectionRadius**2) {
                             p.timeInTractorBeam += 0.05;
-
-                            // start moving towards bundler
                             p.radius += (b.radius + 5 - p.radius) * Math.min(p.timeInTractorBeam, 1);
-
-                            // Magically wraps the difference between -PI and PI
                             let angleDiff = Math.atan2(Math.sin(b.angle - p.angle), Math.cos(b.angle - p.angle));
-                            
                             p.angle += (angleDiff * Math.min(p.timeInTractorBeam, 1)) + toRadians(0.5);
-                            
                         }
                     }
                 }
+            }
 
-                // Distance to refiners
-
-                // for (let j = 0; j < planet.refineries.length; j++) {
-                //     let r = planet.refineries[j];
-
-                //     refineryPosition = polarToCartesian(r.radius, r.angle);
-
-                //     distance = calculateDistance(materialPosition, refineryPosition);
-
-                //     if (distance <= 1000 && !p.refined) {
-                //         p.timeInTractorBeam += 0.05;
-
-                //         // start moving towards refinery
-                //         p.radius += (r.radius - p.radius) * Math.min(p.timeInTractorBeam, 1);
-
-                //         // Magically wraps the difference between -PI and PI
-                //         let angleDiff = Math.atan2(Math.sin(r.angle - p.angle), Math.cos(r.angle - p.angle));
-                        
-                //         p.angle += (angleDiff * Math.min(p.timeInTractorBeam, 1)) + toRadians(0.5);
-                        
-                //     }
-                // }
-
+            // 4. Final Processing & Array Packing
+            if (materialSurvived) {
                 if (drawThisPlanet) canvasDrawMaterials(p);
+                
+                // Pack the surviving material into the front of the array
+                planet.materialsToCollect[aliveCount] = p; 
+                aliveCount++; // Move the safe pointer forward
+
+                SpatialGrid.insert(p);
+            }
         }
+
+        // 5. Instantly truncate the array to remove all the dead garbage at the end
+        planet.materialsToCollect.length = aliveCount;
 
 
         // Draw drills
@@ -810,8 +788,10 @@ function mainThread() {
                 p.angle = p.angle % toRadians(360);
                 p.productionTimer += dt;
 
-                if (p.productionTimer >= (drillProductionRate + p.randomTimeOffset)) { 
-                    p.materialStored += 1; 
+                let targetSpawnTime = Math.max(100, drillProductionRate + p.randomTimeOffset);
+
+                if (p.productionTimer >= targetSpawnTime) { 
+                    // p.materialStored += 1; 
                     p.productionTimer = 0; // Reset the timer
 
                     planet.materialsToCollect.push({
@@ -868,7 +848,7 @@ function mainThread() {
                     let newMaterial = findClosestMaterial(searchOrigin, planet.materialsToCollect);
                     
                     // If nothing is in range, stop building the chain
-                    if (newMaterial == null) break; 
+                    if (newMaterial == null) break;
                     
                     // Lock it so other refineries ignore it
                     newMaterial.isTargeted = true;
@@ -1111,25 +1091,6 @@ function mainThread() {
                         closestDistance = distance;
                         closestMaterial = m;
                     }
-
-                    // if (distance <= 225) {
-                    //     planet.materialsToCollect.splice(j, 1);
-                    //     j--;
-                    //     material += Math.floor(m.value);
-                    //     sc.battery -= 0.1;
-                    // } else if (distance <= collectionRadius**2) {
-                        
-                    //     m.timeInTractorBeam += 0.05;
-
-                    //     // start moving towards smart collector
-                    //     m.radius += (sc.radius - m.radius) * Math.min(m.timeInTractorBeam, 1);
-
-                    //     // Magically wraps the difference between -PI and PI
-                    //     let angleDiff = Math.atan2(Math.sin(sc.angle - m.angle), Math.cos(sc.angle - m.angle));
-                        
-                    //     m.angle += (angleDiff * Math.min(m.timeInTractorBeam, 1)) + toRadians(0.5);
-                        
-                    // } 
                 }
 
                 if (closestMaterial) {
@@ -1182,53 +1143,7 @@ function mainThread() {
                     // ctx.restore();
                 }
             }
-
-            
-
-            // // 1. Physics Constants
-            // const maxSpeed = 1.7;     // The top speed it can reach
-            // const accel = 0.09;      // Higher = faster startup (0.01 to 0.1)
-            // const friction = 0.98;   // Higher = longer glide (0.9 to 0.98)
-
-            // // Initialize velocity if it doesn't exist yet
-            // sc.vr = sc.vr || 0;
-            // sc.va = sc.va || 0;
-
-            // let desiredVr = 0;
-            // let desiredVa = 0;
-
-            // // 2. Targeting Logic (The "Push")
-            // if (closestMaterial && closestDistance < 20000) {
-            //     let rDiff = closestMaterial.radius - sc.radius;
-            //     let angleDiff = Math.atan2(
-            //         Math.sin(closestMaterial.angle - sc.angle), 
-            //         Math.cos(closestMaterial.angle - sc.angle)
-            //     );
-            //     let arcDiff = angleDiff * sc.radius;
-            //     let totalDist = Math.hypot(rDiff, arcDiff);
-
-            //     // Only "push" if we haven't arrived yet
-            //     if (totalDist > 5) { 
-            //         // Calculate the direction vector at max speed
-            //         desiredVr = (rDiff / totalDist) * maxSpeed;
-            //         desiredVa = (arcDiff / totalDist) * maxSpeed;
-            //     }
-            // }
-
-            // // 3. Apply Steering (Acceleration)
-            // // This moves the current velocity toward the desired velocity
-            // sc.vr += (desiredVr - sc.vr) * accel;
-            // sc.va += (desiredVa - sc.va) * accel;
-
-            // // 4. Apply Friction (Damping)
-            // // This handles the "gliding to a stop" when desiredVr/Va are 0
-            // sc.vr *= friction;
-            // sc.va *= friction;
-
-            // // 5. Apply Velocity to Position
-            // sc.radius += sc.vr;
-            // sc.angle += (sc.va / sc.radius);
-            
+        
             if (drawThisPlanet) canvasDrawSmartCollector(sc);
         }
 
@@ -1481,21 +1396,16 @@ function findClosestMaterial(object, materialsArray) {
     let closestMaterial = null;
     let closestDistance = 10000000000000;
 
-    // Find the closest material
-    for (let j = 0; j < materialsArray.length; j++) {
-        let m = materialsArray[j];
+    // INSTEAD OF CHECKING THE WHOLE ARRAY, ONLY CHECK THE 9 LOCAL GRID CELLS
+    let nearbyMaterials = SpatialGrid.getNearby(object);
 
-        // Skip any materials that are already refined OR currently targeted by another refinery
+    for (let j = 0; j < nearbyMaterials.length; j++) {
+        let m = nearbyMaterials[j];
+
         if (m.refined || m.isTargeted) continue;
-
-        // Skip if it is the same as itself
         if (m === object) continue;
-
-        // Skip if it is closer to planet than itself
         if (m.radius < object.radius) continue;
 
-        // USE CACHED X/Y COORDINATES TO BYPASS EXPENSIVE MATH
-        // Fallback to 0 if undefined to prevent NaN errors
         let objX = object.x || 0;
         let objY = object.y || 0;
         let mX = m.x || 0;
@@ -1505,7 +1415,7 @@ function findClosestMaterial(object, materialsArray) {
         let dy = objY - mY;
         let distance = (dx * dx) + (dy * dy);
 
-        // Skip any materials that are too far away (10,000 is 100 squared)
+        // Max distance is roughly 100 pixels (10000 squared)
         if (distance > 10000) continue;
 
         if (distance < closestDistance) {
@@ -1514,9 +1424,53 @@ function findClosestMaterial(object, materialsArray) {
         }
     }
 
-    // Return the closest material which is in range and not already refined
     return closestMaterial;
 }
+
+const SpatialGrid = {
+    cellSize: 100, // 100x100 pixel squares
+    cells: {},
+
+    clear: function() {
+        this.cells = {};
+    },
+
+    insert: function(material) {
+        // Fallback to 0 if X/Y aren't cached yet
+        let mX = material.x || 0;
+        let mY = material.y || 0;
+
+        let gridX = Math.floor(mX / this.cellSize);
+        let gridY = Math.floor(mY / this.cellSize);
+        let key = gridX + "_" + gridY;
+        
+        if (!this.cells[key]) this.cells[key] = [];
+        this.cells[key].push(material);
+    },
+
+    getNearby: function(object) {
+        let objX = object.x || 0;
+        let objY = object.y || 0;
+        
+        let gridX = Math.floor(objX / this.cellSize);
+        let gridY = Math.floor(objY / this.cellSize);
+        let nearbyMaterials = [];
+
+        // Grab materials from the target cell and the 8 surrounding cells
+        for (let x = -1; x <= 1; x++) {
+            for (let y = -1; y <= 1; y++) {
+                let key = (gridX + x) + "_" + (gridY + y);
+                if (this.cells[key]) {
+                    // Fast array merge
+                    for (let i = 0; i < this.cells[key].length; i++) {
+                        nearbyMaterials.push(this.cells[key][i]);
+                    }
+                }
+            }
+        }
+        return nearbyMaterials;
+    }
+};
 
 
 
