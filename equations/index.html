@@ -521,7 +521,7 @@
     </header>
 
     <main>
-        <div id="celebration" class="celebration">Solved! Great job!</div>
+        <div id="celebration" class="celebration">Solved! Great job. Loading next...</div>
 
         <div id="mc-mode-container" class="hidden" style="width: 100%;">
             <div id="history-container" class="history-container"></div>
@@ -1125,11 +1125,51 @@
             }
         });
 
+        // --- URL Parameter Initialization ---
+        const initializeFromUrl = () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            if (urlParams.has('mode')) {
+                const mode = urlParams.get('mode');
+                if (['mc', 'dd'].includes(mode)) {
+                    interactionModeSelect.value = mode;
+                }
+            }
+            
+            if (urlParams.has('diff')) {
+                const diff = urlParams.get('diff');
+                if (['1', '2', '3', '4', 'custom'].includes(diff)) {
+                    difficultySelect.value = diff;
+                    
+                    if (diff === 'custom') {
+                        customStepControls.classList.remove('hidden');
+                        if (urlParams.has('steps')) {
+                            const steps = parseInt(urlParams.get('steps'));
+                            if (steps > 0 && steps <= 100) {
+                                customStepsCount = steps;
+                                customStepDisplay.textContent = customStepsCount;
+                            }
+                        }
+                    } else {
+                        customStepControls.classList.add('hidden');
+                    }
+                }
+            }
+
+            if (urlParams.has('format')) {
+                const format = urlParams.get('format');
+                if (['math', 'worded'].includes(format)) {
+                    answerModeSelect.value = format;
+                }
+            }
+        };
+
         // Events
         interactionModeSelect.addEventListener('change', startNewQuestion);
         answerModeSelect.addEventListener('change', startNewQuestion);
 
         // Init
+        initializeFromUrl();
         startNewQuestion();
     </script>
 </body>
