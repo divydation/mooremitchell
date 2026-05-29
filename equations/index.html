@@ -497,16 +497,16 @@
                 <option value="dd" selected>Drag & Drop Mode</option>
             </select>
             <select id="difficulty">
-                <option value="1">One Step</option>
+                <option value="1" selected>One Step</option>
                 <option value="2">Two Step</option>
                 <option value="3">Three Step</option>
-                <option value="custom" selected>Custom Step</option>
+                <option value="custom">Custom Step</option>
                 <option value="4">Variables on Both Sides</option>
             </select>
             
             <div id="custom-step-controls" class="custom-controls">
                 <button id="btn-dec-step">-</button>
-                <span id="custom-step-display">4</span>
+                <span id="custom-step-display">1</span>
                 <button id="btn-inc-step">+</button>
             </div>
 
@@ -521,7 +521,7 @@
     </header>
 
     <main>
-        <div id="celebration" class="celebration">Solved! Great job. Loading next...</div>
+        <div id="celebration" class="celebration">Solved! Great job!</div>
 
         <div id="mc-mode-container" class="hidden" style="width: 100%;">
             <div id="history-container" class="history-container"></div>
@@ -569,8 +569,10 @@
         let currentStepIndex = 0;
         let firstAttemptFailed = false; 
         let score = parseInt(localStorage.getItem('equationsScore')) || 0;
-        let customStepsCount = 4;
+        let customStepsCount = 1;
         let draggedCard = null;
+
+        customStepControls.classList.add('hidden');
         
         scoreDisplay.textContent = score;
 
@@ -861,11 +863,12 @@
             
             if (interactionModeSelect.value === 'mc') {
                 promptContainer.style.display = 'none';
+                setTimeout(startNewQuestion, 2000); // Keep auto-advance for MC
             } else {
-                ddCheckBtn.style.display = 'none';
+                // Change the button instead of hiding it
+                ddCheckBtn.textContent = 'Next Question';
+                ddCheckBtn.classList.add('next-question-mode');
             }
-            
-            setTimeout(startNewQuestion, 2000);
         };
 
         const startNewQuestion = () => {
@@ -955,6 +958,10 @@
             ddWorkspace.innerHTML = '';
             cardBank.innerHTML = '';
             ddCheckBtn.style.display = 'block';
+            
+            // Reset button state for the new question
+            ddCheckBtn.textContent = 'Check Work';
+            ddCheckBtn.classList.remove('next-question-mode');
             
             let cardsData = [];
             const mode = answerModeSelect.value;
@@ -1087,6 +1094,12 @@
         };
 
         ddCheckBtn.addEventListener('click', () => {
+            // If we're already in success state, advance to the next question
+            if (ddCheckBtn.classList.contains('next-question-mode')) {
+                startNewQuestion();
+                return;
+            }
+
             const dropZones = document.querySelectorAll('.drop-zone');
             let allCorrect = true;
 
