@@ -3395,6 +3395,13 @@ function saveGame() {
             unlocked: p.unlocked,
             landedProbes: p.landedProbes,
 
+            drillCostMaterial: p.drillCostMaterial,
+            satelliteCostMaterial: p.satelliteCostMaterial,
+            collectorCostMaterial: p.collectorCostMaterial,
+            laserSatelliteCostMaterial: p.laserSatelliteCostMaterial,
+            refineryCostMaterial: p.refineryCostMaterial,
+            smartCollectorCostMaterial: p.smartCollectorCostMaterial,
+
             materialsToCollect: cleanMaterials,
             comets: cleanComets,
             drills: cleanDrills,
@@ -3478,6 +3485,13 @@ function loadGame() {
         p.selected = savedPlanet.selected;
         p.unlocked = savedPlanet.unlocked;
         p.landedProbes = savedPlanet.landedProbes;
+
+        if (savedPlanet.drillCostMaterial !== undefined) p.drillCostMaterial = savedPlanet.drillCostMaterial;
+        if (savedPlanet.satelliteCostMaterial !== undefined) p.satelliteCostMaterial = savedPlanet.satelliteCostMaterial;
+        if (savedPlanet.collectorCostMaterial !== undefined) p.collectorCostMaterial = savedPlanet.collectorCostMaterial;
+        if (savedPlanet.laserSatelliteCostMaterial !== undefined) p.laserSatelliteCostMaterial = savedPlanet.laserSatelliteCostMaterial;
+        if (savedPlanet.refineryCostMaterial !== undefined) p.refineryCostMaterial = savedPlanet.refineryCostMaterial;
+        if (savedPlanet.smartCollectorCostMaterial !== undefined) p.smartCollectorCostMaterial = savedPlanet.smartCollectorCostMaterial;
 
         // Materials
         p.materialsToCollect = (savedPlanet.materialsToCollect || []).map(d => {
