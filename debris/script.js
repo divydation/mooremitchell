@@ -225,7 +225,7 @@ planets.push({
     color: "#2375ef",
     description: "Closer to the sun - great for solar power.",
     unlocked: false,
-    neededProbes: 10,
+    neededProbes: 15,
     landedProbes: 0,
     solarFactor: 2,
     cometFactor: 0.3,
@@ -268,8 +268,8 @@ planets.push({
     selected: true,
     color: "#ef6a23",
     description: "The large mass attracts more comets.",
-    unlocked: true,
-    neededProbes: 5,
+    unlocked: false,
+    neededProbes: 10,
     landedProbes: 0,
     solarFactor: 0.9,
     cometFactor: 3,
@@ -1331,6 +1331,11 @@ app.ticker.add((delta) => {
 // Deploy Devices
 
 function deployDrill() {
+    price = currentPlanet.drillCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.drillCostMaterial = Math.floor(price * 1.2);
+
     // 1. Create the Pivot (Centered at 500,500)
     const drillPivot = new PIXI.Container();
     drillPivot.position.set(500, 500);
@@ -1362,10 +1367,10 @@ function deployDrill() {
 }
 
 function deploySatellite() {
-    // price = currentPlanet.satelliteCostMaterial;
-    // if (material < price) return;
-    // material -= price;
-    // currentPlanet.satelliteCostMaterial = Math.floor(price * 1.1);
+    price = currentPlanet.satelliteCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.satelliteCostMaterial = Math.floor(price * 1.1);
 
     const satellitePivot = new PIXI.Container();
     satellitePivot.position.set(500, 500);
@@ -1400,10 +1405,10 @@ function deploySatellite() {
 }
 
 function deployCollector() {
-    // price = currentPlanet.collectorCostMaterial;
-    // if (material < price) return;
-    // material -= price;
-    // currentPlanet.collectorCostMaterial = Math.floor(price * 1.1);
+    price = currentPlanet.collectorCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.collectorCostMaterial = Math.floor(price * 1.1);
 
     const collectorPivot = new PIXI.Container();
     collectorPivot.position.set(500, 500);
@@ -1444,10 +1449,10 @@ function deployCollector() {
 }
 
 function deployLaser() {
-    // price = currentPlanet.laserSatelliteCostMaterial;
-    // if (material < price) return;
-    // material -= price;
-    // currentPlanet.laserSatelliteCostMaterial = Math.floor(price * 1.1);
+    price = currentPlanet.laserSatelliteCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.laserSatelliteCostMaterial = Math.floor(price * 1.1);
 
     const laserPivot = new PIXI.Container();
     laserPivot.position.set(500, 500);
@@ -1636,9 +1641,9 @@ function spawnCrystal(comet, planetToSpawnOn) {
 
 
 function deployProbe() {
-    // price = 100;
-    // if (energy < price) return;
-    // energy -= price;
+    price = 100;
+    if (energy < price) return;
+    energy -= price;
 
     // 1. Identify the origin and target
     let origin = planets.find(p => p.hasShip);
