@@ -339,11 +339,12 @@ shadowGraphic.position.set(500, 500);
 
 
 function drawPlanetAndShadow() {
-    
+    shadowGraphic.clear();
     shadowGraphic.beginFill(0x000000, 0.8);
     shadowGraphic.drawRect(0, -currentPlanet.radius, 2000, 2 * currentPlanet.radius);
     shadowGraphic.endFill();
 
+    planetGraphic.clear();
     hexColor = parseInt(currentPlanet.color.replace(/^#/, ''), 16);
     planetGraphic.beginFill(hexColor);
     planetGraphic.drawCircle(500, 500, currentPlanet.radius);
@@ -376,7 +377,7 @@ planetScene.addChild(planetGraphic);
 
 // 1. Draw a master material square ONCE and turn it into a texture
 const baseMaterialGraphic = new PIXI.Graphics();
-baseMaterialGraphic.beginFill(0xFFFFFF);
+baseMaterialGraphic.beginFill(0x2EBFA5);
 baseMaterialGraphic.drawRect(-4, -4, 8, 8); 
 baseMaterialGraphic.endFill();
 const materialTexture = app.renderer.generateTexture(baseMaterialGraphic);
@@ -388,7 +389,7 @@ const materialContainer = new PIXI.ParticleContainer(MAX_MATERIALS, {
     rotation: true,
     uvs: false,
     alpha: true,
-    tint: true 
+    // tint: true 
 });
 
 // 3. Pre-allocate all 20,000 sprites to match your Typed Arrays
@@ -797,11 +798,11 @@ app.ticker.add((delta) => {
                 sprite.position.set(planet.materials.x[m], planet.materials.y[m]);
                 sprite.rotation = planet.materials.angle[m] + planet.materials.rotation[m];
                 
-                if (planet.materials.refined[m] === 1) {
-                    sprite.tint = 0x08F7D0; // Bright teal
-                } else {
-                    sprite.tint = 0x2EBFA5; // Dull teal
-                }
+                // if (planet.materials.refined[m] === 1) {
+                //     sprite.tint = 0x08F7D0; // Bright teal
+                // } else {
+                //     sprite.tint = 0x2EBFA5; // Dull teal
+                // }
             }
         }
 
@@ -1154,6 +1155,8 @@ app.ticker.add((delta) => {
                 
                 // 2. Sync the pivot to the math
                 laserSat.pivot.rotation = laserSat.angle; 
+
+                laserSat.graphic.x = laserSat.radius;
                 
                 // 4. THE FIX: Target Rotation MINUS Parent Rotation
                 laserSat.graphic.rotation = laserSat.rotation - laserSat.angle; 
