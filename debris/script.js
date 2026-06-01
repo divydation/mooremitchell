@@ -249,7 +249,7 @@ planets.push({
     selected: true,
     color: "#ef6a23",
     description: "The large mass attracts more comets.",
-    unlocked: true,
+    unlocked: false,
     neededProbes: 10,
     landedProbes: 0,
     solarFactor: 0.9,
@@ -714,6 +714,8 @@ app.ticker.add((delta) => {
             let materialCollected = false;
             for (let c = 0; c < planet.collectors.length; c++) {
                 let collector = planet.collectors[c];
+
+                if (collector.battery < 1) continue;
                 
                 let collectorPos = polarToCartesian(collector.radius, collector.angle);
                 let dx = mat.x - collectorPos.x;
@@ -1409,7 +1411,7 @@ function deployCollector() {
         rotation: 0,
         rotationSpeed: 0.1,
         mineralsStored: 0,
-        battery: 5,
+        battery: 0,
 
         // Save the Pixi references so the loop can update them
         pivot: collectorPivot,
@@ -3636,3 +3638,4 @@ loadGame();
 drawPlanetAndShadow();
 updateLabels();
 
+currentPlanet.graphics.addChild(systemShipPivot);
