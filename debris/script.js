@@ -1178,6 +1178,13 @@ app.ticker.add((delta) => {
             comet.currentX = comet.startX + (comet.finishX - comet.startX) * comet.progress;
             comet.currentY = comet.startY + (comet.finishY - comet.startY) * comet.progress;
 
+            if (comet.progress >= 1.0) {
+                if (comet.graphic) comet.graphic.destroy();
+                planet.comets.splice(i, 1);
+                i--;
+                continue;
+            }
+
             // Check if the comet is destroyed
             if (comet.material <= 0) {
                 spawnCrystal(comet);
