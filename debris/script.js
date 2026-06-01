@@ -527,9 +527,8 @@ planets.forEach(p => {
 
 app.ticker.add((delta) => {
 
-    drawPlanetAndShadow()
-
     let planet = null;
+    powerLineGraphic.clear();
 
     document.getElementById("energyText").innerHTML = formatNumber(energy);
     document.getElementById("materialText").innerHTML = formatNumber(material);
@@ -684,8 +683,6 @@ app.ticker.add((delta) => {
             // Ship Shadow
             shipShadowGraphic.position.set(shipPosition.x, shipPosition.y);
             shipShadowGraphic.rotation = planet.currentOrbitRotation;
-            
-            powerLineGraphic.clear();
         }
 
         // Draw Materials
@@ -3663,4 +3660,5 @@ function loadGame() {
 }
 
 loadGame();
+drawPlanetAndShadow();
 updateLabels();
