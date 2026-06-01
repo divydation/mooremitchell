@@ -37,13 +37,14 @@ html, body {
     height: 100vh;
 }
 
-canvas {
-    background-color: rgba(20,20,20);
-    /* width: 500px;*/
-    /* height: 100vh;  */
-    /* image-rendering: pixelated; */
-    /* image-rendering: crisp-edges; */
+#gameCanvas {
+    position: absolute;
     top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block; /* Removes weird inline margins */
+    overflow: hidden;
 }
 
 @media (orientation: portrait) {
@@ -109,6 +110,11 @@ button {
 
 .emptyButton {
     background: rgba(100,100,100,0.25);
+    color: rgba(255,255,255,0.6)
+}
+
+.thirdWidth {
+    width: 27.5vw !important;
 }
 
 p {
@@ -189,7 +195,7 @@ button > svg {
 }
 
 .tallButton {
-    width: 42vw;
+    height: 42vw;
 }
 
 .hugeButton {
@@ -281,6 +287,10 @@ button > svg {
     width: 100vw;
     gap: 2vw 2vw;
     flex-wrap: wrap;
+}
+
+.leftMenu {
+    width: 42vw !important;
 }
 
 /* .deviceMenu {

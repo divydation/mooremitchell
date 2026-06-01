@@ -52,15 +52,13 @@
 
                 <!-- Main Menu -->
                 <div class="mainMenu menu" id="mainMenu">
-                    <button id="riseButton" class="">RISE</button>
-                    <button id="boostButton" class="">BOOST</button>
-                    <button id="deviceButton" class="wideButton redButton menuButton">DEPLOY<br>MENU</button>
-                    <button id="dropButton" class="">DROP</button>
-                    <button id="planetSelectButton" class="redButton menuButton">SOL. SYS.</button>
-                    <button id="upgradeButton" class="wideButton redButton menuButton">UPGRADE MENU</button>
+                    <button id="deviceButton" class="wideButton redButton menuButton">DEPLOY</button>
+                    <button id="upgradeButton" class="wideButton redButton menuButton">UPGRADE</button>
+                    <button id="planetSelectButton" class="wideButton redButton menuButton">SYSTEM</button>
+                    <button id="gadgetButton" class="wideButton  emptyButton">GADGETS</button>
                 </div>
-            
-            
+
+
 
                 <!-- Device Menu -->
                 <div class="deviceMenu menu" id="deviceMenu">
@@ -85,7 +83,7 @@
                         </div>
                     </button>
 
-                    <button class="hugeButton holdButton" id="bundler">
+                    <button class="hugeButton holdButton" id="collector">
                         <p>COLLECTOR</p>
                         <div class="costs">
                             <div class="material">
@@ -112,7 +110,7 @@
                         </div>
                     </button>
 
-                    <button class="hugeButton holdButton" id="refinery">
+                    <!-- <button class="hugeButton holdButton" id="refinery">
                         <p>LASER REFINERY</p>
                         <div class="costs">
                             <div class="material">
@@ -130,7 +128,7 @@
                                 <p id="smartCollectorCostMaterial">500</p>
                             </div>
                         </div>
-                    </button>
+                    </button> -->
 
                     <button class="wideButton redButton deviceMenuOneButton">BACK</button>
                     <!-- <button class="redButton deviceMenuTwoButton">NEXT</button> -->
@@ -184,11 +182,15 @@
                  <!-- Planet Select Menu -->
                  <div class="planetSelect menu" id="planetSelectMenu">
 
-                    <button id="previousPlanetButton" class="redButton">PREV</button>
-                    <button id="nextPlanetButton" class="redButton">NEXT</button>
-                    <button id="travelButton" class="holdButton wideButton">TRAVEL</button>
+                    <div class="leftMenu menu">
+                        <button id="previousPlanetButton" class="redButton">PREV</button>
+                        <button id="nextPlanetButton" class="redButton">NEXT</button>
+                        <button id="cancelPeekButton" class="wideButton redButton returnButton">RETURN</button>
+                    </div>
 
-                    <button id="unlockButton" class="holdButton wideButton">
+                    <button id="travelButton" class="holdButton tallButton wideButton">TRAVEL</button>
+
+                    <button id="unlockButton" class="holdButton tallButton wideButton">
                         <p>PROBE</p>
                         <div class="costs">
                             <div class="energy">
@@ -198,15 +200,21 @@
                         </div>
                     </button>
                         
-                    <button id="cancelPeekButton" class="hugeButton redButton returnButton">RETURN</button>
-
+                    
 
                  </div>
+
+                 <div class="menu">
+                        <button id="riseButton" class="thirdWidth">RISE</button>
+                        <button id="dropButton" class="thirdWidth">DROP</button>
+                        <button id="boostButton" class="thirdWidth">BOOST</button>
+                    </div>
 
             </div>
             
         </div>
         <script src="https://cdnjs.cloudflare.com/ajax/libs/howler/2.2.4/howler.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.0/pixi.min.js"></script>
         <script src="script.js"></script>
         
     </body>
