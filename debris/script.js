@@ -701,9 +701,9 @@ app.ticker.add((delta) => {
                     mat.timeInTractorBeam += 0.05;
                     let beamTime = Math.min(mat.timeInTractorBeam, 1);
                     
-                    mat.radius += (flightRadius + 7.5 - mRadius) * beamTime;
-                    
-                    let angleDiff = Math.atan2(Math.sin(shipRotation - mAngle), Math.cos(shipRotation - mAngle));
+                    mat.radius += (flightRadius + 7.5 - mat.radius) * beamTime;
+
+                    let angleDiff = Math.atan2(Math.sin(shipRotation - mat.angle), Math.cos(shipRotation - mat.angle));
                     mat.angle += (angleDiff * beamTime) + toRadians(0.5);
                 } 
             }
@@ -722,7 +722,7 @@ app.ticker.add((delta) => {
 
                 // Instant Collection (ALWAYS runs, even in background)
                 if (distanceSq <= 225) {
-                    mat += Math.floor(mat.value);
+                    material += Math.floor(mat.value);
                     deleteMaterial(planet, m); 
                     m--; 
                     materialCollected = true;
@@ -740,13 +740,11 @@ app.ticker.add((delta) => {
 
                 // Tractor Beam Pull (ONLY runs on active planet!)
                 if (drawThisPlanet && distanceSq <= collectionRadius**2) {
-                    mat.timeInTractorBeam += 0.05;
-                    let beamTime = Math.min(mat.timeInTractorBeam, 1);
-                    mat.radius += (collector.radius + 5 - mRadius) * beamTime;
+                    mat.radius += (collector.radius + 5 - mat.radius) * beamTime;
                     
                     let angleDiff = Math.atan2(
-                        Math.sin(collector.angle - mAngle), 
-                        Math.cos(collector.angle - mAngle)
+                        Math.sin(collector.angle - mat.angle), 
+                        Math.cos(collector.angle - mat.angle)
                     );
                     mat.angle += (angleDiff * beamTime) + toRadians(0.5);
                 }
@@ -769,7 +767,7 @@ app.ticker.add((delta) => {
 
             // --- THIS IS THE NEW DRAWING LINK! ---
             if (drawThisPlanet) {
-                // Grab the corresponding sprite from our pre-allocated pool
+                mat.graphic.visible = true;
                 
                 
                 // Directly pass the math to the visual object
@@ -777,6 +775,8 @@ app.ticker.add((delta) => {
                 mat.graphic.position.set(mat.x, mat.y);
                 mat.graphic.rotation = mat.angle + mat.rotation;
             
+            } else {
+                mat.graphic.visible = false;
             }
         }
 
@@ -945,6 +945,7 @@ app.ticker.add((delta) => {
                     newMaterialGraphic.anchor.set(0.5);
                     drillPos = polarToCartesian(p.radius + 6, p.angle);
                     newMaterialGraphic.position.set(drillPos.x, drillPos.y);
+                    newMaterialGraphic.visible = drawThisPlanet; // Hide if spawning on another planet
                     materialContainer.addChild(newMaterialGraphic);
 
                     planet.materialsToCollect.push({
@@ -1570,6 +1571,10 @@ function spawnComet(planet) {
     const cometGraphic = new PIXI.Sprite(cometTexture);
     cometGraphic.anchor.set(0.5);
     cometGraphic.position.set(startX, startY);
+
+    // Hide if not viewing the planet
+    cometGraphic.visible = false;
+
     planetScene.addChild(cometGraphic);
 
     
@@ -1596,6 +1601,8 @@ function spawnCrystal(comet, planetToSpawnOn) {
     crystalGraphic.endFill();
 
     crystalGraphic.position.set(comet.currentX, comet.currentY);
+
+    crystalGraphic.visible = false;
 
     planetScene.addChild(crystalGraphic);
 
@@ -2844,9 +2851,9 @@ document.getElementById("previousPlanetButton").addEventListener('pointerdown', 
 
 function travelToSelectedPlanet() {
 
-    for (let s = 0; s < MAX_MATERIALS; s++) {
-        materialSprites[s].alpha = 0;
-    }
+    // for (let s = 0; s < MAX_MATERIALS; s++) {
+    //     materialSprites[s].alpha = 0;
+    // }
 
 
     // Get rid of the ship where it currently is
@@ -3474,7 +3481,7 @@ function loadGame() {
         p.materialsToCollect = (savedPlanet.materialsToCollect || []).map(d => {
             const newMaterialGraphic = new PIXI.Sprite(materialTexture);
             newMaterialGraphic.anchor.set(0.5);
-            newMaterialGraphic.position.set(savedPlanet.materialsToCollect.x, savedPlanet.materialsToCollect.x);
+            newMaterialGraphic.position.set(d.x, d.y);
             materialContainer.addChild(newMaterialGraphic);
 
             d.graphic = newMaterialGraphic;
