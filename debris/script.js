@@ -6,7 +6,7 @@ const app = new PIXI.Application({
     view: canvas,
     resizeTo: window, // <--- This completely fixes the fullscreen/dev tools bug
     autoDensity: true,
-    resolution: window.devicePixelRatio || 1,
+    resolution: Math.min(window.devicePixelRatio || 1, 2),
     backgroundColor: 0x141414, // Or whatever your deep space color is
     antialias: true,
 });
@@ -335,9 +335,25 @@ let currentPlanet = planets[1];
 
 // 3. Graphics Objects for Singular Items
 const planetGraphic = new PIXI.Graphics();
+let hexColor = parseInt(currentPlanet.color.replace(/^#/, ''), 16);
+planetGraphic.beginFill(hexColor);
+planetGraphic.drawCircle(500, 500, currentPlanet.radius);
+planetGraphic.endFill();
+
 const shadowGraphic = new PIXI.Graphics();
+shadowGraphic.position.set(500, 500);
+shadowGraphic.beginFill(0x000000, 0.8);
+shadowGraphic.drawRect(0, -currentPlanet.radius, 4000, 2 * currentPlanet.radius);
+shadowGraphic.endFill();
+
+
 const shipGraphic = new PIXI.Graphics();
 const shipShadowGraphic = new PIXI.Graphics();
+shipShadowGraphic.clear();
+shipShadowGraphic.beginFill(0x000000, 0.8);
+shipShadowGraphic.drawRect(0, -12.5, 4000, 25);
+shipShadowGraphic.endFill();
+
 const powerLineGraphic = new PIXI.Graphics();
 
 // Add them to the system in the order you want them layered (bottom to top)
@@ -633,6 +649,7 @@ app.ticker.add((delta) => {
 
         // Is this planet going to be drawn or just calculated?
         drawThisPlanet = false;
+
         if (p.hasShip) {
             drawThisPlanet = true;
 
@@ -649,28 +666,12 @@ app.ticker.add((delta) => {
 
         if (drawThisPlanet) {
             // Planet Shadow
-            shadowGraphic.clear();
-            shadowGraphic.beginFill(0x000000, 0.8);
-            shadowGraphic.drawRect(0, -planet.radius, 4000, 2 * planet.radius);
-            shadowGraphic.endFill();
-            shadowGraphic.position.set(500, 500);
             shadowGraphic.rotation = planet.currentOrbitRotation;
 
             // Ship Shadow
-            shipShadowGraphic.clear();
-            shipShadowGraphic.beginFill(0x000000, 0.8);
-            shipShadowGraphic.drawRect(0, -12.5, 4000, 25);
-            shipShadowGraphic.endFill();
             shipShadowGraphic.position.set(shipPosition.x, shipPosition.y);
             shipShadowGraphic.rotation = planet.currentOrbitRotation;
-
-            // Planet (PixiJS requires hexadecimal numbers for colors, e.g., 0xEF233C)
-            let hexColor = parseInt(planet.color.replace(/^#/, ''), 16);
-            planetGraphic.clear();
-            planetGraphic.beginFill(hexColor);
-            planetGraphic.drawCircle(500, 500, planet.radius);
-            planetGraphic.endFill();
-
+            
             powerLineGraphic.clear();
         }
 
@@ -1318,7 +1319,7 @@ function deployDrill() {
 
     // 3. Nest them together and add to the solar system
     drillPivot.addChild(drillGraphic);
-    solarSystem.addChild(drillPivot);
+    planetScene.addChild(drillPivot);
 
     currentPlanet.drills.push({
         radius: flightRadius + 12.5,
@@ -1359,7 +1360,7 @@ function deploySatellite() {
     satelliteGraphic.endFill();
 
     satellitePivot.addChild(satelliteGraphic);
-    solarSystem.addChild(satellitePivot);
+    planetScene.addChild(satellitePivot);
 
     currentPlanet.satellites.push({
         radius: flightRadius + 10,
@@ -1401,7 +1402,7 @@ function deployCollector() {
     
 
     collectorPivot.addChild(collectorGraphic);
-    solarSystem.addChild(collectorPivot);
+    planetScene.addChild(collectorPivot);
 
     currentPlanet.collectors.push({
         radius: flightRadius + 10,
@@ -1441,7 +1442,7 @@ function deployLaser() {
     
 
     laserPivot.addChild(laserGraphic);
-    solarSystem.addChild(laserPivot);
+    planetScene.addChild(laserPivot);
 
     // 3. Push the graphic out from the center to match the radius
     laserGraphic.x = flightRadius + 6; 
@@ -1595,7 +1596,7 @@ function spawnCrystal(comet) {
 
     crystalGraphic.position.set(comet.currentX, comet.currentY);
 
-    solarSystem.addChild(crystalGraphic);
+    planetScene.addChild(crystalGraphic);
 
     currentPlanet.crystals.push({
         radius: cartesianToPolar(comet.currentX, comet.currentY).radius,
@@ -2861,6 +2862,7 @@ function travelToSelectedPlanet() {
         materialSprites[s].alpha = 0;
     }
 
+
     // Get rid of the ship where it currently is
     for (let i = 0; i < planets.length; i++) {
         let p = planets[i];
@@ -2881,16 +2883,16 @@ function travelToSelectedPlanet() {
             p.selected = false;
 
             // Change the selected planet to the NEXT planet
-                planets[i].selected = false;
+            planets[i].selected = false;
 
-                let nextIndex = i;
+            let nextIndex = i;
 
-                // keep moving forward until we find a valid planet
-                do {
-                    nextIndex = (nextIndex + 1) % planets.length;
-                } while (planets[nextIndex].hasShip);
+            // keep moving forward until we find a valid planet
+            do {
+                nextIndex = (nextIndex + 1) % planets.length;
+            } while (planets[nextIndex].hasShip);
 
-                planets[nextIndex].selected = true;
+            planets[nextIndex].selected = true;
 
             // Put view back to planet view (for new planet)
             view = "planet";
@@ -2912,6 +2914,19 @@ function travelToSelectedPlanet() {
             // setTimeout(() => {
             //     switchMenu(oldActiveMenuID, activeMenu);
             // }, 200);
+
+
+            // Update graphics
+            shadowGraphic.clear();
+            shadowGraphic.beginFill(0x000000, 0.8);
+            shadowGraphic.drawRect(0, -currentPlanet.radius, 4000, 2 * currentPlanet.radius);
+            shadowGraphic.endFill();
+
+            let hexColor = parseInt(currentPlanet.color.replace(/^#/, ''), 16);
+            planetGraphic.clear();
+            planetGraphic.beginFill(hexColor);
+            planetGraphic.drawCircle(500, 500, currentPlanet.radius);
+            planetGraphic.endFill();
 
             break;
         }
