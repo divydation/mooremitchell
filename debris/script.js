@@ -740,13 +740,12 @@ app.ticker.add((delta) => {
 
                 // Tractor Beam Pull (ONLY runs on active planet!)
                 if (drawThisPlanet && distanceSq <= collectionRadius**2) {
+                    mat.timeInTractorBeam += 0.05;
                     let beamTime = Math.min(mat.timeInTractorBeam, 1);
-                    mat.radius += (collector.radius + 5 - mat.radius) * beamTime;
                     
-                    let angleDiff = Math.atan2(
-                        Math.sin(collector.angle - mat.angle), 
-                        Math.cos(collector.angle - mat.angle)
-                    );
+                    mat.radius += (collector.radius + 7.5 - mat.radius) * beamTime;
+
+                    let angleDiff = Math.atan2(Math.sin(collector.angle - mat.angle), Math.cos(collector.angle - mat.angle));
                     mat.angle += (angleDiff * beamTime) + toRadians(0.5);
                 }
             }
