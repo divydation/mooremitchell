@@ -165,6 +165,27 @@ const getBaseDevices = () => ({
     crystals: [],
     comets: [],
     laserSatellites: [],
+
+    // THE NEW TYPED ARRAY STRUCTURE FOR MATERIALS
+    materials: {
+        max: MAX_MATERIALS,
+        count: 0, // This replaces array.length. It points to the next empty slot.
+        
+        // Float32 for decimals (radius, angle, value, etc.)
+        radius: new Float32Array(MAX_MATERIALS),
+        angle: new Float32Array(MAX_MATERIALS),
+        rotation: new Float32Array(MAX_MATERIALS),
+        radiusChange: new Float32Array(MAX_MATERIALS),
+        timeInTractorBeam: new Float32Array(MAX_MATERIALS),
+        value: new Float32Array(MAX_MATERIALS),
+        alpha: new Float32Array(MAX_MATERIALS),
+        x: new Float32Array(MAX_MATERIALS),
+        y: new Float32Array(MAX_MATERIALS),
+        
+        // Uint8 (0 to 255) for simple boolean flags (0 = false, 1 = true)
+        refined: new Uint8Array(MAX_MATERIALS),
+        isTargeted: new Uint8Array(MAX_MATERIALS)
+    }
 });
 
 drillRateUpgradeCost = 10;
@@ -364,9 +385,6 @@ const cometTexture = app.renderer.generateTexture(baseCometGraphic);
 
 // Material Graphics
 
-const materialContainer = new PIXI.Container();
-planetScene.addChild(materialContainer);
-
 // 1. Draw a master material square ONCE and turn it into a texture
 const baseMaterialGraphic = new PIXI.Graphics();
 baseMaterialGraphic.beginFill(0x2EBFA5);
@@ -374,8 +392,27 @@ baseMaterialGraphic.drawRect(-4, -4, 8, 8);
 baseMaterialGraphic.endFill();
 const materialTexture = app.renderer.generateTexture(baseMaterialGraphic);
 
+// 2. Create the Hyper-Optimized Particle Container
+const materialContainer = new PIXI.ParticleContainer(MAX_MATERIALS, {
+    scale: false,
+    position: true,
+    rotation: true,
+    uvs: false,
+    alpha: true,
+    // tint: true 
+});
 
+// 3. Pre-allocate all 20,000 sprites to match your Typed Arrays
+const materialSprites = [];
+for (let i = 0; i < MAX_MATERIALS; i++) {
+    let sprite = new PIXI.Sprite(materialTexture);
+    sprite.anchor.set(0.5);
+    sprite.alpha = 0;
+    materialSprites.push(sprite);
+    materialContainer.addChild(sprite);
+}
 
+planetScene.addChild(materialContainer);
 // Power above materials
 planetScene.addChild(powerLineGraphic);
 
@@ -665,32 +702,30 @@ app.ticker.add((delta) => {
 
         // Draw Materials
 
-        for (let m = 0; m < planet.materialsToCollect.length; m++) {
-
-            let mat = planet.materialsToCollect[m]
+        for (let m = 0; m < planet.materials.count; m++) {
             
             // 1. Basic Background Math (Always runs)
-            mat.radius += mat.radiusChange;
-            mat.value *= 1.005;
-            mat.value = Math.min(mat.value, 1000); 
+            planet.materials.radius[m] += planet.materials.radiusChange[m];
+            planet.materials.value[m] *= 1.005;
+            planet.materials.value[m] = Math.min(planet.materials.value[m], 1000); 
 
-            let mRadius = mat.radius;
-            let mAngle = mat.angle;
+            let mRadius = planet.materials.radius[m];
+            let mAngle = planet.materials.angle[m];
             
             // Cache Cartesian for collisions
-            let matPosition = polarToCartesian(mRadius, mAngle);
-            mat.x = matPosition.x;
-            mat.y = matPosition.y;
+            let materialPosition = polarToCartesian(mRadius, mAngle);
+            planet.materials.x[m] = materialPosition.x;
+            planet.materials.y[m] = materialPosition.y;
 
             // -----------------------------------------
             // 2. SHIP LOGIC (ONLY runs on active planet)
             // -----------------------------------------
             if (drawThisPlanet) {
-                let distanceSq = calculateDistance(matPosition, shipPosition);
+                let distanceSq = calculateDistance(materialPosition, shipPosition);
 
                 // Ship Instant Collect
                 if (distanceSq <= 225) {
-                    material += Math.floor(mat.value);
+                    material += Math.floor(planet.materials.value[m]);
                     deleteMaterial(planet, m); 
                     m--; 
                     continue; 
@@ -698,13 +733,13 @@ app.ticker.add((delta) => {
 
                 // Ship Tractor Beam Pull
                 if (distanceSq <= collectionRadius**2) {
-                    mat.timeInTractorBeam += 0.05;
-                    let beamTime = Math.min(mat.timeInTractorBeam, 1);
+                    planet.materials.timeInTractorBeam[m] += 0.05;
+                    let beamTime = Math.min(planet.materials.timeInTractorBeam[m], 1);
                     
-                    mat.radius += (flightRadius + 7.5 - mRadius) * beamTime;
+                    planet.materials.radius[m] += (flightRadius + 7.5 - mRadius) * beamTime;
                     
                     let angleDiff = Math.atan2(Math.sin(shipRotation - mAngle), Math.cos(shipRotation - mAngle));
-                    mat.angle += (angleDiff * beamTime) + toRadians(0.5);
+                    planet.materials.angle[m] += (angleDiff * beamTime) + toRadians(0.5);
                 } 
             }
 
@@ -716,13 +751,13 @@ app.ticker.add((delta) => {
                 let collector = planet.collectors[c];
                 
                 let collectorPos = polarToCartesian(collector.radius, collector.angle);
-                let dx = mat.x - collectorPos.x;
-                let dy = mat.y - collectorPos.y;
+                let dx = planet.materials.x[m] - collectorPos.x;
+                let dy = planet.materials.y[m] - collectorPos.y;
                 let distanceSq = (dx * dx) + (dy * dy); 
 
                 // Instant Collection (ALWAYS runs, even in background)
                 if (distanceSq <= 225) {
-                    mat += Math.floor(mat.value);
+                    material += Math.floor(planet.materials.value[m]);
                     deleteMaterial(planet, m); 
                     m--; 
                     materialCollected = true;
@@ -731,7 +766,7 @@ app.ticker.add((delta) => {
 
                 // Instant Collection (ONLY runs in background planets)
                 if (!drawThisPlanet && distanceSq <= collectionRadius**2) {
-                    material += Math.floor(mat.value);
+                    material += Math.floor(planet.materials.value[m]);
                     deleteMaterial(planet, m); 
                     m--; 
                     materialCollected = true;
@@ -740,15 +775,15 @@ app.ticker.add((delta) => {
 
                 // Tractor Beam Pull (ONLY runs on active planet!)
                 if (drawThisPlanet && distanceSq <= collectionRadius**2) {
-                    mat.timeInTractorBeam += 0.05;
-                    let beamTime = Math.min(mat.timeInTractorBeam, 1);
-                    mat.radius += (collector.radius + 5 - mRadius) * beamTime;
+                    planet.materials.timeInTractorBeam[m] += 0.05;
+                    let beamTime = Math.min(planet.materials.timeInTractorBeam[m], 1);
+                    planet.materials.radius[m] += (collector.radius + 5 - mRadius) * beamTime;
                     
                     let angleDiff = Math.atan2(
                         Math.sin(collector.angle - mAngle), 
                         Math.cos(collector.angle - mAngle)
                     );
-                    mat.angle += (angleDiff * beamTime) + toRadians(0.5);
+                    planet.materials.angle[m] += (angleDiff * beamTime) + toRadians(0.5);
                 }
             }
             
@@ -757,11 +792,11 @@ app.ticker.add((delta) => {
             // -----------------------------------------
             // 4. CLEANUP & PIXIJS RENDERING
             // -----------------------------------------
-            if (mat.radius > 600 || mat.radius < 10) {
-                mat.alpha -= 0.1;
+            if (planet.materials.radius[m] > 600 || planet.materials.radius[m] < 10) {
+                planet.materials.alpha[m] -= 0.1;
             }
 
-            if (mat.alpha < 0) {
+            if (planet.materials.alpha[m] < 0) {
                 deleteMaterial(planet, m);
                 m--;
                 continue;
@@ -770,13 +805,18 @@ app.ticker.add((delta) => {
             // --- THIS IS THE NEW DRAWING LINK! ---
             if (drawThisPlanet) {
                 // Grab the corresponding sprite from our pre-allocated pool
-                
+                let sprite = materialSprites[m];
                 
                 // Directly pass the math to the visual object
-                mat.graphic.alpha = mat.alpha; 
-                mat.graphic.position.set(mat.x, mat.y);
-                mat.graphic.rotation = mat.angle + mat.rotation;
-            
+                sprite.alpha = planet.materials.alpha[m]; 
+                sprite.position.set(planet.materials.x[m], planet.materials.y[m]);
+                sprite.rotation = planet.materials.angle[m] + planet.materials.rotation[m];
+                
+                // if (planet.materials.refined[m] === 1) {
+                //     sprite.tint = 0x08F7D0; // Bright teal
+                // } else {
+                //     sprite.tint = 0x2EBFA5; // Dull teal
+                // }
             }
         }
 
@@ -941,27 +981,25 @@ app.ticker.add((delta) => {
                 // if (true) { 
                     p.productionTimer = 0; // Reset the timer
 
-                    const newMaterialGraphic = new PIXI.Sprite(materialTexture);
-                    newMaterialGraphic.anchor.set(0.5);
-                    drillPos = polarToCartesian(p.radius + 6, p.angle);
-                    newMaterialGraphic.position.set(drillPos.x, drillPos.y);
-                    materialContainer.addChild(newMaterialGraphic);
+                    let index = planet.materials.count; // Get the next available memory slot
 
-                    planet.materialsToCollect.push({
-                        radius: p.radius+6,
-                        angle: p.angle,
-                        rotation: 0,
-                        radiusChange: 0.6 - planet.gravityFactor,
-                        angleChange: 0,
-                        alpha: 1,
-                        timeInTractorBeam: 0,
-                        value: 1,
-                        refined: false,
-                        x: drillPos.x,
-                        y: drillPos.y,
-
-                        graphic: newMaterialGraphic
-                    });
+                    // Protect against memory overflow if you hit the 20,000 limit
+                    if (index < planet.materials.max) {
+                        
+                        // Write directly into the CPU buffers
+                        planet.materials.radius[index] = p.radius + 6;
+                        planet.materials.angle[index] = p.angle;
+                        planet.materials.rotation[index] = 0;
+                        planet.materials.radiusChange[index] = 0.6 - planet.gravityFactor;
+                        planet.materials.alpha[index] = 1;
+                        planet.materials.timeInTractorBeam[index] = 0;
+                        planet.materials.value[index] = 1;
+                        planet.materials.refined[index] = 0; // 0 is false
+                        planet.materials.isTargeted[index] = 0; 
+                        
+                        // Move the pointer forward so the next drill uses the next slot
+                        planet.materials.count++; 
+                    }
                 }
             }
 
@@ -1486,37 +1524,33 @@ function spawnFireParticle(radius, angle) {
 }
 
 
+
 function deleteMaterial(planet, index) {
-    planet.materialsToCollect[index].graphic.destroy();
-    planet.materialsToCollect.splice(index, 1);
+    let last = planet.materials.count - 1;
+
+    // If we aren't deleting the very last rock, copy the last rock's data into this hole
+    if (index !== last) {
+        planet.materials.radius[index] = planet.materials.radius[last];
+        planet.materials.angle[index] = planet.materials.angle[last];
+        planet.materials.rotation[index] = planet.materials.rotation[last];
+        planet.materials.radiusChange[index] = planet.materials.radiusChange[last];
+        planet.materials.timeInTractorBeam[index] = planet.materials.timeInTractorBeam[last];
+        planet.materials.value[index] = planet.materials.value[last];
+        planet.materials.alpha[index] = planet.materials.alpha[last];
+        planet.materials.x[index] = planet.materials.x[last];
+        planet.materials.y[index] = planet.materials.y[last];
+        planet.materials.refined[index] = planet.materials.refined[last];
+        planet.materials.isTargeted[index] = planet.materials.isTargeted[last];
+    }
+
+    // THE FIX: Hide the sprite at the 'last' index before it gets abandoned!
+    if (materialSprites[last]) {
+        materialSprites[last].alpha = 0;
+    }
+
+    // Shrink the pool by 1
+    planet.materials.count--;
 }
-
-// function olddeleteMaterial(planet, index) {
-//     let last = planet.materials.count - 1;
-
-//     // If we aren't deleting the very last rock, copy the last rock's data into this hole
-//     if (index !== last) {
-//         planet.materials.radius[index] = planet.materials.radius[last];
-//         planet.materials.angle[index] = planet.materials.angle[last];
-//         planet.materials.rotation[index] = planet.materials.rotation[last];
-//         planet.materials.radiusChange[index] = planet.materials.radiusChange[last];
-//         planet.materials.timeInTractorBeam[index] = planet.materials.timeInTractorBeam[last];
-//         planet.materials.value[index] = planet.materials.value[last];
-//         planet.materials.alpha[index] = planet.materials.alpha[last];
-//         planet.materials.x[index] = planet.materials.x[last];
-//         planet.materials.y[index] = planet.materials.y[last];
-//         planet.materials.refined[index] = planet.materials.refined[last];
-//         planet.materials.isTargeted[index] = planet.materials.isTargeted[last];
-//     }
-
-//     // THE FIX: Hide the sprite at the 'last' index before it gets abandoned!
-//     if (materialSprites[last]) {
-//         materialSprites[last].alpha = 0;
-//     }
-
-//     // Shrink the pool by 1
-//     planet.materials.count--;
-// }
 
 
 function spawnComet(planet) {
@@ -1572,6 +1606,7 @@ function spawnComet(planet) {
     cometGraphic.position.set(startX, startY);
     planetScene.addChild(cometGraphic);
 
+    planetScene.addChild(cometGraphic);
     
 
     planet.comets.push({
@@ -3351,7 +3386,6 @@ function saveGame() {
     // 1. Explicitly map ONLY the primitive data to avoid the 5MB LocalStorage limit
     const planetsToSave = planets.map(p => {
         
-        let cleanMaterials = (p.materialsToCollect || []).map(c => { let clone = {...c}; delete clone.graphic; return clone; });
         let cleanComets = (p.comets || []).map(c => { let clone = {...c}; delete clone.graphic; return clone; });
         let cleanDrills = (p.drills || []).map(d => { let clone = {...d}; delete clone.pivot; delete clone.graphic; return clone; });
         let cleanSatellites = (p.satellites || []).map(s => { let clone = {...s}; delete clone.pivot; delete clone.graphic; return clone; });
@@ -3361,19 +3395,19 @@ function saveGame() {
 
         // --- OPTIMIZED SLICE FOR ACTIVE MATERIALS ---
         // Slices the typed arrays perfectly up to the active count pointer
-        // const count = p.materials.count;
-        // const materialsSnapshot = {
-        //     count: count,
-        //     radius: Array.from(p.materials.radius.subarray(0, count)),
-        //     angle: Array.from(p.materials.angle.subarray(0, count)),
-        //     rotation: Array.from(p.materials.rotation.subarray(0, count)),
-        //     radiusChange: Array.from(p.materials.radiusChange.subarray(0, count)),
-        //     timeInTractorBeam: Array.from(p.materials.timeInTractorBeam.subarray(0, count)),
-        //     value: Array.from(p.materials.value.subarray(0, count)),
-        //     alpha: Array.from(p.materials.alpha.subarray(0, count)),
-        //     refined: Array.from(p.materials.refined.subarray(0, count)),
-        //     isTargeted: Array.from(p.materials.isTargeted.subarray(0, count))
-        // };
+        const count = p.materials.count;
+        const materialsSnapshot = {
+            count: count,
+            radius: Array.from(p.materials.radius.subarray(0, count)),
+            angle: Array.from(p.materials.angle.subarray(0, count)),
+            rotation: Array.from(p.materials.rotation.subarray(0, count)),
+            radiusChange: Array.from(p.materials.radiusChange.subarray(0, count)),
+            timeInTractorBeam: Array.from(p.materials.timeInTractorBeam.subarray(0, count)),
+            value: Array.from(p.materials.value.subarray(0, count)),
+            alpha: Array.from(p.materials.alpha.subarray(0, count)),
+            refined: Array.from(p.materials.refined.subarray(0, count)),
+            isTargeted: Array.from(p.materials.isTargeted.subarray(0, count))
+        };
 
         return {
             name: p.name,
@@ -3386,7 +3420,6 @@ function saveGame() {
             unlocked: p.unlocked,
             landedProbes: p.landedProbes,
 
-            materialsToCollect: cleanMaterials,
             comets: cleanComets,
             drills: cleanDrills,
             satellites: cleanSatellites,
@@ -3395,6 +3428,7 @@ function saveGame() {
             laserSatellites: cleanLasers,
             crystals: cleanCrystals,
             bundles: p.bundles || [],
+            materialsData: materialsSnapshot // Safely embed snapshot
         };
     });
 
@@ -3455,6 +3489,10 @@ function loadGame() {
 
     probeParticles = []; // Clear visual trails on load
 
+    // Hide/Reset all pre-allocated material sprites to prevent layout ghosting
+    if (typeof materialSprites !== "undefined") {
+        materialSprites.forEach(sprite => sprite.alpha = 0);
+    }
 
     // 2. Reconstruct Planets
     state.planets.forEach(savedPlanet => {
@@ -3470,16 +3508,29 @@ function loadGame() {
         p.unlocked = savedPlanet.unlocked;
         p.landedProbes = savedPlanet.landedProbes;
 
-        // Materials
-        p.materialsToCollect = (savedPlanet.materialsToCollect || []).map(d => {
-            const newMaterialGraphic = new PIXI.Sprite(materialTexture);
-            newMaterialGraphic.anchor.set(0.5);
-            newMaterialGraphic.position.set(savedPlanet.materialsToCollect.x, savedPlanet.materialsToCollect.x);
-            materialContainer.addChild(newMaterialGraphic);
+        // --- RESTORE TYPED ARRAY MATERIALS ---
+        if (savedPlanet.materialsData) {
+            const md = savedPlanet.materialsData;
+            p.materials.count = md.count || 0;
+            for (let m = 0; m < p.materials.count; m++) {
+                p.materials.radius[m] = md.radius[m];
+                p.materials.angle[m] = md.angle[m];
+                p.materials.rotation[m] = md.rotation[m];
+                p.materials.radiusChange[m] = md.radiusChange[m];
+                p.materials.timeInTractorBeam[m] = md.timeInTractorBeam[m];
+                p.materials.value[m] = md.value[m];
+                p.materials.alpha[m] = md.alpha[m];
+                p.materials.refined[m] = md.refined[m];
+                p.materials.isTargeted[m] = md.isTargeted[m];
 
-            d.graphic = newMaterialGraphic;
-            return d;
-        });
+                // Synchronize cached Cartesian properties instantly for particle collisions
+                let pos = polarToCartesian(md.radius[m], md.angle[m]);
+                p.materials.x[m] = pos.x;
+                p.materials.y[m] = pos.y;
+            }
+        } else {
+            p.materials.count = 0;
+        }
 
         // Drills
         p.drills = (savedPlanet.drills || []).map(d => {
