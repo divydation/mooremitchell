@@ -150,7 +150,7 @@ const baseCosts = {
     smartCollectorCostMaterial: 100000
 };
 
-const MAX_MATERIALS = 20000;
+const MAX_MATERIALS = 40000;
 
 const getBaseDevices = () => ({
     drills: [],
@@ -2588,22 +2588,7 @@ function deploySmartCollector() {
     });
 }
 
-function deployLaserSatellite() {
-    price = currentPlanet.laserSatelliteCostMaterial;
-    if (material < price) return;
-    material -= price;
-    currentPlanet.laserSatelliteCostMaterial = Math.floor(price * 1.1);
 
-    currentPlanet.laserSatellites.push({
-        radius: flightRadius + 6,
-        angle: shipRotation,
-        rotation: 0,
-        rotationSpeed: shipRotationSpeed,
-        damageStored: 0,
-        productionTimer: 0,
-        timeSinceLastShot: 0,
-    });
-}
 
 
 
@@ -3170,8 +3155,8 @@ function updateLabels() {
     document.getElementById("satelliteCostMaterial").innerHTML = formatNumber(currentPlanet.satelliteCostMaterial);
     document.getElementById("collectorCostMaterial").innerHTML = formatNumber(currentPlanet.collectorCostMaterial);
     document.getElementById("laserSatelliteCostMaterial").innerHTML = formatNumber(currentPlanet.laserSatelliteCostMaterial);
-    document.getElementById("refineryCostMaterial").innerHTML = formatNumber(currentPlanet.refineryCostMaterial);
-    document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(currentPlanet.smartCollectorCostMaterial);
+    // document.getElementById("refineryCostMaterial").innerHTML = formatNumber(currentPlanet.refineryCostMaterial);
+    // document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(currentPlanet.smartCollectorCostMaterial);
     
 
     // UPGRADES
@@ -3236,7 +3221,7 @@ holdButtons.forEach(button => {
             } else if (button.id == "collector") {
                 deployCollector();
             } else if (button.id == "laserSatellite") {
-                deployLaserSatellite();
+                deployLaser();
             } else if (button.id == "refinery") {
                 deployRefinery();
             } else if (button.id == "smartCollector") {
