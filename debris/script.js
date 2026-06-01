@@ -150,7 +150,7 @@ const baseCosts = {
     smartCollectorCostMaterial: 100000
 };
 
-const MAX_MATERIALS = 40000;
+const MAX_MATERIALS = 20000;
 
 const getBaseDevices = () => ({
     drills: [],
@@ -370,6 +370,14 @@ const powerLineGraphic = new PIXI.Graphics();
 planetScene.addChild(shipShadowGraphic);
 planetScene.addChild(shadowGraphic);
 planetScene.addChild(planetGraphic);
+
+
+// Comet Graphics Sprite
+const baseCometGraphic = new PIXI.Graphics();
+baseCometGraphic.beginFill(0x646464);
+baseCometGraphic.drawRect(-8, -8, 16, 16);
+baseCometGraphic.endFill();
+const cometTexture = app.renderer.generateTexture(baseCometGraphic);
 
 
 
@@ -1187,7 +1195,7 @@ app.ticker.add((delta) => {
 
             // Check if the comet is destroyed
             if (comet.material <= 0) {
-                spawnCrystal(comet);
+                spawnCrystal(comet, planet);
                 
                 // NEW: Destroy the PixiJS graphic to free up memory
                 if (comet.graphic) {
@@ -1579,12 +1587,13 @@ function spawnComet(planet) {
 
     let startingMaterial = 50 + (Math.random() * 100);
 
-    const cometGraphic = new PIXI.Graphics();
-    cometGraphic.position.set(startX, startY);
+    // const cometGraphic = new PIXI.Graphics();
+    // cometGraphic.position.set(startX, startY);
 
-    cometGraphic.beginFill(0x646464);
-    cometGraphic.drawRect(-startingMaterial/6, -startingMaterial/6, startingMaterial/3, startingMaterial/3);
-    cometGraphic.endFill();
+    const cometGraphic = new PIXI.Sprite(cometTexture);
+    cometGraphic.anchor.set(0.5);
+    cometGraphic.position.set(startX, startY);
+    planetScene.addChild(cometGraphic);
 
     planetScene.addChild(cometGraphic);
     
@@ -1604,7 +1613,7 @@ function spawnComet(planet) {
     });
 }
 
-function spawnCrystal(comet) {
+function spawnCrystal(comet, planetToSpawnOn) {
     const crystalGraphic = new PIXI.Graphics();
     crystalGraphic.beginFill(0xd336f2);
     crystalGraphic.drawRect(-8, -8, 16, 16); 
@@ -1614,7 +1623,7 @@ function spawnCrystal(comet) {
 
     planetScene.addChild(crystalGraphic);
 
-    currentPlanet.crystals.push({
+    planetToSpawnOn.crystals.push({
         radius: cartesianToPolar(comet.currentX, comet.currentY).radius,
         angle: cartesianToPolar(comet.currentX, comet.currentY).angle,
         rotationSpeed: 0.1,
