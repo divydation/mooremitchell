@@ -7,9 +7,9 @@ const app = new PIXI.Application({
     resizeTo: window, 
     autoDensity: true,
     // resolution: Math.min(window.devicePixelRatio || 1, 2),
-    resolution: 1.25,
+    resolution: 1,
     backgroundColor: 0x141414,
-    antialias: true,
+    // antialias: true,
 });
 
 app.ticker.maxFPS = 60;
@@ -92,8 +92,31 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 
 
 
-let showUpdateBox = true;
-document.getElementById("changelog").style.display = "flex";
+// Update Notification
+
+const userHasSeenUpdate = localStorage.getItem("updateVerified");
+// console.log(userHasSeenUpdate);
+
+if (userHasSeenUpdate == "2.1") {
+    document.getElementById("changelog").style.display = "none";
+} 
+
+if (userHasSeenUpdate == null) {
+    document.getElementById("changelog").style.display = "flex";
+}
+
+// Play button
+document.getElementById("playButton").addEventListener('pointerdown', (event) => {
+    setTimeout(() => {
+        document.getElementById("changelog").style.display = "none";
+        saveUpdateConfirm();
+    }, 200);
+});
+
+function saveUpdateConfirm() {
+    localStorage.setItem("updateVerified", "2.1");
+}
+
 
 
 
@@ -149,20 +172,16 @@ const baseCosts = {
     satelliteCostMaterial: 25,
     collectorCostMaterial: 50,
     laserSatelliteCostMaterial: 50,
-    refineryCostMaterial: 250,
-    smartCollectorCostMaterial: 100000
+    refinerCostMaterial: 5000,
 };
 
 const MAX_MATERIALS = 20000;
 
 const getBaseDevices = () => ({
     drills: [],
-    refineries: [],
     materialsToCollect: [],
     satellites: [],
     collectors: [],
-    smartCollectors: [],
-    bundles: [],
     crystals: [],
     comets: [],
     laserSatellites: [],
@@ -171,7 +190,6 @@ const getBaseDevices = () => ({
 
 drillRateUpgradeCost = 10;
 collectionRadiusUpgradeCost = 10;
-refineChainUpgradeCost = 10;
 
 
 // UPGRADES
@@ -179,8 +197,6 @@ drillProductionRate = 5000;
 drillLevel = 1;
 collectionRadius = 50;
 collectionRadiusLevel = 1;
-refineChainCount = 1;
-refineChainLevel = 1;
 
 
 
@@ -340,6 +356,10 @@ const shipGraphic = new PIXI.Graphics();
 shipGraphic.beginFill(0xffffff);
 shipGraphic.drawRect(-12.5,-12.5, 25, 25)
 shipGraphic.endFill();
+
+shipColours = [0xffffff, 0xffbe0b, 0xfb5607, 0xff006e, 0x8338ec, 0x3a86ff];
+currentShipColourIndex = 0;
+shipGraphic.tint = shipColours[currentShipColourIndex];
 
 const shipShadowGraphic = new PIXI.Graphics();
 shipShadowGraphic.clear();
@@ -565,6 +585,8 @@ app.ticker.add((delta) => {
         targetBoost -= 1;
     }
 
+    targetRadius = Math.round(targetRadius * 100) / 100;
+
     boostAmount += (targetBoost - boostAmount) * 0.05;
 
     shipRotation += boostAmount/1000;
@@ -671,6 +693,7 @@ app.ticker.add((delta) => {
             if (targetRadius < (planet.radius + 15)) targetRadius = (planet.radius + 15);
             if (targetRadius > 450) targetRadius = 450;
             flightRadius += (targetRadius - flightRadius) * 0.05; // Otherwise, keep lerping
+            flightRadius = Math.round(flightRadius * 100) / 100;
             changeShipSpeed();
 
             // Rotate ship
@@ -847,7 +870,7 @@ app.ticker.add((delta) => {
 
 
                     // At the middle of the refine animation, push the new material
-                    if (refiner.animationScale == 0) {
+                    if (refiner.animationScale == -0.95) {
                         // Create the graphic
                         const newMaterialGraphic = new PIXI.Sprite(materialTexture);
                         newMaterialGraphic.anchor.set(0.5);
@@ -1180,17 +1203,18 @@ app.ticker.add((delta) => {
 
             // Only rotate if collector has battery
             if (p.battery > 1) {
-                p.rotation += p.rotationSpeed;
+                p.rotation += p.rotationSpeed * Math.abs(p.animationScale);
             } else if (p.battery > 0) {
-                p.rotation += p.rotationSpeed * (p.battery);
+                p.rotation += p.rotationSpeed * (p.battery) * Math.abs(p.animationScale);
             }
+            
 
             p.battery -= 0.005;
 
             if (p.animationScale > -1) p.animationScale -= 0.05;
             p.animationScale = Math.round(p.animationScale * 100) / 100;
 
-            // Draw Collectors
+            // Draw Refiners
             if (drawThisPlanet) {
                 p.pivot.visible = true;
                 
@@ -1203,7 +1227,7 @@ app.ticker.add((delta) => {
                 // 4. THE FIX: Target Rotation MINUS Parent Rotation
                 p.graphic.rotation = p.rotation; 
 
-                p.arms.scale.set(1 * Math.abs(p.animationScale));
+                p.arms.scale.set(Math.abs(p.animationScale));
                 
             } else {
                 p.pivot.visible = false;
@@ -1629,10 +1653,10 @@ function deployCollector() {
 // deployRefiner() 
 
 function deployRefiner() {
-    // price = currentPlanet.refinerCostMaterial;
-    // if (material < price) return;
-    // material -= price;
-    // currentPlanet.refinerCostMaterial = Math.floor(price * 1.1);
+    price = currentPlanet.refinerCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.refinerCostMaterial = Math.floor(price * 1.1);
 
     const refinerPivot = new PIXI.Container();
     refinerPivot.position.set(500, 500);
@@ -1806,9 +1830,11 @@ function deleteMaterial(planet, index) {
 
 function spawnComet(planet) {
     const margin = 100; // Spawn 100px off-screen
-    // const width = canvas.width;
-    const height = 1000;
-    const width = 1000;
+    
+    // Calculate the true world-space bounds by dividing the physical screen
+    // by the scale factor you apply in resizeGameWorld()
+    const width = app.screen.width / solarSystem.scale.x;
+    const height = app.screen.height / solarSystem.scale.y;
 
     // Define our valid sides (excluding bottom)
     const validSides = ['left', 'right'];
@@ -3220,14 +3246,7 @@ function travelToSelectedPlanet() {
 
 
 
-// Play  button
-document.getElementById("playButton").addEventListener('pointerdown', (event) => {
-    setTimeout(() => {
-        showUpdateBox = false;
-        document.getElementById("changelog").style.display = "none";
-        saveGame();
-    }, 200);
-});
+
 
 
 // All buttons
@@ -3324,6 +3343,95 @@ toggleButtons.forEach(button => {
 });
 
 
+// Reset current planet
+function resetCurrentPlanet() {
+
+    for (let c = 0; c < currentPlanet.drills.length; c++) {
+        let p = currentPlanet.drills[c];
+        p.graphic.destroy();
+        p.pivot.destroy();
+    }
+    currentPlanet.drills = [];
+
+    for (let c = 0; c < currentPlanet.materialsToCollect.length; c++) {
+        let p = currentPlanet.materialsToCollect[c];
+        p.graphic.destroy();
+    }
+    currentPlanet.materialsToCollect = [];
+
+    for (let c = 0; c < currentPlanet.satellites.length; c++) {
+        let p = currentPlanet.satellites[c];
+        p.graphic.destroy();
+        p.pivot.destroy();
+    }
+    currentPlanet.satellites = [];
+
+    for (let c = 0; c < currentPlanet.collectors.length; c++) {
+        let p = currentPlanet.collectors[c];
+        p.graphic.destroy();
+        p.pivot.destroy();
+    }
+    currentPlanet.collectors = [];
+
+    for (let c = 0; c < currentPlanet.crystals.length; c++) {
+        let p = currentPlanet.crystals[c];
+        p.graphic.destroy();
+    }
+    currentPlanet.crystals = [];
+
+    for (let c = 0; c < currentPlanet.comets.length; c++) {
+        let p = currentPlanet.comets[c];
+        p.graphic.destroy();
+    }
+    currentPlanet.comets = [];
+
+    for (let c = 0; c < currentPlanet.laserSatellites.length; c++) {
+        let p = currentPlanet.laserSatellites[c];
+        p.graphic.destroy();
+        p.pivot.destroy();
+    }
+    currentPlanet.laserSatellites = [];
+
+    for (let c = 0; c < currentPlanet.refiners.length; c++) {
+        let p = currentPlanet.refiners[c];
+        p.graphic.destroy();
+        p.pivot.destroy();
+        p.arms.destroy();
+    }
+    currentPlanet.refiners = [];
+
+    currentPlanet.drillCostMaterial = 5;
+    currentPlanet.satelliteCostMaterial = 25;
+    currentPlanet.collectorCostMaterial = 50;
+    currentPlanet.laserSatelliteCostMaterial = 50;
+    currentPlanet.refinerCostMaterial = 5000;
+}
+
+
+// Ship Colour
+function changeShipColour() {
+    currentShipColourIndex++;
+    currentShipColourIndex = currentShipColourIndex % (shipColours.length);
+    // console.log(currentShipColourIndex);
+    shipGraphic.tint = shipColours[currentShipColourIndex];
+}
+
+resolutions = [0.3, 0.5, 1, 2];
+resolutionNames = ["RETRO", "LOW", "NORMAL", "SHARP"]
+antialiasOn = [false, true, true, true]
+currentResolutionIndex = 2;
+// Resolution
+function changeResolution() {
+    currentResolutionIndex++;
+    currentResolutionIndex = currentResolutionIndex % resolutions.length
+    app.renderer.resolution = resolutions[currentResolutionIndex];
+    app.renderer.resize(app.screen.width, app.screen.height);
+    document.getElementById("resolutionButton").innerHTML = `RESOLUTION<br>${resolutionNames[currentResolutionIndex]}`;
+    app.renderer.antialias = antialiasOn[currentResolutionIndex];
+}
+
+
+
 
 
 // Menu switching
@@ -3332,6 +3440,7 @@ document.getElementById("deviceMenu").style.display = "none";
 document.getElementById("deviceMenuTwo").style.display = "none";
 document.getElementById("upgradeMenu").style.display = "none";
 document.getElementById("planetSelectMenu").style.display = "none";
+document.getElementById("settingsMenu").style.display = "none";
 
 function switchMenu(oldActiveMenuID, newActiveMenuID) {
     document.getElementById(oldActiveMenuID).style.display = "none";
@@ -3449,7 +3558,7 @@ function updateLabels() {
     document.getElementById("satelliteCostMaterial").textContent = formatNumber(currentPlanet.satelliteCostMaterial);
     document.getElementById("collectorCostMaterial").textContent = formatNumber(currentPlanet.collectorCostMaterial);
     document.getElementById("laserSatelliteCostMaterial").textContent = formatNumber(currentPlanet.laserSatelliteCostMaterial);
-    // document.getElementById("refineryCostMaterial").innerHTML = formatNumber(currentPlanet.refineryCostMaterial);
+    document.getElementById("refinerCostMaterial").innerHTML = formatNumber(currentPlanet.refinerCostMaterial);
     // document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(currentPlanet.smartCollectorCostMaterial);
     
 
@@ -3481,6 +3590,7 @@ holdButtons.forEach(button => {
         button.style.scale = "1";
         button.style.boxShadow = "";
         button.style.textShadow = "";
+        button.style.zIndex = "";
         svg = button.querySelector("svg");
         if (svg) svg.style.filter = "";
         // button.innerHTML = defaultText;
@@ -3526,9 +3636,15 @@ holdButtons.forEach(button => {
             } else if (button.id == "refineChainUpgrade") {
                 upgradeRefineChainLevel();
             } else if (button.id == "resetButton") {
-                localStorage.clear();
+                localStorage.removeItem("space_game_save");
                 window.location.reload();
                 return;
+            } else if (button.id == "resetPlanetButton") {
+                resetCurrentPlanet();
+            } else if (button.id == "shipColourButton") {
+                changeShipColour();
+            } else if (button.id == "resolutionButton") {
+                changeResolution();
             } else if (button.id == "travelButton") {
                 clearHelp();
                 travelToSelectedPlanet();
@@ -3543,8 +3659,9 @@ holdButtons.forEach(button => {
         updating = false;
 
         button.style.scale = "0.9";
+        button.style.zIndex = "1000";
         // button.target.style.backgroundColor = "#EF233C";
-        button.style.boxShadow = "0 0 6vw 0.1vw #3083DC";
+        button.style.boxShadow = "0 0 8vw 0.1vw #3083DC";
         button.style.textShadow = "0 0 3vw #fff";
 
         svg = button.querySelector("svg");
@@ -3720,8 +3837,7 @@ function saveGame() {
     const gameState = {
         energy, material, crystal, flightRadius, targetRadius, shipRotation,
         drillRateUpgradeCost, collectionRadiusUpgradeCost, drillProductionRate,
-        drillLevel, collectionRadius, collectionRadiusLevel, refineChainCount,
-        refineChainLevel, refineChainUpgradeCost, showUpdateBox,
+        drillLevel, collectionRadius, collectionRadiusLevel, currentShipColourIndex,
         planets: planetsToSave,
         probes: cleanProbes
     };
@@ -3756,7 +3872,7 @@ function loadGame() {
     refineChainCount = state.refineChainCount;
     refineChainLevel = state.refineChainLevel;
     refineChainUpgradeCost = state.refineChainUpgradeCost;
-    showUpdateBox = state.showUpdateBox;
+    currentShipColourIndex = state.currentShipColourIndex;
 
     probeParticles = []; // Clear visual trails on load
 
@@ -3932,14 +4048,22 @@ function loadGame() {
 
         // Comets
         p.comets = (savedPlanet.comets || []).map(c => {
-            const cometGraphic = new PIXI.Graphics();
+            // 1. Create a Sprite matching the spawnComet logic
+            const cometGraphic = new PIXI.Sprite(cometTexture);
+            cometGraphic.anchor.set(0.5);
             cometGraphic.position.set(c.currentX, c.currentY);
-            let startingMaterial = c.initialMaterial || 100;
-            cometGraphic.beginFill(0x646464);
-            cometGraphic.drawRect(-startingMaterial/6, -startingMaterial/6, startingMaterial/3, startingMaterial/3);
-            cometGraphic.endFill();
+            
+            // 2. Restore saved rotation state
+            if (c.rotation !== undefined) {
+                cometGraphic.rotation = c.rotation;
+            }
+
+            // 3. Match the visibility behavior from spawnComet
+            cometGraphic.visible = false; // Hide if not currently viewing the planet
+
             planetScene.addChild(cometGraphic);
 
+            // 4. Reattach the new sprite to the loaded comet object
             c.graphic = cometGraphic;
             return c;
         });
@@ -3962,11 +4086,6 @@ function loadGame() {
         p.bundles = savedPlanet.bundles || [];
     });
 
-    if (showUpdateBox) {
-        document.getElementById("changelog").style.display = "flex";
-    } else {
-        document.getElementById("changelog").style.display = "none";
-    }
 
     // 3. Reconstruct Probes
     probes = (state.probes || []).map(savedProbe => {
@@ -4001,3 +4120,6 @@ drawPlanetAndShadow();
 updateLabels();
 
 currentPlanet.graphics.addChild(systemShipPivot);
+shipGraphic.tint = shipColours[currentShipColourIndex];
+
+

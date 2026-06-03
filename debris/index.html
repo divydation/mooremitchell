@@ -1,8 +1,10 @@
 <html>
     <head>
         <title>DEBRIS</title>
+        
         <link rel="stylesheet" href="style.css">
         <link rel="stylesheet" href="landscape.css">
+        
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
@@ -13,21 +15,32 @@
         <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/7.4.0/pixi.min.js"></script>
     </head>
     <body>
-        <div class="changelog" id="changelog">
-            <div class="titleBlock">
-                <p class="title">DEBRIS</p>
-                <p class="subtitle">Update 26.5.24</p>
-            </div>
-            
-            <div class=changelist>
-                <p>+ New Planets! Explore them all!</p>
-                <p>+ Unique costs for each planet</p>
-                <p>+ Send probes to unlock planets</p>
+        <div class="updateContainer" id="changelog">
+            <div class="changelog">
+                <div class="leftSide">
+                    <div class="titleBlock">
+                        <p class="subtitle">DEBRIS</p>
+                        <p class="title">Update 2.1</p>
+                    </div>
+                
+                    <div class=changelist>
+                        <p class="new">+ Refiners</p>
+                        <p class="new">+ Ship Colours</p>
+                        <p class="new">+ Resolution Modes</p>
+                        <p class="new">+ Reset Current Planet</p>
+                        <p class="removed">- Laser Refineries</p>
+                        <p class="removed">- Crystal Collectors</p>
+                    </div>
+                </div>
+                <div class="rightSide">
+                    <button id="playButton" class="redButton playButton">play</button>
+                </div>
+                
+
                 
             </div>
-
-            <button id="playButton" class="redButton playButton">play</button>
         </div>
+
         <canvas id="gameCanvas" width="1000" height="1000"></canvas>
 
         <!-- <p class="version">26.5.5.a</p> -->
@@ -38,6 +51,7 @@
                 <div id="tipsContainer" class="tips">
                     <p id="tips"></p>
                 </div>
+
                 <div class="resources">
                     <div class="energy">
                         <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m13 2-8.90656 10.6879c-.34881.4185-.52321.6278-.52588.8046-.00232.1536.06616.2998.18568.3964.13749.1111.40992.1111.95478.1111h7.29198l-1 8 8.9065-10.6879c.3488-.4185.5232-.6278.5259-.8046.0023-.1536-.0661-.2998-.1857-.3964-.1375-.1111-.4099-.1111-.9547-.1111h-7.292z" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -58,7 +72,8 @@
                     <button id="deviceButton" class="wideButton redButton menuButton">DEPLOY</button>
                     <button id="upgradeButton" class="wideButton redButton menuButton">UPGRADE</button>
                     <button id="planetSelectButton" class="wideButton redButton menuButton">SYSTEM</button>
-                    <button id="gadgetButton" class="wideButton  emptyButton">GADGETS</button>
+                    <!-- <button id="gadgetButton" class="wideButton emptyButton">GADGETS</button> -->
+                    <button id="settingsButton" class="wideButton redButton menuButton">Settings</button>
                 </div>
 
 
@@ -66,8 +81,8 @@
                 <!-- Device Menu -->
                 <div class="deviceMenu menu" id="deviceMenu">
 
-                    <button class="hugeButton holdButton" id="drill">
-                        <p>MINERAL DRILL</p>
+                    <button class="wideButton holdButton" id="drill">
+                        <p>DRILL</p>
                         <div class="costs">
                             <div class="material">
                                 <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m11.223 2.43177c.2836-.15756.4254-.23634.5755-.26723.133-.02733.27-.02733.403 0 .1501.03089.2919.10967.5755.26723l7.4 4.11111c.2996.1664.4493.2496.5584.36794.0964.10469.1695.22877.2141.36395.0505.15279.0505.32412.0505.66676v8.11707c0 .3427 0 .514-.0505.6668-.0446.1352-.1177.2593-.2141.3639-.1091.1184-.2588.2016-.5584.368l-7.4 4.1111c-.2836.1576-.4254.2363-.5755.2672-.133.0274-.27.0274-.403 0-.1501-.0309-.2919-.1096-.5755-.2672l-7.40003-4.1111c-.29952-.1664-.44928-.2496-.55834-.368-.09647-.1046-.16948-.2287-.21415-.3639-.05048-.1528-.05048-.3241-.05048-.6668v-8.11707c0-.34264 0-.51397.05048-.66676.04467-.13518.11768-.25926.21415-.36395.10906-.11834.25882-.20154.55834-.36794z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
@@ -76,8 +91,8 @@
                         </div>
                     </button>
 
-                    <button class="hugeButton holdButton" id="satellite">
-                        <p>SOLAR SATELLITE</p>
+                    <button class="wideButton holdButton" id="satellite">
+                        <p>SATELLITE</p>
                         <div class="costs">
                             <div class="material">
                                 <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m11.223 2.43177c.2836-.15756.4254-.23634.5755-.26723.133-.02733.27-.02733.403 0 .1501.03089.2919.10967.5755.26723l7.4 4.11111c.2996.1664.4493.2496.5584.36794.0964.10469.1695.22877.2141.36395.0505.15279.0505.32412.0505.66676v8.11707c0 .3427 0 .514-.0505.6668-.0446.1352-.1177.2593-.2141.3639-.1091.1184-.2588.2016-.5584.368l-7.4 4.1111c-.2836.1576-.4254.2363-.5755.2672-.133.0274-.27.0274-.403 0-.1501-.0309-.2919-.1096-.5755-.2672l-7.40003-4.1111c-.29952-.1664-.44928-.2496-.55834-.368-.09647-.1046-.16948-.2287-.21415-.3639-.05048-.1528-.05048-.3241-.05048-.6668v-8.11707c0-.34264 0-.51397.05048-.66676.04467-.13518.11768-.25926.21415-.36395.10906-.11834.25882-.20154.55834-.36794z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
@@ -86,7 +101,7 @@
                         </div>
                     </button>
 
-                    <button class="hugeButton holdButton" id="collector">
+                    <button class="wideButton holdButton" id="collector">
                         <p>COLLECTOR</p>
                         <div class="costs">
                             <div class="material">
@@ -96,15 +111,8 @@
                         </div>
                     </button>
 
-                    <button class="wideButton redButton returnButton">RETURN</button>
-                    <button class="wideButton redButton deviceMenuTwoButton">NEXT</button>
-                </div>
-
-                 <!-- Device Menu 2-->
-                <div class="deviceMenuTwo menu" id="deviceMenuTwo">
-
-                    <button class="hugeButton holdButton" id="laserSatellite">
-                        <p>COMET LASER</p>
+                    <button class="wideButton holdButton" id="laserSatellite">
+                        <p>LASER</p>
                         <div class="costs">
                             <div class="material">
                                 <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m11.223 2.43177c.2836-.15756.4254-.23634.5755-.26723.133-.02733.27-.02733.403 0 .1501.03089.2919.10967.5755.26723l7.4 4.11111c.2996.1664.4493.2496.5584.36794.0964.10469.1695.22877.2141.36395.0505.15279.0505.32412.0505.66676v8.11707c0 .3427 0 .514-.0505.6668-.0446.1352-.1177.2593-.2141.3639-.1091.1184-.2588.2016-.5584.368l-7.4 4.1111c-.2836.1576-.4254.2363-.5755.2672-.133.0274-.27.0274-.403 0-.1501-.0309-.2919-.1096-.5755-.2672l-7.40003-4.1111c-.29952-.1664-.44928-.2496-.55834-.368-.09647-.1046-.16948-.2287-.21415-.3639-.05048-.1528-.05048-.3241-.05048-.6668v-8.11707c0-.34264 0-.51397.05048-.66676.04467-.13518.11768-.25926.21415-.36395.10906-.11834.25882-.20154.55834-.36794z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
@@ -113,15 +121,42 @@
                         </div>
                     </button>
 
-                    <button class="hugeButton holdButton" id="refiner">
+                    <button class="wideButton holdButton" id="refiner">
                         <p>REFINER</p>
                         <div class="costs">
                             <div class="material">
                                 <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m11.223 2.43177c.2836-.15756.4254-.23634.5755-.26723.133-.02733.27-.02733.403 0 .1501.03089.2919.10967.5755.26723l7.4 4.11111c.2996.1664.4493.2496.5584.36794.0964.10469.1695.22877.2141.36395.0505.15279.0505.32412.0505.66676v8.11707c0 .3427 0 .514-.0505.6668-.0446.1352-.1177.2593-.2141.3639-.1091.1184-.2588.2016-.5584.368l-7.4 4.1111c-.2836.1576-.4254.2363-.5755.2672-.133.0274-.27.0274-.403 0-.1501-.0309-.2919-.1096-.5755-.2672l-7.40003-4.1111c-.29952-.1664-.44928-.2496-.55834-.368-.09647-.1046-.16948-.2287-.21415-.3639-.05048-.1528-.05048-.3241-.05048-.6668v-8.11707c0-.34264 0-.51397.05048-.66676.04467-.13518.11768-.25926.21415-.36395.10906-.11834.25882-.20154.55834-.36794z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
-                                <p id="laserSatelliteCostMaterial">5k</p>
+                                <p id="refinerCostMaterial">5k</p>
                             </div>
                         </div>
                     </button>
+
+                    <button class="wideButton redButton returnButton">RETURN</button>
+                    <!-- <button class="wideButton redButton deviceMenuTwoButton">NEXT</button> -->
+                </div>
+
+                 <!-- Device Menu 2-->
+                <div class="deviceMenuTwo menu" id="deviceMenuTwo">
+
+                    <!-- <button class="hugeButton holdButton" id="laserSatellite">
+                        <p>COMET LASER</p>
+                        <div class="costs">
+                            <div class="material">
+                                <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m11.223 2.43177c.2836-.15756.4254-.23634.5755-.26723.133-.02733.27-.02733.403 0 .1501.03089.2919.10967.5755.26723l7.4 4.11111c.2996.1664.4493.2496.5584.36794.0964.10469.1695.22877.2141.36395.0505.15279.0505.32412.0505.66676v8.11707c0 .3427 0 .514-.0505.6668-.0446.1352-.1177.2593-.2141.3639-.1091.1184-.2588.2016-.5584.368l-7.4 4.1111c-.2836.1576-.4254.2363-.5755.2672-.133.0274-.27.0274-.403 0-.1501-.0309-.2919-.1096-.5755-.2672l-7.40003-4.1111c-.29952-.1664-.44928-.2496-.55834-.368-.09647-.1046-.16948-.2287-.21415-.3639-.05048-.1528-.05048-.3241-.05048-.6668v-8.11707c0-.34264 0-.51397.05048-.66676.04467-.13518.11768-.25926.21415-.36395.10906-.11834.25882-.20154.55834-.36794z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
+                                <p id="laserSatelliteCostMaterial">50</p>
+                            </div>
+                        </div>
+                    </button> -->
+
+                    <!-- <button class="hugeButton holdButton" id="refiner">
+                        <p>REFINER</p>
+                        <div class="costs">
+                            <div class="material">
+                                <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m11.223 2.43177c.2836-.15756.4254-.23634.5755-.26723.133-.02733.27-.02733.403 0 .1501.03089.2919.10967.5755.26723l7.4 4.11111c.2996.1664.4493.2496.5584.36794.0964.10469.1695.22877.2141.36395.0505.15279.0505.32412.0505.66676v8.11707c0 .3427 0 .514-.0505.6668-.0446.1352-.1177.2593-.2141.3639-.1091.1184-.2588.2016-.5584.368l-7.4 4.1111c-.2836.1576-.4254.2363-.5755.2672-.133.0274-.27.0274-.403 0-.1501-.0309-.2919-.1096-.5755-.2672l-7.40003-4.1111c-.29952-.1664-.44928-.2496-.55834-.368-.09647-.1046-.16948-.2287-.21415-.3639-.05048-.1528-.05048-.3241-.05048-.6668v-8.11707c0-.34264 0-.51397.05048-.66676.04467-.13518.11768-.25926.21415-.36395.10906-.11834.25882-.20154.55834-.36794z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
+                                <p id="refinerCostMaterial">5k</p>
+                            </div>
+                        </div>
+                    </button> -->
 
                     <!-- <button class="hugeButton holdButton" id="refinery">
                         <p>LASER REFINERY</p>
@@ -186,8 +221,7 @@
                         </div>
                     </button> -->
 
-                    <button class="threeWideButton redButton returnButton">RETURN</button>
-                    <button id="resetButton" class="holdButton">RESET</button>
+                    <button class="hugeButton redButton returnButton">RETURN</button>
 
                  </div>
 
@@ -215,6 +249,18 @@
                         
                     
 
+                 </div>
+
+                 <!-- Settings Menu -->
+                 <div class="settings menu" id="settingsMenu">
+
+                    <button id="shipColourButton" class="wideButton holdButton">SHIP<br>COLOUR</button>
+                    <button id="resolutionButton" class="wideButton holdButton">RESOLUTION</button>
+                    <button id="resetPlanetButton" class="wideButton holdButton">RESET<br>PLANET</button>
+                    <button id="resetButton" class="wideButton holdButton">RESET<br>ALL</button>
+
+                    <button id="cancelPeekButton" class="hugeButton redButton returnButton">RETURN</button>
+                        
                  </div>
 
                  <div class="menu">

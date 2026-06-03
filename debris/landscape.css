@@ -44,4 +44,116 @@
         transform-origin: top left;
     }
 
+    /* Updates */
+
+    .version {
+        z-index: 100;
+        position: absolute;
+        color: #cccccc;
+        right: 10px;
+        top: 0;
+        font-size: 1vw;
+    }
+
+    .updateContainer {
+        width: 100vw;
+        height: 100vh;
+        position: absolute;
+        z-index: 4000;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        
+    }
+
+    .changelog {
+        display: flex;
+        width: 50vw;
+        max-height: 85vh;
+        /* height: auto; */
+        position: absolute;
+        z-index: 5000;
+        background-color: rgb(15, 15, 15);
+        border-radius: 3vw;
+        box-shadow: 0 0 100vw black;
+        box-sizing: border-box;
+
+        /* display: flex; */
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        gap: 3vw;
+        padding: 5vw;
+        scale: 1 !important;
+    }
+
+    .leftSide {
+        display: flex;
+        flex-direction: column;
+        align-items: left;
+        justify-content: space-evenly;
+        color: white;
+        /* padding: 5vw; */
+        /* width: 50vw; */
+        width: 100%;
+        max-height: 85vh;
+    }
+
+    .changelist {
+        width: 100%;
+        font-size: 2vw;
+        display: flex;
+        flex-direction: column;
+        align-items: left;
+        justify-content: space-evenly;
+        gap: 0.5vw;
+    }
+
+    .titleBlock {
+        display: flex;
+        flex-direction: column;
+        align-items: left;
+        justify-content: center;
+        /* gap: 3vw; */
+        margin-bottom: 2vw;
+    }
+
+    .title {
+        font-size: 5vw;
+        color: #FFFFFF;
+    }
+
+    .subtitle {
+        font-size: 3vw;
+        color: gray;
+    }
+
+
+
+    .removed {
+        color: #EF233C;
+    }
+
+    .new {
+        color: #2EBFA5;
+    }
+
+    .playButton {
+        width: 15vw;
+        height: 7.5vw;
+        font-size: 3vw;
+        border-radius: 2vw;
+        outline: none;
+        border: none;
+        background: rgba(100,100,100,0.5);
+        color: white;
+        font-family: "Silkscreen";
+        touch-action: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 1vw;
+    }
 }
