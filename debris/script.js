@@ -6,7 +6,8 @@ const app = new PIXI.Application({
     view: canvas,
     resizeTo: window, 
     autoDensity: true,
-    resolution: Math.min(window.devicePixelRatio || 1, 2),
+    // resolution: Math.min(window.devicePixelRatio || 1, 2),
+    resolution: 1.25,
     backgroundColor: 0x141414,
     antialias: true,
 });
@@ -165,6 +166,7 @@ const getBaseDevices = () => ({
     crystals: [],
     comets: [],
     laserSatellites: [],
+    refiners: []
 });
 
 drillRateUpgradeCost = 10;
@@ -350,7 +352,7 @@ const powerLineGraphic = new PIXI.Graphics();
 // Add them to the system in the order you want them layered (bottom to top)
 planetScene.addChild(shipShadowGraphic);
 planetScene.addChild(shadowGraphic);
-planetScene.addChild(planetGraphic);
+
 
 
 // Comet Graphics Sprite
@@ -366,6 +368,9 @@ const cometTexture = app.renderer.generateTexture(baseCometGraphic);
 
 const materialContainer = new PIXI.Container();
 planetScene.addChild(materialContainer);
+
+// Planet ABOVE materials
+planetScene.addChild(planetGraphic);
 
 // 1. Draw a master material square ONCE and turn it into a texture
 const baseMaterialGraphic = new PIXI.Graphics();
@@ -491,7 +496,11 @@ planets.forEach(p => {
 
 
 
+let lastEnergy = -1;
+let lastMaterial = -1;
+let lastCrystal = -1;
 
+let frameCounter = 0;
 
 //
 //
@@ -500,13 +509,28 @@ planets.forEach(p => {
 //
 
 app.ticker.add((delta) => {
+    frameCounter++;
+    frameCounter % 60;
 
     let planet = null;
     powerLineGraphic.clear();
 
-    document.getElementById("energyText").innerHTML = formatNumber(energy);
-    document.getElementById("materialText").innerHTML = formatNumber(material);
-    document.getElementById("crystalText").innerHTML = formatNumber(crystal);
+    // document.getElementById("energyText").textContent = formatNumber(energy);
+    // document.getElementById("materialText").textContent = formatNumber(material);
+    // document.getElementById("crystalText").textContent = formatNumber(crystal);
+
+    if (energy !== lastEnergy) {
+        document.getElementById("energyText").textContent = formatNumber(energy);
+        lastEnergy = energy;
+    }
+    if (material !== lastMaterial) {
+        document.getElementById("materialText").textContent = formatNumber(material);
+        lastMaterial = material;
+    }
+    if (crystal !== lastCrystal) {
+        document.getElementById("crystalText").textContent = formatNumber(crystal);
+        lastCrystal = crystal;
+    }
 
     // Timing control
     let now = Date.now();
@@ -665,28 +689,43 @@ app.ticker.add((delta) => {
 
         // Draw Materials
 
+        let planetCollectionRadius = collectionRadius;
+        // The purple planet doubles the collection radius level
+        if (planet.name == "purplePlanet") planetCollectionRadius = 50 * (1.1**(collectionRadiusLevel*3));
+
+        // console.log("The normal collection is " + collectionRadius + ", the current is " + planetCollectionRadius);
+
+        // Write coordinates once
+        for (let r = 0; r < planet.refiners.length; r++) {
+            polarToCartesianWrite(planet.refiners[r].radius, planet.refiners[r].angle, planet.refiners[r]);
+        }
+
+        for (let c = 0; c < planet.collectors.length; c++) {
+            polarToCartesianWrite(planet.collectors[c].radius, planet.collectors[c].angle, planet.collectors[c]);
+        }
+
+        // Materials
         for (let m = 0; m < planet.materialsToCollect.length; m++) {
 
-            let mat = planet.materialsToCollect[m]
+            let mat = planet.materialsToCollect[m];
             
             // 1. Basic Background Math (Always runs)
             mat.radius += mat.radiusChange;
             mat.value *= 1.005;
-            mat.value = Math.min(mat.value, 1000); 
+            // mat.value = Math.min(mat.value, 1000); 
 
             let mRadius = mat.radius;
             let mAngle = mat.angle;
             
             // Cache Cartesian for collisions
-            let matPosition = polarToCartesian(mRadius, mAngle);
-            mat.x = matPosition.x;
-            mat.y = matPosition.y;
+            polarToCartesianWrite(mRadius, mAngle, mat);
+
 
             // -----------------------------------------
             // 2. SHIP LOGIC (ONLY runs on active planet)
             // -----------------------------------------
             if (drawThisPlanet) {
-                let distanceSq = calculateDistance(matPosition, shipPosition);
+                let distanceSq = calculateDistance(mat, shipPosition);
 
                 // Ship Instant Collect
                 if (distanceSq <= 225) {
@@ -697,7 +736,7 @@ app.ticker.add((delta) => {
                 } 
 
                 // Ship Tractor Beam Pull
-                if (distanceSq <= collectionRadius**2) {
+                if (distanceSq <= planetCollectionRadius**2) {
                     mat.timeInTractorBeam += 0.05;
                     let beamTime = Math.min(mat.timeInTractorBeam, 1);
                     
@@ -706,6 +745,11 @@ app.ticker.add((delta) => {
                     let angleDiff = Math.atan2(Math.sin(shipRotation - mat.angle), Math.cos(shipRotation - mat.angle));
                     mat.angle += (angleDiff * beamTime) + toRadians(0.5);
                 } 
+            }
+
+            // Heavy math logic for background planets only runs every 5th frame
+            if (!drawThisPlanet && frameCounter % 5 !== i % 5) {
+                continue; // Skip this frame's calculations for this background planet
             }
 
             // -----------------------------------------
@@ -717,9 +761,10 @@ app.ticker.add((delta) => {
 
                 if (collector.battery < 1) continue;
                 
-                let collectorPos = polarToCartesian(collector.radius, collector.angle);
-                let dx = mat.x - collectorPos.x;
-                let dy = mat.y - collectorPos.y;
+                // polarToCartesianWrite(collector.radius, collector.angle, collector);
+
+                let dx = mat.x - collector.x;
+                let dy = mat.y - collector.y;
                 let distanceSq = (dx * dx) + (dy * dy); 
 
                 // Instant Collection (ALWAYS runs, even in background)
@@ -732,7 +777,7 @@ app.ticker.add((delta) => {
                 }
 
                 // Instant Collection (ONLY runs in background planets)
-                if (!drawThisPlanet && distanceSq <= collectionRadius**2) {
+                if (!drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
                     material += Math.floor(mat.value);
                     deleteMaterial(planet, m); 
                     m--; 
@@ -741,7 +786,7 @@ app.ticker.add((delta) => {
                 }
 
                 // Tractor Beam Pull (ONLY runs on active planet!)
-                if (drawThisPlanet && distanceSq <= collectionRadius**2) {
+                if (drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
                     mat.timeInTractorBeam += 0.05;
                     let beamTime = Math.min(mat.timeInTractorBeam, 1);
                     
@@ -751,13 +796,100 @@ app.ticker.add((delta) => {
                     mat.angle += (angleDiff * beamTime) + toRadians(0.5);
                 }
             }
+
+            // Refiner Interaction
+            if (!mat.refined) {
+                for (let c = 0; c < planet.refiners.length; c++) {
+                    let refiner = planet.refiners[c];
+
+                    if (refiner.battery < 0.5) continue;
+                    
+                    // polarToCartesianWrite(refiner.radius, refiner.angle, refiner);
+
+                    let dx = mat.x - refiner.x;
+                    let dy = mat.y - refiner.y;
+                    let distanceSq = (dx * dx) + (dy * dy); 
+
+                    // Instant Collection (ALWAYS runs, even in background)
+                    if (distanceSq <= 225) {
+                        if (refiner.animationScale > -1) continue;
+                        refiner.mineralsStored += Math.floor(mat.value);
+                        deleteMaterial(planet, m); 
+                        m--; 
+                        materialCollected = true;
+                        break; 
+                    }
+
+                    // Instant Collection (ONLY runs in background planets)
+                    if (!drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
+                        if (refiner.animationScale > -1) continue;
+                        material += Math.floor(mat.value);
+                        deleteMaterial(planet, m); 
+                        m--; 
+                        materialCollected = true;
+                        break; 
+                    }
+
+                    // Tractor Beam Pull (ONLY runs on active planet!)
+                    if (drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
+                        if (refiner.animationScale > -1) continue;
+                        mat.timeInTractorBeam += 0.05;
+                        let beamTime = Math.min(mat.timeInTractorBeam, 1);
+                        
+                        mat.radius += (refiner.radius + 7.5 - mat.radius) * beamTime;
+
+                        let angleDiff = Math.atan2(Math.sin(refiner.angle - mat.angle), Math.cos(refiner.angle - mat.angle));
+                        mat.angle += (angleDiff * beamTime) + toRadians(0.5);
+                    }
+
+                    // Start the refine at 50 materials
+                    if (refiner.mineralsStored > 50 && refiner.animationScale == -1) refiner.animationScale = 1;
+
+
+                    // At the middle of the refine animation, push the new material
+                    if (refiner.animationScale == 0) {
+                        // Create the graphic
+                        const newMaterialGraphic = new PIXI.Sprite(materialTexture);
+                        newMaterialGraphic.anchor.set(0.5);
+                        newMaterialGraphic.position.set(refiner.x, refiner.y);
+                        newMaterialGraphic.visible = drawThisPlanet; // Hide if spawning on another planet
+                        materialContainer.addChild(newMaterialGraphic);
+
+                        // The halfway orbit radius is the average of the max radius and the planet radius
+                        let halfwayOrbit = (450 + planet.radius + 15)/2;
+                        let radiusChangeModifier = 1;
+                    
+                        if (refiner.radius > halfwayOrbit) radiusChangeModifier = -1;
+
+                        // Push the refined material
+                        planet.materialsToCollect.push({
+                            radius: refiner.radius+6,
+                            angle: refiner.angle,
+                            rotation: 0,
+                            radiusChange: (0.6 - planet.gravityFactor)*radiusChangeModifier,
+                            angleChange: 0,
+                            alpha: 1,
+                            timeInTractorBeam: 0,
+                            value: refiner.mineralsStored * 2,
+                            refined: true,
+                            x: refiner.x,
+                            y: refiner.y,
+
+                            graphic: newMaterialGraphic
+                        });
+
+                        refiner.mineralsStored = 0;
+                    }
+                }
+            }
+            
             
             if (materialCollected) continue;
 
             // -----------------------------------------
             // 4. CLEANUP & PIXIJS RENDERING
             // -----------------------------------------
-            if (mat.radius > 600 || mat.radius < 10) {
+            if (mat.radius > 600 || mat.radius < (planet.radius - 30)) {
                 mat.alpha -= 0.1;
             }
 
@@ -771,11 +903,16 @@ app.ticker.add((delta) => {
             if (drawThisPlanet) {
                 mat.graphic.visible = true;
                 
-                
+                if (mat.refined) {
+                    mat.rotation += 0.05;
+                    mat.graphic.scale.set(1.5);
+                }
+
                 // Directly pass the math to the visual object
                 mat.graphic.alpha = mat.alpha; 
                 mat.graphic.position.set(mat.x, mat.y);
                 mat.graphic.rotation = mat.angle + mat.rotation;
+                
             
             } else {
                 mat.graphic.visible = false;
@@ -805,7 +942,7 @@ app.ticker.add((delta) => {
                 } 
 
                 // 4. Check if distance is 10 or less
-                if (distance <= (collectionRadius**2)) {
+                if (distance <= planetCollectionRadius**2) {
                     
                     c.timeInTractorBeam += 0.05;
 
@@ -841,6 +978,8 @@ app.ticker.add((delta) => {
         for (let i = 0; i < planet.satellites.length; i++) {
             let p = planet.satellites[i];
 
+            // powerLineGraphic.alpha = Math.random();
+
             if (planet.solarFactor == 0) break;
 
             // 1. Get the satellite's current position
@@ -861,6 +1000,11 @@ app.ticker.add((delta) => {
                 }
             }
 
+            // Heavy math logic for background planets only runs every 5th frame
+            if (!drawThisPlanet && frameCounter % 5 !== i % 5) {
+                continue; // Skip this frame's calculations for this background planet
+            }
+
             // 3. Check distance to all collectors
             for (let j = 0; j < planet.collectors.length; j++) {
                 let c = planet.collectors[j];
@@ -876,17 +1020,17 @@ app.ticker.add((delta) => {
                 }
             }
 
-            // 3. Check distance to all smart collectors
-            for (let j = 0; j < planet.smartCollectors.length; j++) {
-                let c = planet.smartCollectors[j];
-                let collectorPos = polarToCartesian(c.radius, c.angle);
-                let collectorDistance = calculateDistance(satPos, collectorPos);
+            // 3. Check distance to all refiners
+            for (let j = 0; j < planet.refiners.length; j++) {
+                let c = planet.refiners[j];
+                let refinerPos = polarToCartesian(c.radius, c.angle);
+                let refinerDistance = calculateDistance(satPos, refinerPos);
 
                 // If this collector is closer than anything we've checked so far
-                if (collectorDistance < closestDistance) {
-                    closestDistance = collectorDistance;
+                if (refinerDistance < closestDistance) {
+                    closestDistance = refinerDistance;
                     targetType = 'collector';
-                    targetPos = collectorPos;
+                    targetPos = refinerPos;
                     closestCollector = c; // Save the reference so we can update its battery later
                 }
             }
@@ -899,6 +1043,7 @@ app.ticker.add((delta) => {
                     let randomWidth = Math.random() * 5;
                     powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
 
+                    // powerLineGraphic.lineStyle(3, 0xF5D752, 1);
                     powerLineGraphic.moveTo(satPos.x, satPos.y);
                     powerLineGraphic.lineTo(targetPos.x, targetPos.y);
                 }
@@ -937,7 +1082,13 @@ app.ticker.add((delta) => {
                 p.angle = p.angle % toRadians(360);
                 p.productionTimer += dt;
 
-                let targetSpawnTime = Math.max(75, drillProductionRate + p.randomTimeOffset);
+                planetDrillRate = drillProductionRate;
+                if (planet.name == "purplePlanet") planetDrillRate = 5000 / (1.25**(drillLevel*1.5));
+                // console.log("The normal drill rate is " + drillProductionRate + ", the current is " + planetDrillRate);
+
+                let targetSpawnTime = Math.max(75, planetDrillRate + p.randomTimeOffset);
+
+                
 
                 if (p.productionTimer >= targetSpawnTime) { 
                 // if (true) { 
@@ -1018,6 +1169,47 @@ app.ticker.add((delta) => {
             }
         }
 
+        // Refiners
+        for (let c = 0; c < planet.refiners.length; c++) {
+            let p = planet.refiners[c];
+
+            p.battery = Math.max(p.battery, 0);
+
+            p.angle += p.orbitSpeed; 
+            p.angle = p.angle % toRadians(360);
+
+            // Only rotate if collector has battery
+            if (p.battery > 1) {
+                p.rotation += p.rotationSpeed;
+            } else if (p.battery > 0) {
+                p.rotation += p.rotationSpeed * (p.battery);
+            }
+
+            p.battery -= 0.005;
+
+            if (p.animationScale > -1) p.animationScale -= 0.05;
+            p.animationScale = Math.round(p.animationScale * 100) / 100;
+
+            // Draw Collectors
+            if (drawThisPlanet) {
+                p.pivot.visible = true;
+                
+                // 2. Sync the pivot to the math
+                p.pivot.rotation = p.angle; 
+                
+                // 3. Push the graphic out from the center to match the radius
+                p.graphic.x = p.radius; 
+                
+                // 4. THE FIX: Target Rotation MINUS Parent Rotation
+                p.graphic.rotation = p.rotation; 
+
+                p.arms.scale.set(1 * Math.abs(p.animationScale));
+                
+            } else {
+                p.pivot.visible = false;
+            }
+        }
+
 
         // Collectors
         for (let c = 0; c < planet.collectors.length; c++) {
@@ -1076,7 +1268,14 @@ app.ticker.add((delta) => {
                     y: comet.currentY
                 }
 
-                if (cartesianToPolar(cometPosition.x, cometPosition.y).radius >= (475 + collectionRadius/2)) continue;
+                // if (cartesianToPolar(cometPosition.x, cometPosition.y).radius >= (475 + collectionRadius/2)) continue;
+
+                let dxFromCenter = comet.currentX - 500;
+                let dyFromCenter = comet.currentY - 500;
+                let distFromCenterSq = (dxFromCenter * dxFromCenter) + (dyFromCenter * dyFromCenter);
+                let maxRadius = 475 + collectionRadius / 2;
+
+                if (distFromCenterSq >= (maxRadius * maxRadius)) continue;
 
                 distanceToComet = calculateDistance(laserSatPosition, cometPosition);
 
@@ -1184,10 +1383,14 @@ app.ticker.add((delta) => {
                 comet.graphic.position.set(comet.currentX, comet.currentY);
                 comet.graphic.rotation = comet.rotation;
                 
-                // THE SHRINK MECHANIC: 
-                // Divide current material by initial material to get a clean percentage (1.0 down to 0.0)
+                // 1. Get the 1.0 to 0.0 damage ratio
                 let scaleRatio = comet.material / comet.initialMaterial;
-                comet.graphic.scale.set(scaleRatio);
+
+                // 2. Calculate the intended visual size (Material / 3) divided by your base texture size (16)
+                let visualMultiplier = (comet.initialMaterial / 3) / 16; 
+
+                // 3. Apply both 
+                comet.graphic.scale.set(scaleRatio * visualMultiplier);
                 
             } else if (comet.graphic) {
                 comet.graphic.visible = false;
@@ -1212,8 +1415,12 @@ app.ticker.add((delta) => {
             sprite.scale.y -= 0.02;
             sprite.alpha -= 0.01;
             
-            let coords = polarToCartesian(sprite.flightRadius, sprite.flightAngle);
-            sprite.position.set(coords.x, coords.y);
+            // let coords = polarToCartesian(sprite.flightRadius, sprite.flightAngle);
+            // sprite.position.set(coords.x, coords.y);
+            let cx = 500 + sprite.flightRadius * Math.cos(sprite.flightAngle);
+            let cy = 500 + sprite.flightRadius * Math.sin(sprite.flightAngle);
+            sprite.position.set(cx, cy);
+
             sprite.rotation = sprite.flightAngle;
 
             if (sprite.alpha <= 0 || sprite.scale.x <= 0 || sprite.life <= 0) {
@@ -1419,6 +1626,81 @@ function deployCollector() {
     });
 }
 
+// deployRefiner() 
+
+function deployRefiner() {
+    // price = currentPlanet.refinerCostMaterial;
+    // if (material < price) return;
+    // material -= price;
+    // currentPlanet.refinerCostMaterial = Math.floor(price * 1.1);
+
+    const refinerPivot = new PIXI.Container();
+    refinerPivot.position.set(500, 500);
+
+    const refinerGraphic = new PIXI.Graphics();
+    const refinerGraphicArms = new PIXI.Graphics();
+
+    // Configuration Parameters
+    const circleRadius = 10; // Define the center circle size
+    const lineLength = 17.5; // Total length of the main radiating lines (L)
+    const crossbarWidth = 12.5; // Total width of the T crossbar (C)
+    const lineColor = 0xFFFFFF; // White
+    const lineThickness = 4;
+
+    // Define the angles for 120-degree spacing
+    const angles = [Math.PI / 2, Math.PI / 2 + (2 * Math.PI) / 3, Math.PI / 2 + (4 * Math.PI) / 3];
+
+    // 1. Draw the central circle
+    refinerGraphic.beginFill(lineColor);
+    refinerGraphic.drawCircle(0, 0, circleRadius);
+    refinerGraphic.endFill();
+
+    // Set line style for lines and crossbars
+    refinerGraphicArms.lineStyle(lineThickness, lineColor);
+
+    angles.forEach((angle) => {
+        // 2. Draw the main radiating lines (from center to end of L)
+        const endX = Math.cos(angle) * lineLength;
+        const endY = Math.sin(angle) * lineLength;
+        refinerGraphicArms.moveTo(0, 0);
+        refinerGraphicArms.lineTo(endX, endY);
+
+        // 3. Draw the T crossbars
+        // To be perpendicular to the line, the crossbar angle is shifted by 90 degrees (PI/2)
+        const crossbarAngle = angle + Math.PI / 2;
+        const halfC = crossbarWidth / 2;
+
+        const c1X = endX + Math.cos(crossbarAngle) * halfC;
+        const c1Y = endY + Math.sin(crossbarAngle) * halfC;
+        const c2X = endX - Math.cos(crossbarAngle) * halfC;
+        const c2Y = endY - Math.sin(crossbarAngle) * halfC;
+
+        refinerGraphicArms.moveTo(c1X, c1Y);
+        refinerGraphicArms.lineTo(c2X, c2Y);
+    });
+    
+
+    refinerGraphic.addChild(refinerGraphicArms);
+    refinerPivot.addChild(refinerGraphic);
+    planetScene.addChild(refinerPivot);
+
+    currentPlanet.refiners.push({
+        radius: flightRadius + 10,
+        angle: shipRotation,
+        orbitSpeed: shipRotationSpeed,
+        rotation: 0,
+        rotationSpeed: 0.1,
+        mineralsStored: 0,
+        battery: 0,
+        animationScale: -1,
+
+        // Save the Pixi references so the loop can update them
+        pivot: refinerPivot,
+        graphic: refinerGraphic, 
+        arms: refinerGraphicArms
+    });
+}
+
 function deployLaser() {
     price = currentPlanet.laserSatelliteCostMaterial;
     if (material < price) return;
@@ -1524,8 +1806,9 @@ function deleteMaterial(planet, index) {
 
 function spawnComet(planet) {
     const margin = 100; // Spawn 100px off-screen
-    const width = canvas.width;
+    // const width = canvas.width;
     const height = 1000;
+    const width = 1000;
 
     // Define our valid sides (excluding bottom)
     const validSides = ['left', 'right'];
@@ -2052,6 +2335,11 @@ function polarToCartesian(radius, angle, centerX = 500, centerY = 500) {
         x: centerX + radius * Math.cos(angle),
         y: centerY + radius * Math.sin(angle)
     };
+}
+
+function polarToCartesianWrite(radius, angle, object, centerX = 500, centerY = 500) {
+    object.x = centerX + radius * Math.cos(angle),
+    object.y = centerY + radius * Math.sin(angle)
 }
 
 function cartesianToPolar(objectX, objectY) {
@@ -3157,23 +3445,22 @@ deviceMenuOneButton.forEach(button => {
 
 function updateLabels() {
     // DEPLOY
-    document.getElementById("drillCostMaterial").innerHTML = formatNumber(currentPlanet.drillCostMaterial);
-    document.getElementById("satelliteCostMaterial").innerHTML = formatNumber(currentPlanet.satelliteCostMaterial);
-    document.getElementById("collectorCostMaterial").innerHTML = formatNumber(currentPlanet.collectorCostMaterial);
-    document.getElementById("laserSatelliteCostMaterial").innerHTML = formatNumber(currentPlanet.laserSatelliteCostMaterial);
+    document.getElementById("drillCostMaterial").textContent = formatNumber(currentPlanet.drillCostMaterial);
+    document.getElementById("satelliteCostMaterial").textContent = formatNumber(currentPlanet.satelliteCostMaterial);
+    document.getElementById("collectorCostMaterial").textContent = formatNumber(currentPlanet.collectorCostMaterial);
+    document.getElementById("laserSatelliteCostMaterial").textContent = formatNumber(currentPlanet.laserSatelliteCostMaterial);
     // document.getElementById("refineryCostMaterial").innerHTML = formatNumber(currentPlanet.refineryCostMaterial);
     // document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(currentPlanet.smartCollectorCostMaterial);
     
 
     // UPGRADES
-    document.getElementById("drillRateUpgradeCost").innerHTML = formatNumber(drillRateUpgradeCost);
-    document.getElementById("drillLevel").innerHTML = "LVL " + formatNumber(drillLevel).toString();
+    document.getElementById("drillRateUpgradeCost").textContent = formatNumber(drillRateUpgradeCost);
+    document.getElementById("drillLevel").textContent = "LVL " + formatNumber(drillLevel).toString();
 
-    document.getElementById("collectionRadiusUpgradeCost").innerHTML = formatNumber(collectionRadiusUpgradeCost);
-    document.getElementById("collectionRadiusLevel").innerHTML = "LVL " + formatNumber(collectionRadiusLevel).toString();
-
-    document.getElementById("refineChainUpgradeCost").innerHTML = formatNumber(refineChainUpgradeCost);
-    document.getElementById("refineChainLevel").innerHTML = "LVL " + formatNumber(refineChainLevel).toString();
+    document.getElementById("collectionRadiusUpgradeCost").textContent = formatNumber(collectionRadiusUpgradeCost);
+    document.getElementById("collectionRadiusLevel").textContent = "LVL " + formatNumber(collectionRadiusLevel).toString();
+    // document.getElementById("refineChainUpgradeCost").textContent = formatNumber(refineChainUpgradeCost);
+    // document.getElementById("refineChainLevel").textContent = "LVL " + formatNumber(refineChainLevel).toString();
 }
 
 
@@ -3228,8 +3515,8 @@ holdButtons.forEach(button => {
                 deployCollector();
             } else if (button.id == "laserSatellite") {
                 deployLaser();
-            } else if (button.id == "refinery") {
-                deployRefinery();
+            } else if (button.id == "refiner") {
+                deployRefiner();
             } else if (button.id == "smartCollector") {
                 deploySmartCollector();
             } else if (button.id == "drillRate") {
@@ -3330,7 +3617,7 @@ let help = [
 
 function updateHelp(text) {
     document.getElementById("tipsContainer").style.visibility = "visible";
-    document.getElementById("tips").innerHTML = text;
+    document.getElementById("tips").textContent = text;
     helpNumber++;
     if (helpNumber == 7) helpNumber = 0;
 }
@@ -3347,10 +3634,10 @@ function updateLevel(parent) {
   const immediateChildren = parent.querySelectorAll(':scope #level');
 
   immediateChildren.forEach(child => {
-    oldLevel = child.innerHTML;
+    oldLevel = child.textContent;
     oldLevel = parseInt(oldLevel.at(-1));
     newLevel = oldLevel + 1;
-    child.innerHTML = "LVL " + newLevel.toString();
+    child.textContent = "LVL " + newLevel.toString();
   });
 }
 
@@ -3365,6 +3652,7 @@ function saveGame() {
         let cleanDrills = (p.drills || []).map(d => { let clone = {...d}; delete clone.pivot; delete clone.graphic; return clone; });
         let cleanSatellites = (p.satellites || []).map(s => { let clone = {...s}; delete clone.pivot; delete clone.graphic; return clone; });
         let cleanCollectors = (p.collectors || []).map(c => { let clone = {...c}; delete clone.pivot; delete clone.graphic; return clone; });
+        let cleanRefiners = (p.refiners || []).map(c => { let clone = {...c}; delete clone.pivot; delete clone.graphic; delete clone.arms; return clone; });
         let cleanLasers = (p.laserSatellites || []).map(ls => { let clone = {...ls}; delete clone.pivot; delete clone.graphic; return clone; });
         let cleanCrystals = (p.crystals || []).map(c => { let clone = {...c}; delete clone.graphic; return clone; });
 
@@ -3407,6 +3695,7 @@ function saveGame() {
             drills: cleanDrills,
             satellites: cleanSatellites,
             collectors: cleanCollectors,
+            refiners: cleanRefiners,
             smartCollectors: p.smartCollectors || [], 
             laserSatellites: cleanLasers,
             crystals: cleanCrystals,
@@ -3562,6 +3851,65 @@ function loadGame() {
             c.graphic = collectorGraphic;
             return c;
         });
+
+        // Refiners
+        p.refiners = (savedPlanet.refiners || []).map(c => {
+            const refinerPivot = new PIXI.Container();
+            refinerPivot.position.set(500, 500);
+
+            const refinerGraphic = new PIXI.Graphics();
+            const refinerGraphicArms = new PIXI.Graphics();
+
+            // Configuration Parameters
+            const circleRadius = 10; // Define the center circle size
+            const lineLength = 17.5; // Total length of the main radiating lines (L)
+            const crossbarWidth = 12.5; // Total width of the T crossbar (C)
+            const lineColor = 0xFFFFFF; // White
+            const lineThickness = 4;
+
+            // Define the angles for 120-degree spacing
+            const angles = [Math.PI / 2, Math.PI / 2 + (2 * Math.PI) / 3, Math.PI / 2 + (4 * Math.PI) / 3];
+
+            // 1. Draw the central circle
+            refinerGraphic.beginFill(lineColor);
+            refinerGraphic.drawCircle(0, 0, circleRadius);
+            refinerGraphic.endFill();
+
+            // Set line style for lines and crossbars
+            refinerGraphicArms.lineStyle(lineThickness, lineColor);
+
+            angles.forEach((angle) => {
+                // 2. Draw the main radiating lines (from center to end of L)
+                const endX = Math.cos(angle) * lineLength;
+                const endY = Math.sin(angle) * lineLength;
+                refinerGraphicArms.moveTo(0, 0);
+                refinerGraphicArms.lineTo(endX, endY);
+
+                // 3. Draw the T crossbars
+                // To be perpendicular to the line, the crossbar angle is shifted by 90 degrees (PI/2)
+                const crossbarAngle = angle + Math.PI / 2;
+                const halfC = crossbarWidth / 2;
+
+                const c1X = endX + Math.cos(crossbarAngle) * halfC;
+                const c1Y = endY + Math.sin(crossbarAngle) * halfC;
+                const c2X = endX - Math.cos(crossbarAngle) * halfC;
+                const c2Y = endY - Math.sin(crossbarAngle) * halfC;
+
+                refinerGraphicArms.moveTo(c1X, c1Y);
+                refinerGraphicArms.lineTo(c2X, c2Y);
+            });
+            
+
+            refinerGraphic.addChild(refinerGraphicArms);
+            refinerPivot.addChild(refinerGraphic);
+            planetScene.addChild(refinerPivot);
+
+            c.pivot = refinerPivot;
+            c.graphic = refinerGraphic;
+            c.arms = refinerGraphicArms;
+            return c;
+        });
+        
 
         // Lasers
         p.laserSatellites = (savedPlanet.laserSatellites || []).map(ls => {
