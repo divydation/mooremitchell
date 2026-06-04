@@ -741,7 +741,9 @@ app.ticker.add((delta) => {
             let mAngle = mat.angle;
             
             // Cache Cartesian for collisions
-            polarToCartesianWrite(mRadius, mAngle, mat);
+            // Collection Math only runs every 5th frame
+            if (drawThisPlanet && frameCounter % 5 !== i % 5)  polarToCartesianWrite(mRadius, mAngle, mat);;
+           
 
 
             // -----------------------------------------
@@ -770,73 +772,37 @@ app.ticker.add((delta) => {
                 } 
             }
 
-            // Heavy math logic for background planets only runs every 5th frame
-            if (!drawThisPlanet && frameCounter % 5 !== i % 5) {
+            // Heavy math logic for background planets only runs every 10th frame
+            if (!drawThisPlanet && frameCounter % 10 !== i % 10) {
                 continue; // Skip this frame's calculations for this background planet
             }
+
+            
 
             // -----------------------------------------
             // 3. COLLECTOR LOGIC (Runs for ALL planets)
             // -----------------------------------------
             let materialCollected = false;
             for (let c = 0; c < planet.collectors.length; c++) {
+
                 let collector = planet.collectors[c];
 
-                if (collector.battery < 1) continue;
+                if (collector.battery < 0.5) continue;
+
+            
                 
                 // polarToCartesianWrite(collector.radius, collector.angle, collector);
 
-                let dx = mat.x - collector.x;
-                let dy = mat.y - collector.y;
-                let distanceSq = (dx * dx) + (dy * dy); 
+                let dx = Math.abs(mat.x - collector.x);
+                let dy = Math.abs(mat.y - collector.y);
 
-                // Instant Collection (ALWAYS runs, even in background)
-                if (distanceSq <= 225) {
-                    material += Math.floor(mat.value);
-                    deleteMaterial(planet, m); 
-                    m--; 
-                    materialCollected = true;
-                    break; 
-                }
-
-                // Instant Collection (ONLY runs in background planets)
-                if (!drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
-                    material += Math.floor(mat.value);
-                    deleteMaterial(planet, m); 
-                    m--; 
-                    materialCollected = true;
-                    break; 
-                }
-
-                // Tractor Beam Pull (ONLY runs on active planet!)
-                if (drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
-                    mat.timeInTractorBeam += 0.05;
-                    let beamTime = Math.min(mat.timeInTractorBeam, 1);
-                    
-                    mat.radius += (collector.radius + 7.5 - mat.radius) * beamTime;
-
-                    let angleDiff = Math.atan2(Math.sin(collector.angle - mat.angle), Math.cos(collector.angle - mat.angle));
-                    mat.angle += (angleDiff * beamTime) + toRadians(0.5);
-                }
-            }
-
-            // Refiner Interaction
-            if (!mat.refined) {
-                for (let c = 0; c < planet.refiners.length; c++) {
-                    let refiner = planet.refiners[c];
-
-                    if (refiner.battery < 0.5) continue;
-                    
-                    // polarToCartesianWrite(refiner.radius, refiner.angle, refiner);
-
-                    let dx = mat.x - refiner.x;
-                    let dy = mat.y - refiner.y;
+                // Only do the expensive circle math if it's within a broad square area
+                if (dx < 300 && dy < 300) { 
                     let distanceSq = (dx * dx) + (dy * dy); 
 
                     // Instant Collection (ALWAYS runs, even in background)
                     if (distanceSq <= 225) {
-                        if (refiner.animationScale > -1) continue;
-                        refiner.mineralsStored += Math.floor(mat.value);
+                        material += Math.floor(mat.value);
                         deleteMaterial(planet, m); 
                         m--; 
                         materialCollected = true;
@@ -845,7 +811,6 @@ app.ticker.add((delta) => {
 
                     // Instant Collection (ONLY runs in background planets)
                     if (!drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
-                        if (refiner.animationScale > -1) continue;
                         material += Math.floor(mat.value);
                         deleteMaterial(planet, m); 
                         m--; 
@@ -855,7 +820,58 @@ app.ticker.add((delta) => {
 
                     // Tractor Beam Pull (ONLY runs on active planet!)
                     if (drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
-                        if (refiner.animationScale > -1) continue;
+                        mat.timeInTractorBeam += 0.05;
+                        let beamTime = Math.min(mat.timeInTractorBeam, 1);
+                        
+                        mat.radius += (collector.radius + 7.5 - mat.radius) * beamTime;
+
+                        let angleDiff = Math.atan2(Math.sin(collector.angle - mat.angle), Math.cos(collector.angle - mat.angle));
+                        mat.angle += (angleDiff * beamTime) + toRadians(0.5);
+                    }
+                }
+            }
+
+            // Refiner Interaction
+            if (!mat.refined) {
+                for (let c = 0; c < planet.refiners.length; c++) {
+
+
+                    let refiner = planet.refiners[c];
+
+                    if (refiner.battery < 0.5) continue;
+                    
+                    // polarToCartesianWrite(refiner.radius, refiner.angle, refiner);
+
+                    let dx = Math.abs(mat.x - refiner.x);
+                    let dy = Math.abs(mat.y - refiner.y);
+
+                    if (dx > 300 && dy > 300) continue;
+
+                    let distanceSq = (dx * dx) + (dy * dy); 
+
+                    // Instant Collection (ALWAYS runs, even in background)
+                    if (distanceSq <= 225) {
+                        // if (refiner.animationScale > -1) continue;
+                        refiner.mineralsStored += Math.floor(mat.value);
+                        deleteMaterial(planet, m); 
+                        m--; 
+                        materialCollected = true;
+                        break; 
+                    }
+
+                    // Instant Collection (ONLY runs in background planets)
+                    if (!drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
+                        // if (refiner.animationScale > -1) continue;
+                        material += Math.floor(mat.value);
+                        deleteMaterial(planet, m); 
+                        m--; 
+                        materialCollected = true;
+                        break; 
+                    }
+
+                    // Tractor Beam Pull (ONLY runs on active planet!)
+                    if (drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
+                        // if (refiner.animationScale > -1) continue;
                         mat.timeInTractorBeam += 0.05;
                         let beamTime = Math.min(mat.timeInTractorBeam, 1);
                         
@@ -865,44 +881,8 @@ app.ticker.add((delta) => {
                         mat.angle += (angleDiff * beamTime) + toRadians(0.5);
                     }
 
-                    // Start the refine at 50 materials
-                    if (refiner.mineralsStored > 50 && refiner.animationScale == -1) refiner.animationScale = 1;
-
-
-                    // At the middle of the refine animation, push the new material
-                    if (refiner.animationScale == -0.95) {
-                        // Create the graphic
-                        const newMaterialGraphic = new PIXI.Sprite(materialTexture);
-                        newMaterialGraphic.anchor.set(0.5);
-                        newMaterialGraphic.position.set(refiner.x, refiner.y);
-                        newMaterialGraphic.visible = drawThisPlanet; // Hide if spawning on another planet
-                        materialContainer.addChild(newMaterialGraphic);
-
-                        // The halfway orbit radius is the average of the max radius and the planet radius
-                        let halfwayOrbit = (450 + planet.radius + 15)/2;
-                        let radiusChangeModifier = 1;
-                    
-                        if (refiner.radius > halfwayOrbit) radiusChangeModifier = -1;
-
-                        // Push the refined material
-                        planet.materialsToCollect.push({
-                            radius: refiner.radius+6,
-                            angle: refiner.angle,
-                            rotation: 0,
-                            radiusChange: (0.6 - planet.gravityFactor)*radiusChangeModifier,
-                            angleChange: 0,
-                            alpha: 1,
-                            timeInTractorBeam: 0,
-                            value: refiner.mineralsStored * 2,
-                            refined: true,
-                            x: refiner.x,
-                            y: refiner.y,
-
-                            graphic: newMaterialGraphic
-                        });
-
-                        refiner.mineralsStored = 0;
-                    }
+                    // Start the refine at 100 material value
+                    if (refiner.mineralsStored > refiner.radius && refiner.animationScale == -1) refiner.animationScale = 1;
                 }
             }
             
@@ -1213,6 +1193,43 @@ app.ticker.add((delta) => {
 
             if (p.animationScale > -1) p.animationScale -= 0.05;
             p.animationScale = Math.round(p.animationScale * 100) / 100;
+
+            refiner = p;
+
+            // At the middle of the refine animation, push the new material
+            if (refiner.animationScale == -0.95) {
+                // Create the graphic
+                const newMaterialGraphic = new PIXI.Sprite(materialTexture);
+                newMaterialGraphic.anchor.set(0.5);
+                newMaterialGraphic.position.set(refiner.x, refiner.y);
+                newMaterialGraphic.visible = drawThisPlanet; // Hide if spawning on another planet
+                materialContainer.addChild(newMaterialGraphic);
+
+                // The halfway orbit radius is the average of the max radius and the planet radius
+                let halfwayOrbit = (450 + planet.radius + 15)/2;
+                let radiusChangeModifier = 1;
+            
+                if (refiner.radius > halfwayOrbit) radiusChangeModifier = -1;
+
+                // Push the refined material
+                planet.materialsToCollect.push({
+                    radius: refiner.radius+6,
+                    angle: refiner.angle,
+                    rotation: 0,
+                    radiusChange: (0.6 - planet.gravityFactor)*radiusChangeModifier,
+                    angleChange: 0,
+                    alpha: 1,
+                    timeInTractorBeam: 0,
+                    value: refiner.mineralsStored * 2,
+                    refined: true,
+                    x: refiner.x,
+                    y: refiner.y,
+
+                    graphic: newMaterialGraphic
+                });
+
+                refiner.mineralsStored = 0;
+            }
 
             // Draw Refiners
             if (drawThisPlanet) {
@@ -1795,9 +1812,21 @@ function spawnFireParticle(radius, angle) {
 }
 
 
+
 function deleteMaterial(planet, index) {
-    planet.materialsToCollect[index].graphic.destroy();
-    planet.materialsToCollect.splice(index, 1);
+    const materials = planet.materialsToCollect;
+    const lastIndex = materials.length - 1;
+
+    // Turn off the graphic
+    materials[index].graphic.destroy();
+
+    // If the item we are deleting is NOT the last item in the array, swap them
+    if (index !== lastIndex) {
+        materials[index] = materials[lastIndex];
+    }
+    
+    // Remove the last item (which is now either the deleted item, or a duplicate of the swapped item)
+    materials.pop();
 }
 
 // function olddeleteMaterial(planet, index) {
@@ -2363,9 +2392,41 @@ function polarToCartesian(radius, angle, centerX = 500, centerY = 500) {
     };
 }
 
+const precision = 1000; // Multiplier for decimal precision
+const sinLUT = new Float32Array(360 * precision);
+const cosLUT = new Float32Array(360 * precision);
+
+// Pre-calculate 360,000 values
+for (let i = 0; i < 360 * precision; i++) {
+    let radians = (i / precision) * (Math.PI / 180);
+    sinLUT[i] = Math.sin(radians);
+    cosLUT[i] = Math.cos(radians);
+}
+
+function fastSin(radians) {
+    // Keep angle positive and within 0 to 2*PI
+    let normalized = radians % (Math.PI * 2);
+    if (normalized < 0) normalized += (Math.PI * 2);
+    
+    // Convert radians back to our array index
+    let degrees = normalized * (180 / Math.PI);
+    let index = Math.floor(degrees * precision);
+    
+    return sinLUT[index];
+}
+
+function fastCos(radians) {
+    let normalized = radians % (Math.PI * 2);
+    if (normalized < 0) normalized += (Math.PI * 2);
+    let degrees = normalized * (180 / Math.PI);
+    let index = Math.floor(degrees * precision);
+    
+    return cosLUT[index];
+}
+
 function polarToCartesianWrite(radius, angle, object, centerX = 500, centerY = 500) {
-    object.x = centerX + radius * Math.cos(angle),
-    object.y = centerY + radius * Math.sin(angle)
+    object.x = centerX + radius * fastCos(angle),
+    object.y = centerY + radius * fastSin(angle)
 }
 
 function cartesianToPolar(objectX, objectY) {
