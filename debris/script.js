@@ -394,12 +394,19 @@ planetScene.addChild(planetGraphic);
 
 // 1. Draw a master material square ONCE and turn it into a texture
 const baseMaterialGraphic = new PIXI.Graphics();
-baseMaterialGraphic.beginFill(0x2EBFA5);
+baseMaterialGraphic.beginFill(0xFFFFFF);
 baseMaterialGraphic.drawRect(-4, -4, 8, 8); 
 baseMaterialGraphic.endFill();
+baseMaterialGraphic.tint = 0x2EBFA5;
 const materialTexture = app.renderer.generateTexture(baseMaterialGraphic);
 
 
+const bigMaterialGraphic = new PIXI.Graphics();
+bigMaterialGraphic.beginFill(0xFFFFFF);
+bigMaterialGraphic.drawRect(-4, -4, 8, 8); 
+bigMaterialGraphic.endFill();
+bigMaterialGraphic.tint = 0xff006e;
+const bigMaterialTexture = app.renderer.generateTexture(bigMaterialGraphic);
 
 // Power above materials
 planetScene.addChild(powerLineGraphic);
@@ -1199,7 +1206,7 @@ app.ticker.add((delta) => {
             // At the middle of the refine animation, push the new material
             if (refiner.animationScale == -0.95) {
                 // Create the graphic
-                const newMaterialGraphic = new PIXI.Sprite(materialTexture);
+                const newMaterialGraphic = new PIXI.Sprite(bigMaterialTexture);
                 newMaterialGraphic.anchor.set(0.5);
                 newMaterialGraphic.position.set(refiner.x, refiner.y);
                 newMaterialGraphic.visible = drawThisPlanet; // Hide if spawning on another planet
