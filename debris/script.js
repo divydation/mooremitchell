@@ -153,6 +153,9 @@ let shipPosition = {
 // Particles
 let fire = [];
 
+let materialsCollectedRecently = 0;
+let materialsCollectedTimer = 0;
+
 
 
 view = "planet";
@@ -559,6 +562,28 @@ app.ticker.add((delta) => {
         lastCrystal = crystal;
     }
 
+    materialsCollectedTimer++;
+
+    if (materialsCollectedTimer == 60) {
+        materialsCollectedTimer = 0;
+
+        // Per Drills
+        let numberOfDrills = 0;
+        for (let i = 0; i < planets.length; i++) {
+            let p = planets[i]
+            numberOfDrills = numberOfDrills + p.drills.length;
+        }
+        rate = materialsCollectedRecently / numberOfDrills;
+
+
+        // Per second
+        document.getElementById("efficiency").innerHTML = `${formatNumber(materialsCollectedRecently)}`;
+
+
+        materialsCollectedRecently = 0;
+        document.getElementById("stats").innerHTML = `${formatNumber(rate)}`;
+    }
+
     // Timing control
     let now = Date.now();
     let dt = now - lastTime;
@@ -747,9 +772,12 @@ app.ticker.add((delta) => {
             let mRadius = mat.radius;
             let mAngle = mat.angle;
             
-            // Cache Cartesian for collisions
-            // Collection Math only runs every 5th frame
-            if (drawThisPlanet && frameCounter % 5 !== i % 5)  polarToCartesianWrite(mRadius, mAngle, mat);;
+            // Update Cartesian coordinates for collisions.
+            // Active planets update every frame for smooth ship collection.
+            // Background planets update ONLY when their math tick runs (every 10th frame).
+            if (drawThisPlanet || (!drawThisPlanet && frameCounter % 10 === i % 10)) {
+                polarToCartesianWrite(mRadius, mAngle, mat);
+            }
            
 
 
@@ -762,6 +790,7 @@ app.ticker.add((delta) => {
                 // Ship Instant Collect
                 if (distanceSq <= 225) {
                     material += Math.floor(mat.value);
+                    materialsCollectedRecently += Math.floor(mat.value);
                     deleteMaterial(planet, m); 
                     m--; 
                     continue; 
@@ -810,6 +839,7 @@ app.ticker.add((delta) => {
                     // Instant Collection (ALWAYS runs, even in background)
                     if (distanceSq <= 225) {
                         material += Math.floor(mat.value);
+                        materialsCollectedRecently += Math.floor(mat.value);
                         deleteMaterial(planet, m); 
                         m--; 
                         materialCollected = true;
@@ -819,6 +849,7 @@ app.ticker.add((delta) => {
                     // Instant Collection (ONLY runs in background planets)
                     if (!drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
                         material += Math.floor(mat.value);
+                        materialsCollectedRecently += Math.floor(mat.value);
                         deleteMaterial(planet, m); 
                         m--; 
                         materialCollected = true;
