@@ -912,7 +912,7 @@ app.ticker.add((delta) => {
                     // Instant Collection (ONLY runs in background planets)
                     if (!drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
                         // if (refiner.animationScale > -1) continue;
-                        material += Math.floor(mat.value);
+                        refiner.mineralsStored += Math.floor(mat.value);
                         deleteMaterial(planet, m); 
                         m--; 
                         materialCollected = true;
