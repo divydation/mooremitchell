@@ -97,11 +97,9 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-if (userHasSeenUpdate == "2.1") {
+if (userHasSeenUpdate == "2.1.1") {
     document.getElementById("changelog").style.display = "none";
-} 
-
-if (userHasSeenUpdate == null) {
+} else {
     document.getElementById("changelog").style.display = "flex";
 }
 
@@ -109,13 +107,9 @@ if (userHasSeenUpdate == null) {
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
-        saveUpdateConfirm();
+        localStorage.setItem("updateVerified", "2.1.1");
     }, 200);
 });
-
-function saveUpdateConfirm() {
-    localStorage.setItem("updateVerified", "2.1");
-}
 
 
 
@@ -198,6 +192,7 @@ const getBaseDevices = () => ({
 
 drillRateUpgradeCost = 10;
 collectionRadiusUpgradeCost = 10;
+boostSpeedUpgradeCost = 10;
 
 
 // UPGRADES
@@ -205,6 +200,9 @@ drillProductionRate = 5000;
 drillLevel = 1;
 collectionRadius = 50;
 collectionRadiusLevel = 1;
+
+boostSpeedAdd = 5;
+boostSpeedLevel = 1;
 
 
 
@@ -623,7 +621,7 @@ app.ticker.add((delta) => {
         playRiserSweep(flightRadius);
     }
 
-    if (boostButtonHeld && targetBoost < 5) {
+    if (boostButtonHeld && targetBoost < boostSpeedAdd) {
         targetBoost += 1;
     }
 
@@ -3041,6 +3039,16 @@ function upgradeCollectionLevel() {
     collectionRadiusLevel++;
 }
 
+function upgradeBoostSpeedLevel() {
+    if (crystal < boostSpeedUpgradeCost) return;
+    crystal -= boostSpeedUpgradeCost;
+    boostSpeedUpgradeCost = Math.floor(boostSpeedUpgradeCost * 1.5);
+
+    boostSpeedAdd += 1;
+
+    boostSpeedLevel++;
+}
+
 function upgradeRefineChainLevel() {
     if (crystal < refineChainUpgradeCost) return;
     crystal -= refineChainUpgradeCost;
@@ -3681,6 +3689,9 @@ function updateLabels() {
 
     document.getElementById("collectionRadiusUpgradeCost").textContent = formatNumber(collectionRadiusUpgradeCost);
     document.getElementById("collectionRadiusLevel").textContent = "LVL " + formatNumber(collectionRadiusLevel).toString();
+
+    document.getElementById("boostSpeedUpgradeCost").textContent = formatNumber(boostSpeedUpgradeCost);
+    document.getElementById("boostSpeedLevel").textContent = "LVL " + formatNumber(boostSpeedLevel).toString();
     // document.getElementById("refineChainUpgradeCost").textContent = formatNumber(refineChainUpgradeCost);
     // document.getElementById("refineChainLevel").textContent = "LVL " + formatNumber(refineChainLevel).toString();
 }
@@ -3746,8 +3757,8 @@ holdButtons.forEach(button => {
                 upgradeDrillRate();
             } else if (button.id == "collectionRadiusUpgrade") {
                 upgradeCollectionLevel();
-            } else if (button.id == "refineChainUpgrade") {
-                upgradeRefineChainLevel();
+            } else if (button.id == "boostSpeedUpgrade") {
+                upgradeBoostSpeedLevel();
             } else if (button.id == "resetButton") {
                 localStorage.removeItem("space_game_save");
                 window.location.reload();
@@ -3951,6 +3962,7 @@ function saveGame() {
         energy, material, crystal, flightRadius, targetRadius, shipRotation,
         drillRateUpgradeCost, collectionRadiusUpgradeCost, drillProductionRate,
         drillLevel, collectionRadius, collectionRadiusLevel, currentShipColourIndex,
+        boostSpeedLevel, boostSpeedAdd, boostSpeedUpgradeCost,
         planets: planetsToSave,
         probes: cleanProbes
     };
@@ -3978,13 +3990,15 @@ function loadGame() {
     shipRotation = state.shipRotation;
     drillRateUpgradeCost = state.drillRateUpgradeCost;
     collectionRadiusUpgradeCost = state.collectionRadiusUpgradeCost;
+
     drillProductionRate = state.drillProductionRate;
     drillLevel = state.drillLevel;
     collectionRadius = state.collectionRadius;
     collectionRadiusLevel = state.collectionRadiusLevel;
-    refineChainCount = state.refineChainCount;
-    refineChainLevel = state.refineChainLevel;
-    refineChainUpgradeCost = state.refineChainUpgradeCost;
+    boostSpeedLevel = state.boostSpeedLevel !== undefined ? state.boostSpeedLevel : 1;
+    boostSpeedAdd = state.boostSpeedAdd !== undefined ? state.boostSpeedAdd : 5;
+    boostSpeedUpgradeCost = state.boostSpeedUpgradeCost !== undefined ? state.boostSpeedAdd : 10;
+
     currentShipColourIndex = state.currentShipColourIndex;
 
     probeParticles = []; // Clear visual trails on load
