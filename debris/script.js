@@ -1912,8 +1912,10 @@ function spawnComet(planet) {
     
     // Calculate the true world-space bounds by dividing the physical screen
     // by the scale factor you apply in resizeGameWorld()
-    const width = app.screen.width / solarSystem.scale.x;
-    const height = app.screen.height / solarSystem.scale.y;
+    width = app.screen.width / solarSystem.scale.x;
+    height = app.screen.height / solarSystem.scale.y;
+
+    if (height > width) height = 1000;
 
     // Define our valid sides (excluding bottom)
     const validSides = ['left', 'right'];
