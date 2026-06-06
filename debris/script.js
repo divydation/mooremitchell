@@ -153,8 +153,13 @@ let shipPosition = {
 // Particles
 let fire = [];
 
+
+// Stats
 let materialsCollectedRecently = 0;
 let materialsCollectedTimer = 0;
+
+let smoothedMaterialsPerSecond = 0;
+let smoothedRatePerDrill = 0;
 
 
 
@@ -564,24 +569,33 @@ app.ticker.add((delta) => {
 
     materialsCollectedTimer++;
 
-    if (materialsCollectedTimer == 60) {
+    // Use >= just in case a frame skip pushes the timer past exactly 60
+    if (materialsCollectedTimer >= 60) {
         materialsCollectedTimer = 0;
 
-        // Per Drills
+        // 1. Calculate Drills
         let numberOfDrills = 0;
         for (let i = 0; i < planets.length; i++) {
-            let p = planets[i]
-            numberOfDrills = numberOfDrills + p.drills.length;
+            numberOfDrills += planets[i].drills.length;
         }
-        rate = materialsCollectedRecently / numberOfDrills;
 
+        // 2. Calculate the raw rates for THIS specific second
+        let rawMaterialsPerSecond = materialsCollectedRecently;
+        
+        // Safety check: Prevent dividing by zero if the player has 0 drills!
+        let rawRatePerDrill = numberOfDrills > 0 ? (rawMaterialsPerSecond / numberOfDrills) : 0;
 
-        // Per second
-        document.getElementById("efficiency").innerHTML = `${formatNumber(materialsCollectedRecently)}`;
+        // 3. Apply the "Shock Absorber" (Exponential Moving Average)
+        // Here, 0.2 is our alpha. We keep 80% of the old average and blend in 20% of the new data.
+        smoothedMaterialsPerSecond = (smoothedMaterialsPerSecond * 0.8) + (rawMaterialsPerSecond * 0.2);
+        smoothedRatePerDrill = (smoothedRatePerDrill * 0.8) + (rawRatePerDrill * 0.2);
 
+        // 4. Update the UI using the SMOOTHED values
+        document.getElementById("efficiency").innerHTML = `${formatNumber(smoothedMaterialsPerSecond)}`;
+        document.getElementById("stats").innerHTML = `${formatNumber(smoothedRatePerDrill)}`;
 
+        // 5. Empty the bucket for the next second
         materialsCollectedRecently = 0;
-        document.getElementById("stats").innerHTML = `${formatNumber(rate)}`;
     }
 
     // Timing control
@@ -4220,5 +4234,3 @@ updateLabels();
 
 currentPlanet.graphics.addChild(systemShipPivot);
 shipGraphic.tint = shipColours[currentShipColourIndex];
-
-
