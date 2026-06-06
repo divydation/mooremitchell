@@ -3999,7 +3999,7 @@ function loadGame() {
     collectionRadiusLevel = state.collectionRadiusLevel;
     boostSpeedLevel = state.boostSpeedLevel !== undefined ? state.boostSpeedLevel : 1;
     boostSpeedAdd = state.boostSpeedAdd !== undefined ? state.boostSpeedAdd : 5;
-    boostSpeedUpgradeCost = state.boostSpeedUpgradeCost !== undefined ? state.boostSpeedAdd : 10;
+    boostSpeedUpgradeCost = state.boostSpeedUpgradeCost !== undefined ? state.boostSpeedUpgradeCost : 10;
 
     currentShipColourIndex = state.currentShipColourIndex;
 
