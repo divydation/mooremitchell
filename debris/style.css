@@ -106,7 +106,10 @@ button {
 
 
 
-
+.disapearingDiv {
+    transition: 0.2s !important;
+    width: 100%;
+}
 
 .emptyButton {
     background: rgba(100,100,100,0.25);
@@ -222,6 +225,18 @@ button > svg {
 .resources > div > svg {
     width: 5vw;
     height: 5vw;
+}
+
+.buttonSVG {
+    stroke-width: 2;
+    color: #FFF;
+    fill: rgba(0,0,0,0);
+    stroke: #FFF;
+    scale: 1.25;
+}
+
+button svg {
+    pointer-events: none;
 }
 
 .energy {
@@ -396,10 +411,30 @@ button > svg {
 }
 
 
-/* .resourceBoxes {
-    background-color: rgba(20,20,20,0.75);
-    box-shadow: 0 0 2vw rgba(20,20,20,0.75);
+.resourceBoxes {
+    background-color: rgba(100,100,100,0.5);
+    /* background-color: red; */
+    /* box-shadow: 0 0 2vw rgba(20,20,20,0.75); */
     border-radius: 2vw;
-    padding-left: 1vw;
-    padding-right: 1vw;
-} */
+    padding-left: 2vw;
+    padding-right: 2vw;
+    padding-top: 1vw;
+    padding-bottom: 1vw;
+    
+}
+
+.resourceBoxMaterial {
+    background-color: rgba(46, 191, 165, 0.1);
+
+
+    transition: 0.3s;
+}
+
+.resourceBoxEnergy {
+    background-color: rgba(245, 215, 82, 0.1);
+}
+
+.resourceBoxCrystal {
+    background-color: rgba(211, 54, 242, 0.1);
+}
+

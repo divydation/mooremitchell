@@ -155,6 +155,8 @@ let materialsCollectedTimer = 0;
 let smoothedMaterialsPerSecond = 0;
 let smoothedRatePerDrill = 0;
 
+let maxPerDrill = 0;
+
 
 
 view = "planet";
@@ -173,7 +175,7 @@ const baseCosts = {
     drillCostMaterial: 5,
     satelliteCostMaterial: 25,
     collectorCostMaterial: 50,
-    laserSatelliteCostMaterial: 50,
+    laserSatelliteCostMaterial: 100,
     refinerCostMaterial: 5000,
 };
 
@@ -583,6 +585,10 @@ app.ticker.add((delta) => {
         // Safety check: Prevent dividing by zero if the player has 0 drills!
         let rawRatePerDrill = numberOfDrills > 0 ? (rawMaterialsPerSecond / numberOfDrills) : 0;
 
+        if (rawRatePerDrill > maxPerDrill) {
+            maxPerDrill = rawRatePerDrill;
+        }
+
         // 3. Apply the "Shock Absorber" (Exponential Moving Average)
         // Here, 0.2 is our alpha. We keep 80% of the old average and blend in 20% of the new data.
         smoothedMaterialsPerSecond = (smoothedMaterialsPerSecond * 0.8) + (rawMaterialsPerSecond * 0.2);
@@ -591,6 +597,7 @@ app.ticker.add((delta) => {
         // 4. Update the UI using the SMOOTHED values
         document.getElementById("efficiency").innerHTML = `${formatNumber(smoothedMaterialsPerSecond)}`;
         document.getElementById("stats").innerHTML = `${formatNumber(smoothedRatePerDrill)}`;
+        document.getElementById("maxPerDrill").innerHTML = `${formatNumber(maxPerDrill)}`;
 
         // 5. Empty the bucket for the next second
         materialsCollectedRecently = 0;
@@ -779,7 +786,7 @@ app.ticker.add((delta) => {
             // 1. Basic Background Math (Always runs)
             mat.radius += mat.radiusChange;
             mat.value *= 1.005;
-            // mat.value = Math.min(mat.value, 1000); 
+            mat.value = Math.min(mat.value, 20000); 
 
             let mRadius = mat.radius;
             let mAngle = mat.angle;
@@ -3368,7 +3375,20 @@ function travelToSelectedPlanet() {
 }
 
 
+// Resource Labels
 
+function flashMaterialLabel() {
+    label = document.getElementById("materialLabel");
+    label.style.setProperty(
+        '--label-bg', 
+        'linear-gradient(to right, rgba(46, 191, 165, 0.2), rgba(46, 191, 165, 0.1) 50%)'
+    );
+
+    // 2. Revert the variable back to transparent after 300 milliseconds
+    setTimeout(() => {
+        label.style.setProperty('--label-bg', 'linear-gradient(to right, rgba(46, 191, 165, 0.1), rgba(46, 191, 165, 0.1) 50%)');
+    }, 300);
+}
 
 
 
@@ -3564,6 +3584,7 @@ document.getElementById("deviceMenuTwo").style.display = "none";
 document.getElementById("upgradeMenu").style.display = "none";
 document.getElementById("planetSelectMenu").style.display = "none";
 document.getElementById("settingsMenu").style.display = "none";
+document.getElementById("statsMenu").style.display = "none";
 
 function switchMenu(oldActiveMenuID, newActiveMenuID) {
     document.getElementById(oldActiveMenuID).style.display = "none";
@@ -3597,16 +3618,18 @@ menuButtons.forEach(button => {
 
 function menuFade() {
     setTimeout(() => {
-        buttons.forEach(currentbutton => {
-        currentbutton.style.opacity = "0";
-    });
+        // buttons.forEach(currentbutton => {
+        // currentbutton.style.opacity = "0";
+        document.getElementById("disapearingDiv").style.opacity = "0";
+    // });
     }, 100);
     
 
     setTimeout(() => {
-        buttons.forEach(currentbutton => {
-        currentbutton.style.opacity = "1";
-        });
+        // buttons.forEach(currentbutton => {
+        // currentbutton.style.opacity = "1";
+        // });
+        document.getElementById("disapearingDiv").style.opacity = "1";
     }, 250);
 }
 
@@ -3932,7 +3955,7 @@ function saveGame() {
             satelliteCostMaterial: p.satelliteCostMaterial,
             collectorCostMaterial: p.collectorCostMaterial,
             laserSatelliteCostMaterial: p.laserSatelliteCostMaterial,
-            refineryCostMaterial: p.refineryCostMaterial,
+            refinerCostMaterial: p.refinerCostMaterial,
             smartCollectorCostMaterial: p.smartCollectorCostMaterial,
 
             materialsToCollect: cleanMaterials,
@@ -4026,7 +4049,7 @@ function loadGame() {
         if (savedPlanet.satelliteCostMaterial !== undefined) p.satelliteCostMaterial = savedPlanet.satelliteCostMaterial;
         if (savedPlanet.collectorCostMaterial !== undefined) p.collectorCostMaterial = savedPlanet.collectorCostMaterial;
         if (savedPlanet.laserSatelliteCostMaterial !== undefined) p.laserSatelliteCostMaterial = savedPlanet.laserSatelliteCostMaterial;
-        if (savedPlanet.refineryCostMaterial !== undefined) p.refineryCostMaterial = savedPlanet.refineryCostMaterial;
+        if (savedPlanet.refinerCostMaterial !== undefined) p.refinerCostMaterial = savedPlanet.refinerCostMaterial;
         if (savedPlanet.smartCollectorCostMaterial !== undefined) p.smartCollectorCostMaterial = savedPlanet.smartCollectorCostMaterial;
 
         // Materials
