@@ -3767,7 +3767,9 @@ holdButtons.forEach(button => {
                 return;
             } else if (button.id == "resetPlanetButton") {
                 resetCurrentPlanet();
-            } else if (button.id == "shipColourButton") {
+            } else if (button.id == "resetMaterialButton") {
+                material = 0;
+            }else if (button.id == "shipColourButton") {
                 changeShipColour();
             } else if (button.id == "resolutionButton") {
                 changeResolution();
