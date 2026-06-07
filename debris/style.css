@@ -425,7 +425,7 @@ button svg {
 
 .resourceBoxMaterial {
     background-color: rgba(46, 191, 165, 0.1);
-
+    /* box-shadow: 0 0 2vw rgba(46, 191, 165, 0.1); */
 
     transition: 0.3s;
 }
@@ -438,3 +438,6 @@ button svg {
     background-color: rgba(211, 54, 242, 0.1);
 }
 
+#materialIcon {
+    transition: 0.1s;
+}

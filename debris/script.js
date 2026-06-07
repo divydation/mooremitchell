@@ -7,7 +7,7 @@ const app = new PIXI.Application({
     resizeTo: window, 
     autoDensity: true,
     // resolution: Math.min(window.devicePixelRatio || 1, 2),
-    resolution: 1,
+    resolution: 2,
     backgroundColor: 0x141414,
     // antialias: true,
 });
@@ -67,10 +67,11 @@ app.renderer.on('resize', resizeGameWorld);
 document.body.classList.add("stop-scrolling");
 
 let probeText = null;
+let style;
 document.fonts.load('10px "Silkscreen"').then(() => {
     
     // 1. Configure the Style
-    const style = new PIXI.TextStyle({
+    style = new PIXI.TextStyle({
         fontFamily: 'Silkscreen', // Must match the name from Google Fonts exactly
         fontSize: 30,
         fontWeight: '400',
@@ -97,7 +98,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-if (userHasSeenUpdate == "2.1.1") {
+if (userHasSeenUpdate == "2.1.2") {
     document.getElementById("changelog").style.display = "none";
 } else {
     document.getElementById("changelog").style.display = "flex";
@@ -107,7 +108,7 @@ if (userHasSeenUpdate == "2.1.1") {
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
-        localStorage.setItem("updateVerified", "2.1.1");
+        localStorage.setItem("updateVerified", "2.1.2");
     }, 200);
 });
 
@@ -125,7 +126,7 @@ let shipHeight = 25;
 
 let shipRotation = 0;
 let shipRotationSpeed = 0.01;
-changeShipSpeed();
+shipRotationSpeed = changeShipSpeed(flightRadius);
 
 
 let energy = 0;
@@ -329,9 +330,13 @@ planets.push({
     ...baseCosts
 });
 
-
-
 let currentPlanet = planets[1];
+
+
+
+
+
+
 
 
 
@@ -459,6 +464,91 @@ for (let i = 0; i < MAX_FIRE; i++) {
 const fireColors = [0xFF0000, 0xFF4500, 0xFF8C00, 0xFFA500, 0xFFD700];
 
 
+alienShips = [];
+
+const alienShipsContainer = new PIXI.Container();
+alienShipsContainer.position.set(500, 500);
+
+const alienShipTextContainer = new PIXI.Container();
+
+
+const alienShipGraphicOne = new PIXI.Graphics();
+alienShipGraphicOne.beginFill(0x29BF12);
+alienShipGraphicOne.drawRect(-12.5,-12.5, 25, 25)
+alienShipGraphicOne.endFill();
+
+planetScene.addChild(alienShipsContainer);
+planetScene.addChild(alienShipTextContainer);
+alienShipsContainer.addChild(alienShipGraphicOne);
+
+let alienShipOneText;
+document.fonts.load('20px "Silkscreen"').then(() => {
+    
+    // 1. Define your base style
+    const baseStyle = new PIXI.TextStyle({
+        fontFamily: 'Silkscreen',
+        fontSize: 30,
+        fontWeight: '400',
+        fill: '#FFFFFF',
+        align: 'center'
+    });
+
+    // 2. Clone the base style for each unique text
+    alienShipOneText = new PIXI.Text('1000', baseStyle.clone());
+    alienShipOneText.anchor.set(0.5, 0.55);
+    alienShipOneText.style.fill = '#F5D752'; // This now only affects the clone!
+    alienShipTextContainer.addChild(alienShipOneText);
+
+    alienShipOneTextItem = new PIXI.Text('UPGRADE', baseStyle.clone());
+    alienShipOneTextItem.anchor.set(0.5, 0.55);
+    alienShipOneTextItem.style.fill = '#FFFFFF';
+    alienShipTextContainer.addChild(alienShipOneTextItem);
+
+}).catch((err) => {
+    console.error("Google Font failed to load: ", err);
+});
+
+alienShips.push({
+    x: 0,
+    y: 0,
+    orbitRadius: 265,
+    orbitSpeed: 43051*(265**(-2.843)),
+    orbitAngle: 0,
+    energyLeft: 50,
+    status: "waiting",
+    graphic: alienShipGraphicOne,
+});
+
+
+const alienItems = [
+    {
+        itemText: "50k",
+        itemCost: 1500,
+        textColour: "#2EBFA5",
+        resourceType: "material",
+        reward: 50000,
+    },
+    {
+        itemText: "30",
+        itemCost: 1000,
+        textColour: "#d338f2",
+        resourceType: "crystal",
+        reward: 30,
+    }
+];
+
+function getRandomItem() {
+    const randomIndex = Math.floor(Math.random() * alienItems.length);
+    return alienItems[randomIndex];
+}
+
+for (let i = 0; i < alienShips.length; i++) {
+    let alienShip = alienShips[i];
+
+    alienShip.item = getRandomItem();
+    alienShip.energyLeft = alienShip.item.itemCost;
+}
+
 
 planetScene.addChild(shipGraphic);
 
@@ -545,7 +635,7 @@ let frameCounter = 0;
 
 app.ticker.add((delta) => {
     frameCounter++;
-    frameCounter % 60;
+    frameCounter = frameCounter % 60;
 
     let planet = null;
     powerLineGraphic.clear();
@@ -604,11 +694,14 @@ app.ticker.add((delta) => {
     }
 
     // Timing control
-    let now = Date.now();
-    let dt = now - lastTime;
-    lastTime = now;
+    // let now = Date.now();
+    // let dt = now - lastTime;
+    // lastTime = now;
 
-    if (dt > 100) dt = MS_PER_FRAME; 
+    let dt = app.ticker.elapsedMS;
+
+    if (dt > 100) dt = 16.66; // MS_PER_FRAME
+
 
     shipX = 500 + (flightRadius + 12.5) * Math.cos(shipRotation);
     shipY = 500 + (flightRadius + 12.5) * Math.sin(shipRotation);
@@ -745,7 +838,7 @@ app.ticker.add((delta) => {
             if (targetRadius > 450) targetRadius = 450;
             flightRadius += (targetRadius - flightRadius) * 0.05; // Otherwise, keep lerping
             flightRadius = Math.round(flightRadius * 100) / 100;
-            changeShipSpeed();
+            shipRotationSpeed = changeShipSpeed(flightRadius);
 
             // Rotate ship
             shipRotation += shipRotationSpeed;
@@ -1377,7 +1470,7 @@ app.ticker.add((delta) => {
 
                 distanceToComet = calculateDistance(laserSatPosition, cometPosition);
 
-                if (distanceToComet < smallestDistance && !isLaserBlocked(laserSatPosition, cometPosition)) {
+                if (distanceToComet < smallestDistance && !isLaserBlocked(laserSatPosition, cometPosition, planet)) {
                     smallestDistance = distanceToComet;
                     closestComet = comet;
                 }
@@ -1393,7 +1486,7 @@ app.ticker.add((delta) => {
                 damagePerFrame = 0.05
                 closestComet.material -= damagePerFrame;
 
-                drawLine = isLaserBlocked(laserSatPosition, closestCometPosition);
+                drawLine = isLaserBlocked(laserSatPosition, closestCometPosition, planet);
 
                 let dy = closestCometPosition.y - laserSatPosition.y;
                 let dx = closestCometPosition.x - laserSatPosition.x;
@@ -1495,12 +1588,105 @@ app.ticker.add((delta) => {
             }
         }
 
+        // Alien Ships
+        if (p.name == "greenPlanet" && drawThisPlanet) {
+            alienShipsContainer.visible = true;
+            
+
+            alienShipsContainer.rotation += changeShipSpeed(265);
+
+            for (let i = 0; i < alienShips.length; i++) {
+                let alienShip = alienShips[i];
+
+                // When energy has been transferred, get new item and hide text
+                if (alienShip.energyLeft <= 0 && alienShip.status == "waiting") {
+                    if (alienShip.item.resourceType == "material") material += alienShip.item.reward;
+                    if (alienShip.item.resourceType == "crystal") crystal += alienShip.item.reward;
+
+                    alienShip.item = getRandomItem();
+                    alienShip.energyLeft = alienShip.item.itemCost;
+
+                    alienShipTextContainer.visible = false;
+
+                    alienShip.status = "dropping";
+                    continue;
+                }
+
+                if (alienShip.status == "dropping") {
+                    alienShip.orbitRadius -= 0.5;
+                    alienShip.graphic.x = alienShip.orbitRadius;
+
+                    if (alienShip.orbitRadius < 50) alienShip.status = "rising";
+                    continue;
+                }
+
+                if (alienShip.status == "rising") {
+                    alienShip.orbitRadius += 0.5;
+                    alienShip.graphic.x = alienShip.orbitRadius;
+
+                    if (alienShip.orbitRadius >= 265) alienShip.status = "waiting";
+                    continue;
+                }
+
+                alienShipOneText.text = alienShip.energyLeft;
+                alienShipOneTextItem.text = alienShip.item.itemText;
+                alienShipOneTextItem.style.fill = alienShip.item.textColour;
+
+                alienShip.graphic.x = alienShip.orbitRadius;
+
+                alienShipTextContainer.visible = true;
+
+                
+                
+
+                polarToCartesianWrite(alienShip.orbitRadius, alienShipsContainer.rotation, alienShip);
+                alienShipOneText.position.set(alienShip.x, alienShip.y + 40);
+                alienShipOneTextItem.position.set(alienShip.x, alienShip.y - 45);
+                
+                if (alienShip.status !== "waiting") {
+                    continue;
+                }
+
+                let dx = Math.abs(alienShip.x - shipPosition.x);
+                let dy = Math.abs(alienShip.y - shipPosition.y);
+
+                if (energy < 1) continue;
+                if (dx > 300 && dy > 300) continue;
+
+                let distanceSq = (dx * dx) + (dy * dy); 
+
+                if (distanceSq <= 10000) {
+                    let randomWidth = Math.random() * 5;
+                    powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
+
+                    // powerLineGraphic.lineStyle(3, 0xF5D752, 1);
+                    powerLineGraphic.moveTo(alienShip.x, alienShip.y);
+                    powerLineGraphic.lineTo(shipPosition.x, shipPosition.y);
+
+                    alienShip.energyLeft -= 1;
+                    energy -= 1;
+                    alienShipOneText.text = alienShip.energyLeft;
+                }
+
+                
+            }
+
+            
+        } else {
+            alienShipsContainer.visible = false;
+            alienShipTextContainer.visible = false;
+        }
+        
+
 
     }
 
     // Ship
     shipGraphic.position.set(shipPosition.x, shipPosition.y);
     shipGraphic.rotation = shipRotation;
+
+    
+    
 
     // Fire
     for (let i = 0; i < MAX_FIRE; i++) {
@@ -2507,7 +2693,7 @@ function cartesianToPolar(objectX, objectY) {
     return polarCoordinates;
 }
 
-function isLaserBlocked(sat, comet) {
+function isLaserBlocked(sat, comet, planet) {
     // 1. Get the vector from Satellite to Comet
     const dx = comet.x - sat.x;
     const dy = comet.y - sat.y;
@@ -2533,7 +2719,7 @@ function isLaserBlocked(sat, comet) {
     const distanceSquared = distDX * distDX + distDY * distDY;
     
     // 6. If distance is less than radius, it's blocked!
-    return distanceSquared < (currentPlanet.radius**2);
+    return distanceSquared < (planet.radius**2);
 }
 
 
@@ -3069,8 +3255,9 @@ function upgradeRefineChainLevel() {
 
 // Ship speed calculations
 
-function changeShipSpeed() {
-    shipRotationSpeed = 43051*(flightRadius**(-2.843));
+function changeShipSpeed(shipRadius) {
+    // shipRotationSpeed = 43051*(flightRadius**(-2.843));
+    return 43051*(shipRadius**(-2.843));
 }
 
 
@@ -3559,10 +3746,10 @@ function changeShipColour() {
     shipGraphic.tint = shipColours[currentShipColourIndex];
 }
 
-resolutions = [0.3, 0.5, 1, 2];
+resolutions = [0.25, 0.5, 1, 2];
 resolutionNames = ["RETRO", "LOW", "NORMAL", "SHARP"]
 antialiasOn = [false, true, true, true]
-currentResolutionIndex = 2;
+currentResolutionIndex = 3;
 // Resolution
 function changeResolution() {
     currentResolutionIndex++;
