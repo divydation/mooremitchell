@@ -424,18 +424,21 @@ button svg {
 }
 
 .resourceBoxMaterial {
-    background-color: rgba(46, 191, 165, 0.1);
+    /* background-color: rgba(46, 191, 165, 0.1); */
     /* box-shadow: 0 0 2vw rgba(46, 191, 165, 0.1); */
+    background-color: rgba(26, 41, 38, 0.9);
 
     transition: 0.3s;
 }
 
 .resourceBoxEnergy {
-    background-color: rgba(245, 215, 82, 0.1);
+    /* background-color: rgba(245, 215, 82, 0.1); */
+    background-color: rgba(49, 44, 27, 0.9);
 }
 
 .resourceBoxCrystal {
-    background-color: rgba(211, 54, 242, 0.1);
+    /* background-color: rgba(211, 54, 242, 0.1); */
+    background-color: rgba(45, 24, 49, 0.9);
 }
 
 #materialIcon {
