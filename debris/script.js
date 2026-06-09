@@ -522,14 +522,14 @@ alienShips.push({
 
 const alienItems = [
     {
-        itemText: "50k",
+        itemText: "5M",
         itemCost: 1500,
         textColour: "#2EBFA5",
         resourceType: "material",
-        reward: 50000,
+        reward: 5000000,
     },
     {
-        itemText: "30",
+        itemText: "40",
         itemCost: 1000,
         textColour: "#d338f2",
         resourceType: "crystal",
@@ -920,6 +920,12 @@ app.ticker.add((delta) => {
                 } 
             }
 
+            if (!drawThisPlanet) {
+                mat.graphic.visible = false;
+            } else {
+                mat.graphic.visible = true;
+            }
+
             // Heavy math logic for background planets only runs every 10th frame
             if (!drawThisPlanet && frameCounter % 10 !== i % 10) {
                 continue; // Skip this frame's calculations for this background planet
@@ -1054,7 +1060,7 @@ app.ticker.add((delta) => {
 
             // --- THIS IS THE NEW DRAWING LINK! ---
             if (drawThisPlanet) {
-                mat.graphic.visible = true;
+                // mat.graphic.visible = true;
                 
                 if (mat.refined) {
                     mat.rotation += 0.05;
@@ -1067,8 +1073,6 @@ app.ticker.add((delta) => {
                 mat.graphic.rotation = mat.angle + mat.rotation;
                 
             
-            } else {
-                mat.graphic.visible = false;
             }
         }
 
@@ -1676,8 +1680,6 @@ app.ticker.add((delta) => {
             alienShipsContainer.visible = false;
             alienShipTextContainer.visible = false;
         }
-        
-
 
     }
 
@@ -3912,7 +3914,7 @@ function updateLabels() {
 
 
 const holdButtons = document.querySelectorAll('.holdButton');
-const HOLD_DURATION = 1000;
+const HOLD_DURATION = 750;
 
 holdButtons.forEach(button => {
     let animationFrameId;
@@ -3943,11 +3945,6 @@ holdButtons.forEach(button => {
         const elapsed = timestamp - startTime;
         let holdPercentage = (elapsed / HOLD_DURATION) * 100;
 
-        // if (button.id == "drill") {
-        //     updateHelp("Drills shoot minerals into space, which increase in value as they oxidise.");
-        // } else if (button.id == "satellite") {
-        //     updateHelp("TESTING 2");
-        // }
 
         // If the user has held for the full 3 seconds (100%+)
         if (holdPercentage >= 100) {
@@ -4241,7 +4238,8 @@ function loadGame() {
 
         // Materials
         p.materialsToCollect = (savedPlanet.materialsToCollect || []).map(d => {
-            const newMaterialGraphic = new PIXI.Sprite(materialTexture);
+            if (d.refined) newMaterialGraphic = new PIXI.Sprite(bigMaterialTexture);
+            if (!d.refined) newMaterialGraphic = new PIXI.Sprite(materialTexture);
             newMaterialGraphic.anchor.set(0.5);
             newMaterialGraphic.position.set(d.x, d.y);
             materialContainer.addChild(newMaterialGraphic);
