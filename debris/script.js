@@ -98,7 +98,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-if (userHasSeenUpdate == "2.1.2") {
+if (userHasSeenUpdate == "2.1.3") {
     document.getElementById("changelog").style.display = "none";
 } else {
     document.getElementById("changelog").style.display = "flex";
@@ -108,7 +108,7 @@ if (userHasSeenUpdate == "2.1.2") {
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
-        localStorage.setItem("updateVerified", "2.1.2");
+        localStorage.setItem("updateVerified", "2.1.3");
     }, 200);
 });
 
@@ -196,6 +196,7 @@ const getBaseDevices = () => ({
 drillRateUpgradeCost = 10;
 collectionRadiusUpgradeCost = 10;
 boostSpeedUpgradeCost = 10;
+materialValueUpgradeCost = 10;
 
 
 // UPGRADES
@@ -206,6 +207,10 @@ collectionRadiusLevel = 1;
 
 boostSpeedAdd = 5;
 boostSpeedLevel = 1;
+
+materialValue = 1.005;
+materialValueLevel = 1;
+
 
 
 
@@ -878,7 +883,7 @@ app.ticker.add((delta) => {
             
             // 1. Basic Background Math (Always runs)
             mat.radius += mat.radiusChange;
-            mat.value *= 1.005;
+            mat.value *= materialValue;
             mat.value = Math.min(mat.value, 20000); 
 
             let mRadius = mat.radius;
@@ -1240,8 +1245,10 @@ app.ticker.add((delta) => {
                 p.productionTimer += dt;
 
                 planetDrillRate = drillProductionRate;
-                if (planet.name == "purplePlanet") planetDrillRate = 5000 / (1.25**(drillLevel*1.5));
-                // console.log("The normal drill rate is " + drillProductionRate + ", the current is " + planetDrillRate);
+                if (planet.name == "purplePlanet") {
+                    planetDrillRate = 5000 / (1.25**(drillLevel*1.5));
+                    // console.log("The normal drill rate is " + drillProductionRate + ", the current is " + planetDrillRate);
+                }
 
                 let targetSpawnTime = Math.max(75, planetDrillRate + p.randomTimeOffset);
 
@@ -1822,7 +1829,7 @@ function deployDrill() {
         arrived: false,
         materialStored: 0,
         productionTimer: 0,
-        randomTimeOffset: Math.random() * 500,
+        randomTimeOffset: Math.random() * 50,
         
         // Save the Pixi references so the loop can update them
         pivot: drillPivot,
@@ -3246,6 +3253,18 @@ function upgradeBoostSpeedLevel() {
     boostSpeedLevel++;
 }
 
+function upgradeMaterialValueLevel() {
+    if (crystal < materialValueUpgradeCost) return;
+    crystal -= materialValueUpgradeCost;
+    materialValueUpgradeCost = Math.floor(materialValueUpgradeCost * 1.5);
+
+    materialValue += 0.0025;
+
+    materialValue = Math.round(materialValue * 10000) / 10000;
+
+    materialValueLevel++;
+}
+
 function upgradeRefineChainLevel() {
     if (crystal < refineChainUpgradeCost) return;
     crystal -= refineChainUpgradeCost;
@@ -3899,15 +3918,16 @@ function updateLabels() {
 
     // UPGRADES
     document.getElementById("drillRateUpgradeCost").textContent = formatNumber(drillRateUpgradeCost);
-    document.getElementById("drillLevel").textContent = "LVL " + formatNumber(drillLevel).toString();
+    document.getElementById("drillLevel").textContent = "" + formatNumber(drillLevel).toString();
 
     document.getElementById("collectionRadiusUpgradeCost").textContent = formatNumber(collectionRadiusUpgradeCost);
-    document.getElementById("collectionRadiusLevel").textContent = "LVL " + formatNumber(collectionRadiusLevel).toString();
+    document.getElementById("collectionRadiusLevel").textContent = "" + formatNumber(collectionRadiusLevel).toString();
 
     document.getElementById("boostSpeedUpgradeCost").textContent = formatNumber(boostSpeedUpgradeCost);
-    document.getElementById("boostSpeedLevel").textContent = "LVL " + formatNumber(boostSpeedLevel).toString();
-    // document.getElementById("refineChainUpgradeCost").textContent = formatNumber(refineChainUpgradeCost);
-    // document.getElementById("refineChainLevel").textContent = "LVL " + formatNumber(refineChainLevel).toString();
+    document.getElementById("boostSpeedLevel").textContent = "" + formatNumber(boostSpeedLevel).toString();
+
+    document.getElementById("materialValueUpgradeCost").textContent = formatNumber(materialValueUpgradeCost);
+    document.getElementById("materialValueLevel").textContent = "" + formatNumber(materialValueLevel).toString();
 }
 
 
@@ -3968,6 +3988,8 @@ holdButtons.forEach(button => {
                 upgradeCollectionLevel();
             } else if (button.id == "boostSpeedUpgrade") {
                 upgradeBoostSpeedLevel();
+            } else if (button.id == "materialValue") {
+                upgradeMaterialValueLevel();
             } else if (button.id == "resetButton") {
                 localStorage.removeItem("space_game_save");
                 window.location.reload();
@@ -4173,7 +4195,8 @@ function saveGame() {
         energy, material, crystal, flightRadius, targetRadius, shipRotation,
         drillRateUpgradeCost, collectionRadiusUpgradeCost, drillProductionRate,
         drillLevel, collectionRadius, collectionRadiusLevel, currentShipColourIndex,
-        boostSpeedLevel, boostSpeedAdd, boostSpeedUpgradeCost,
+        boostSpeedLevel, boostSpeedAdd, boostSpeedUpgradeCost, 
+        materialValue, materialValueLevel, materialValueUpgradeCost,
         planets: planetsToSave,
         probes: cleanProbes
     };
@@ -4209,6 +4232,10 @@ function loadGame() {
     boostSpeedLevel = state.boostSpeedLevel !== undefined ? state.boostSpeedLevel : 1;
     boostSpeedAdd = state.boostSpeedAdd !== undefined ? state.boostSpeedAdd : 5;
     boostSpeedUpgradeCost = state.boostSpeedUpgradeCost !== undefined ? state.boostSpeedUpgradeCost : 10;
+
+    materialValue = state.materialValue !== undefined ? state.materialValue : 1.005;
+    materialValueLevel = state.materialValueLevel !== undefined ? state.materialValueLevel : 1;
+    materialValueUpgradeCost = state.materialValueUpgradeCost !== undefined ? state.materialValueUpgradeCost : 10;
 
     currentShipColourIndex = state.currentShipColourIndex;
 

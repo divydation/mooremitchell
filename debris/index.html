@@ -20,14 +20,11 @@
                 <div class="leftSide">
                     <div class="titleBlock">
                         <p class="subtitle">DEBRIS</p>
-                        <p class="title">Update 2.1.2</p>
+                        <p class="title">Update 2.1.3</p>
                     </div>
                 
                     <div class=changelist>
-                        <p class="new">+ Boost Speed Upgrade</p>
-                        <p class="new">+ Aliens...?</p>
-                        <p class="new">+ Stats Screen</p>
-                        <p class="removed">- Crystals no longer get stuck in planets</p>
+                        <p class="new">+ Material Value Upgrade (how quickly materials increase in value)</p>
                     </div>
                 </div>
                 <div class="rightSide">
@@ -191,33 +188,44 @@
                     <!-- Upgrade Menu -->
                     <div class="upgradeMenu menu" id="upgradeMenu">
 
-                        <button class="hugeButton holdButton" id="drillRate">
-                            <p>DRILL RATE</p>
+                        <button class="wideButton holdButton" id="drillRate">
+                            <p>RATE</p>
                             <div class="costs">
                                 <div class="crystal">
-                                    <p class="levelLabel" id="drillLevel">LVL 1</p>
+                                    <p class="levelLabel" id="drillLevel">1</p>
                                     <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m12 2 2.012 5.23109c.282.73323.423 1.09984.6422 1.40822.1944.27331.4332.5121.7065.70644.3084.21928.675.36028 1.4082.64229l5.2311 2.01196-5.2311 2.012c-.7332.282-1.0998.423-1.4082.6422-.2733.1944-.5121.4332-.7065.7065-.2192.3084-.3602.675-.6422 1.4082l-2.012 5.2311-2.01196-5.2311c-.28201-.7332-.42301-1.0998-.64229-1.4082-.19434-.2733-.43313-.5121-.70644-.7065-.30838-.2192-.67499-.3602-1.40822-.6422l-5.23109-2.012 5.23108-2.01196c.73323-.28201 1.09985-.42301 1.40823-.64229.27331-.19434.5121-.43313.70644-.70644.21928-.30838.36028-.675.64229-1.40823z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
                                     <p id="drillRateUpgradeCost">10</p>
                                 </div>
                             </div>
                         </button>
 
-                        <button class="hugeButton holdButton" id="collectionRadiusUpgrade">
-                            <p>COLLECTION RADIUS</p>
+                        <button class="wideButton holdButton" id="materialValue">
+                            <p>VALUE</p>
                             <div class="costs">
                                 <div class="crystal">
-                                    <p class="levelLabel" id="collectionRadiusLevel">LVL 1</p>
+                                    <p class="levelLabel" id="materialValueLevel">1</p>
+                                    <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m12 2 2.012 5.23109c.282.73323.423 1.09984.6422 1.40822.1944.27331.4332.5121.7065.70644.3084.21928.675.36028 1.4082.64229l5.2311 2.01196-5.2311 2.012c-.7332.282-1.0998.423-1.4082.6422-.2733.1944-.5121.4332-.7065.7065-.2192.3084-.3602.675-.6422 1.4082l-2.012 5.2311-2.01196-5.2311c-.28201-.7332-.42301-1.0998-.64229-1.4082-.19434-.2733-.43313-.5121-.70644-.7065-.30838-.2192-.67499-.3602-1.40822-.6422l-5.23109-2.012 5.23108-2.01196c.73323-.28201 1.09985-.42301 1.40823-.64229.27331-.19434.5121-.43313.70644-.70644.21928-.30838.36028-.675.64229-1.40823z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
+                                    <p id="materialValueUpgradeCost">10</p>
+                                </div>
+                            </div>
+                        </button>
+
+                        <button class="wideButton holdButton" id="collectionRadiusUpgrade">
+                            <p>MAGNET</p>
+                            <div class="costs">
+                                <div class="crystal">
+                                    <p class="levelLabel" id="collectionRadiusLevel">1</p>
                                     <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m12 2 2.012 5.23109c.282.73323.423 1.09984.6422 1.40822.1944.27331.4332.5121.7065.70644.3084.21928.675.36028 1.4082.64229l5.2311 2.01196-5.2311 2.012c-.7332.282-1.0998.423-1.4082.6422-.2733.1944-.5121.4332-.7065.7065-.2192.3084-.3602.675-.6422 1.4082l-2.012 5.2311-2.01196-5.2311c-.28201-.7332-.42301-1.0998-.64229-1.4082-.19434-.2733-.43313-.5121-.70644-.7065-.30838-.2192-.67499-.3602-1.40822-.6422l-5.23109-2.012 5.23108-2.01196c.73323-.28201 1.09985-.42301 1.40823-.64229.27331-.19434.5121-.43313.70644-.70644.21928-.30838.36028-.675.64229-1.40823z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
                                     <p id="collectionRadiusUpgradeCost">10</p>
                                 </div>
                             </div>
                         </button>
 
-                        <button class="hugeButton holdButton" id="boostSpeedUpgrade">
-                            <p>BOOST SPEED</p>
+                        <button class="wideButton holdButton" id="boostSpeedUpgrade">
+                            <p>BOOST</p>
                             <div class="costs">
                                 <div class="crystal">
-                                    <p class="levelLabel" id="boostSpeedLevel">LVL 1</p>
+                                    <p class="levelLabel" id="boostSpeedLevel">1</p>
                                     <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m12 2 2.012 5.23109c.282.73323.423 1.09984.6422 1.40822.1944.27331.4332.5121.7065.70644.3084.21928.675.36028 1.4082.64229l5.2311 2.01196-5.2311 2.012c-.7332.282-1.0998.423-1.4082.6422-.2733.1944-.5121.4332-.7065.7065-.2192.3084-.3602.675-.6422 1.4082l-2.012 5.2311-2.01196-5.2311c-.28201-.7332-.42301-1.0998-.64229-1.4082-.19434-.2733-.43313-.5121-.70644-.7065-.30838-.2192-.67499-.3602-1.40822-.6422l-5.23109-2.012 5.23108-2.01196c.73323-.28201 1.09985-.42301 1.40823-.64229.27331-.19434.5121-.43313.70644-.70644.21928-.30838.36028-.675.64229-1.40823z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
                                     <p id="boostSpeedUpgradeCost">10</p>
                                 </div>
