@@ -863,7 +863,8 @@ app.ticker.add((delta) => {
 
         let planetCollectionRadius = collectionRadius;
         // The purple planet doubles the collection radius level
-        if (planet.name == "purplePlanet") planetCollectionRadius = 50 * (1.1**(collectionRadiusLevel*3));
+        // if (planet.name == "purplePlanet") planetCollectionRadius = 50 * (1.1**(collectionRadiusLevel*3));
+        if (planet.name == "purplePlanet") planetCollectionRadius = collectionRadius * 2;
 
         // console.log("The normal collection is " + collectionRadius + ", the current is " + planetCollectionRadius);
 
