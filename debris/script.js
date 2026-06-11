@@ -405,7 +405,10 @@ const cometTexture = app.renderer.generateTexture(baseCometGraphic);
 // Material Graphics
 
 const materialContainer = new PIXI.Container();
+const bigMaterialContainer = new PIXI.Container();
 planetScene.addChild(materialContainer);
+planetScene.addChild(bigMaterialContainer);
+
 
 // Planet ABOVE materials
 planetScene.addChild(planetGraphic);
@@ -864,7 +867,7 @@ app.ticker.add((delta) => {
         let planetCollectionRadius = collectionRadius;
         // The purple planet doubles the collection radius level
         // if (planet.name == "purplePlanet") planetCollectionRadius = 50 * (1.1**(collectionRadiusLevel*3));
-        if (planet.name == "purplePlanet") planetCollectionRadius = collectionRadius * 2;
+        // if (planet.name == "purplePlanet") planetCollectionRadius = collectionRadius * 2;
 
         // console.log("The normal collection is " + collectionRadius + ", the current is " + planetCollectionRadius);
 
@@ -933,7 +936,7 @@ app.ticker.add((delta) => {
             }
 
             // Heavy math logic for background planets only runs every 10th frame
-            if (!drawThisPlanet && frameCounter % 10 !== i % 10) {
+            if (!drawThisPlanet && frameCounter % 10 !== m % 10) {
                 continue; // Skip this frame's calculations for this background planet
             }
 
@@ -1248,10 +1251,10 @@ app.ticker.add((delta) => {
                 p.productionTimer += dt;
 
                 planetDrillRate = drillProductionRate;
-                if (planet.name == "purplePlanet") {
-                    planetDrillRate = 5000 / (1.25**(drillLevel*1.5));
-                    // console.log("The normal drill rate is " + drillProductionRate + ", the current is " + planetDrillRate);
-                }
+                // if (planet.name == "purplePlanet") {
+                //     planetDrillRate = 5000 / (1.25**(drillLevel*1.5));
+                //     // console.log("The normal drill rate is " + drillProductionRate + ", the current is " + planetDrillRate);
+                // }
 
                 let targetSpawnTime = Math.max(75, planetDrillRate + p.randomTimeOffset);
 
@@ -1367,7 +1370,7 @@ app.ticker.add((delta) => {
                 newMaterialGraphic.anchor.set(0.5);
                 newMaterialGraphic.position.set(refiner.x, refiner.y);
                 newMaterialGraphic.visible = drawThisPlanet; // Hide if spawning on another planet
-                materialContainer.addChild(newMaterialGraphic);
+                bigMaterialContainer.addChild(newMaterialGraphic);
 
                 // The halfway orbit radius is the average of the max radius and the planet radius
                 let halfwayOrbit = (450 + planet.radius + 15)/2;
@@ -2667,7 +2670,8 @@ function fastSin(radians) {
     
     // Convert radians back to our array index
     let degrees = normalized * (180 / Math.PI);
-    let index = Math.floor(degrees * precision);
+    // let index = Math.floor(degrees * precision);
+    let index = Math.floor(degrees * precision) % (360 * precision);
     
     return sinLUT[index];
 }
@@ -2676,7 +2680,8 @@ function fastCos(radians) {
     let normalized = radians % (Math.PI * 2);
     if (normalized < 0) normalized += (Math.PI * 2);
     let degrees = normalized * (180 / Math.PI);
-    let index = Math.floor(degrees * precision);
+    // let index = Math.floor(degrees * precision);
+    let index = Math.floor(degrees * precision) % (360 * precision);
     
     return cosLUT[index];
 }
