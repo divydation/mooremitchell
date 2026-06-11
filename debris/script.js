@@ -992,6 +992,8 @@ app.ticker.add((delta) => {
                 }
             }
 
+            if (materialCollected) continue;
+
             // Refiner Interaction
             if (!mat.refined) {
                 for (let c = 0; c < planet.refiners.length; c++) {
