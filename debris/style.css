@@ -238,6 +238,9 @@ button > svg {
 button svg {
     pointer-events: none;
 }
+button p {
+    pointer-events: none;
+}
 
 .energy {
     stroke-width: 1;

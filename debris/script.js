@@ -18,6 +18,8 @@ app.ticker.maxFPS = 60;
 const solarSystem = new PIXI.Container();
 app.stage.addChild(solarSystem);
 
+
+
 const planetScene = new PIXI.Container();
 const systemScene = new PIXI.Container();
 
@@ -372,12 +374,19 @@ function drawPlanetAndShadow() {
 
 const shipGraphic = new PIXI.Graphics();
 shipGraphic.beginFill(0xffffff);
-shipGraphic.drawRect(-12.5,-12.5, 25, 25)
+shipGraphic.drawRect(-12.5, -12.5, 25, 25);
+// shipGraphic.drawRect(-25, -25, 25, 25);
 shipGraphic.endFill();
 
 shipColours = [0xffffff, 0xffbe0b, 0xfb5607, 0xff006e, 0x8338ec, 0x3a86ff];
 currentShipColourIndex = 0;
 shipGraphic.tint = shipColours[currentShipColourIndex];
+
+
+
+
+
+
 
 const shipShadowGraphic = new PIXI.Graphics();
 shipShadowGraphic.clear();
@@ -386,6 +395,9 @@ shipShadowGraphic.drawRect(0, -12.5, 2000, 25);
 shipShadowGraphic.endFill();
 
 const powerLineGraphic = new PIXI.Graphics();
+const laserLineGraphic = new PIXI.Graphics();
+
+
 
 // Add them to the system in the order you want them layered (bottom to top)
 planetScene.addChild(shipShadowGraphic);
@@ -410,6 +422,8 @@ planetScene.addChild(materialContainer);
 planetScene.addChild(bigMaterialContainer);
 
 
+
+
 // Planet ABOVE materials
 planetScene.addChild(planetGraphic);
 
@@ -429,8 +443,10 @@ bigMaterialGraphic.endFill();
 bigMaterialGraphic.tint = 0xff006e;
 const bigMaterialTexture = app.renderer.generateTexture(bigMaterialGraphic);
 
-// Power above materials
+// Lasers / Power above materials
+planetScene.addChild(laserLineGraphic);
 planetScene.addChild(powerLineGraphic);
+
 
 
 
@@ -441,17 +457,24 @@ const fireBaseGraphic = new PIXI.Graphics();
 fireBaseGraphic.beginFill(0xFFFFFF);
 fireBaseGraphic.drawRect(-5, -5, 10, 10);
 fireBaseGraphic.endFill();
+
 const fireTexture = app.renderer.generateTexture(fireBaseGraphic);
 
+const fireGlowWrapper = new PIXI.Container();
+planetScene.addChild(fireGlowWrapper);
+
+
 // 2. Create the Particle Container
-const fireContainer = new PIXI.ParticleContainer(500, {
+const fireContainer = new PIXI.Container({
     scale: true,   // Enabled because fire shrinks
     position: true,
     rotation: true,
     alpha: true,
     tint: true     // Enabled to colorize the white texture
 });
-planetScene.addChild(fireContainer); // Make sure it's added below the shadow/planet!
+
+fireGlowWrapper.addChild(fireContainer); // Make sure it's added below the shadow/planet!
+
 
 // 3. The Object Pool: Pre-allocate 500 sprites
 const MAX_FIRE = 500;
@@ -463,6 +486,8 @@ for (let i = 0; i < MAX_FIRE; i++) {
     // sprite.visible = false;
     sprite.alpha = 0;
     sprite.life = 0; // We will use this custom property to track if it's dead or alive
+
+    
     
     fireSprites.push(sprite);
     fireContainer.addChild(sprite);
@@ -558,8 +583,6 @@ for (let i = 0; i < alienShips.length; i++) {
 }
 
 
-planetScene.addChild(shipGraphic);
-
 
 // ----------------------
 // SOLAR SYSTEM
@@ -627,7 +650,63 @@ planets.forEach(p => {
     if (p.hasShip) currentPlanet = p;
 });
 
+// Gadgets
+const altitudeGraphic = new PIXI.Graphics();
+altitudeGraphic.position.set(500,500);
+planetScene.addChild(altitudeGraphic);
 
+let altitudeText;
+document.fonts.load('20px "Silkscreen"').then(() => {
+    
+    // 1. Define your base style
+    const baseStyle = new PIXI.TextStyle({
+        fontFamily: 'Silkscreen',
+        fontSize: 30,
+        fontWeight: '400',
+        fill: '#FFFFFF',
+        align: 'center'
+    });
+
+    // 2. Clone the base style for each unique text
+    altitudeText = new PIXI.Text('Hello', baseStyle.clone());
+    altitudeText.anchor.set(0.5, 0.55);
+    altitudeText.style.fill = '#333'; // This now only affects the clone!
+    planetScene.addChild(altitudeText);
+}).catch((err) => {
+    console.error("Google Font failed to load: ", err);
+});
+
+altitudeOn = false;
+
+snappingOn = false;
+
+
+
+// BLOOM & GLOW
+
+// const bloomFilter = new PIXI.filters.AdvancedBloomFilter({
+//     bloomScale: 0.6,
+//     blur: 1,
+//     quality: 5,
+//     threshold: 0.5
+// });
+
+// solarSystem.filters = [bloomFilter];
+
+// glowDistance = 10;
+// glowStrength = 1.5;
+
+// const blueGlow = new PIXI.filters.GlowFilter({ distance: glowDistance, outerStrength: glowStrength, color: 0x3a94de });
+// const orangeGlow = new PIXI.filters.GlowFilter({ distance: glowDistance, outerStrength: glowStrength, color: 0xef6a23 });
+// const yellowGlow = new PIXI.filters.GlowFilter({ distance: glowDistance, outerStrength: glowStrength, color: 0xef6a23 });
+// const greenGlow = new PIXI.filters.GlowFilter({ distance: 5, outerStrength: 1, color: 0x2EBFA5 });
+
+// fireGlowWrapper.filters = [orangeGlow];
+// powerLineGraphic.filters = [yellowGlow];
+// laserLineGraphic.filters = [blueGlow];
+// materialContainer.filters = [greenGlow];
+
+planetScene.addChild(shipGraphic);
 
 let lastEnergy = -1;
 let lastMaterial = -1;
@@ -647,6 +726,21 @@ app.ticker.add((delta) => {
 
     let planet = null;
     powerLineGraphic.clear();
+    laserLineGraphic.clear();
+
+    altitudeGraphic.clear();
+    altitudeText.visible = false;
+
+    if (altitudeOn) {
+        altitudeGraphic.lineStyle(3, 0x333333, 1);
+        altitudeGraphic.drawCircle(0, 0, flightRadius + 12.5);
+
+        altitudeText.position.set(500, 500-flightRadius-40);
+        altitudeText.text = Math.round(flightRadius);
+        altitudeText.visible = true;
+    }
+    
+
 
     // document.getElementById("energyText").textContent = formatNumber(energy);
     // document.getElementById("materialText").textContent = formatNumber(material);
@@ -842,9 +936,32 @@ app.ticker.add((delta) => {
             drawThisPlanet = true;
 
              // Contain ship radius
-            if (targetRadius < (planet.radius + 15)) targetRadius = (planet.radius + 15);
-            if (targetRadius > 450) targetRadius = 450;
-            flightRadius += (targetRadius - flightRadius) * 0.05; // Otherwise, keep lerping
+            // if (targetRadius < (planet.radius + 15)) targetRadius = (planet.radius + 15);
+            // if (targetRadius > 450) targetRadius = 450;
+            // flightRadius += (targetRadius - flightRadius) * 0.05; // Otherwise, keep lerping
+            // flightRadius = Math.round(flightRadius * 100) / 100;
+            // shipRotationSpeed = changeShipSpeed(flightRadius);
+
+            // Configuration
+            const snapIncrement = 25;
+            const minRadius = planet.radius + 15;
+            const maxRadius = 450;
+
+            // 1. Determine the target based on the flag
+            // If snappingOn is true, round to the nearest increment. 
+            // Otherwise, just use the raw targetRadius.
+            let target = snappingOn 
+                ? Math.round(targetRadius / snapIncrement) * snapIncrement 
+                : targetRadius;
+
+            // 2. Apply the constraints (Clamping)
+            // This runs regardless of whether snapping is on or off
+            let finalTarget = Math.max(minRadius, Math.min(maxRadius, target));
+
+            // 3. Perform the Lerp
+            flightRadius += (finalTarget - flightRadius) * 0.05;
+
+            // 4. Update state
             flightRadius = Math.round(flightRadius * 100) / 100;
             shipRotationSpeed = changeShipSpeed(flightRadius);
 
@@ -1529,9 +1646,9 @@ app.ticker.add((delta) => {
                 
                 // Draw the blue laser beam
                 if (!drawLine && drawThisPlanet) {
-                    powerLineGraphic.lineStyle(Math.random() * damagePerFrame + Math.random() * 5, 0x3083DC, 1);
-                    powerLineGraphic.moveTo(laserSatPosition.x, laserSatPosition.y);
-                    powerLineGraphic.lineTo(closestCometPosition.x, closestCometPosition.y);
+                    laserLineGraphic.lineStyle(Math.random() * damagePerFrame + Math.random() * 5, 0x3083DC, 1);
+                    laserLineGraphic.moveTo(laserSatPosition.x, laserSatPosition.y);
+                    laserLineGraphic.lineTo(closestCometPosition.x, closestCometPosition.y);
                 }
             }
 
@@ -1869,7 +1986,7 @@ function deploySatellite() {
     planetScene.addChild(satellitePivot);
 
     currentPlanet.satellites.push({
-        radius: flightRadius + 10,
+        radius: flightRadius + 12.5,
         angle: shipRotation,
         rotationSpeed: shipRotationSpeed,
         powerStored: 0,
@@ -1911,7 +2028,7 @@ function deployCollector() {
     planetScene.addChild(collectorPivot);
 
     currentPlanet.collectors.push({
-        radius: flightRadius + 10,
+        radius: flightRadius + 12.5,
         angle: shipRotation,
         orbitSpeed: shipRotationSpeed,
         rotation: 0,
@@ -1984,7 +2101,7 @@ function deployRefiner() {
     planetScene.addChild(refinerPivot);
 
     currentPlanet.refiners.push({
-        radius: flightRadius + 10,
+        radius: flightRadius + 12.5,
         angle: shipRotation,
         orbitSpeed: shipRotationSpeed,
         rotation: 0,
@@ -2029,7 +2146,7 @@ function deployLaser() {
     laserGraphic.x = flightRadius + 6; 
 
     currentPlanet.laserSatellites.push({
-        radius: flightRadius + 6,
+        radius: flightRadius + 12.5,
         angle: shipRotation,
         rotation: 0,
         rotationSpeed: shipRotationSpeed,
@@ -3315,6 +3432,7 @@ function setRedGlow(element) {
     element.target.style.textShadow = "0 0 3vw #fff";
 }
 
+
 const riseButton = document.getElementById("riseButton");
 
 riseButtonHeld = false;
@@ -3631,12 +3749,6 @@ redButtons.forEach(button => {
     }, 150);
     
   });
-
-  button.addEventListener('pointerup', (event) => {
-    
-    
-    
-  });
 });
 
 // Blue buttons
@@ -3676,7 +3788,17 @@ tipButtons.forEach(button => {
 });
 
 
+function resetToggle(element) {
+    element.target.style.backgroundColor = "rgba(100,100,100,0.5)";
+    element.target.style.boxShadow = "";
+    element.target.style.textShadow = "";
+}
 
+function setGreenGlow(element) {
+    element.target.style.backgroundColor = "rgb(20, 204, 146)";
+    element.target.style.boxShadow = "0 0 6vw 0.1vw rgb(20, 204, 146)";
+    element.target.style.textShadow = "0 0 3vw #fff";
+}
 
 // Toggle buttons
 const toggleButtons = document.querySelectorAll('.toggleButton');
@@ -3684,19 +3806,38 @@ const toggleButtons = document.querySelectorAll('.toggleButton');
 toggleButtons.forEach(button => {
   button.addEventListener('pointerdown', (event) => {
     
-    button.style.scale = "0.9";
+    // button is pressed down
+    event.target.style.scale = "0.9";
 
-    if (button.style.backgroundColor == "rgb(20, 204, 146)") {
-        button.style.backgroundColor = "rgba(100,100,100,0.5)";
-    } else {
-        button.style.backgroundColor = "rgb(20, 204, 146)";
+    // Altitude
+    if (event.currentTarget.id == "altitude") {
+        if (altitudeOn) {
+            resetToggle(event);
+            altitudeOn = false;
+        } else {
+            setGreenGlow(event);
+            altitudeOn = true;
+        }
     }
 
+    // Snapping
+    if (event.currentTarget.id == "snapping") {
+        if (snappingOn) {
+            resetToggle(event);
+            snappingOn = false;
+        } else {
+            setGreenGlow(event);
+            snappingOn = true;
+        }
+    }
+    
+    
   });
 
   button.addEventListener('pointerup', (event) => {
     
-    button.style.scale = "1";
+    // Button is depressed
+    event.target.style.scale = "1";
     
   });
 });
@@ -3801,6 +3942,7 @@ document.getElementById("upgradeMenu").style.display = "none";
 document.getElementById("planetSelectMenu").style.display = "none";
 document.getElementById("settingsMenu").style.display = "none";
 document.getElementById("statsMenu").style.display = "none";
+document.getElementById("gadgetMenu").style.display = "none";
 
 function switchMenu(oldActiveMenuID, newActiveMenuID) {
     document.getElementById(oldActiveMenuID).style.display = "none";
