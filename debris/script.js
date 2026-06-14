@@ -655,8 +655,21 @@ const altitudeGraphic = new PIXI.Graphics();
 altitudeGraphic.position.set(500,500);
 planetScene.addChild(altitudeGraphic);
 
+const collectionGraphic = new PIXI.Graphics();
+collectionGraphic.position.set(500,500);
+planetScene.addChild(collectionGraphic);
+
+// const dash = new PIXI.DashLine(collectionGraphic, {
+//     dash: [10, 5], // 10px dash, 5px gap
+//     width: 4,
+//     color: 0x777777
+// });
+
 let altitudeText;
 document.fonts.load('20px "Silkscreen"').then(() => {
+
+    altitudeContainer = new PIXI.Container();
+    planetScene.addChild(altitudeContainer);
     
     // 1. Define your base style
     const baseStyle = new PIXI.TextStyle({
@@ -670,15 +683,37 @@ document.fonts.load('20px "Silkscreen"').then(() => {
     // 2. Clone the base style for each unique text
     altitudeText = new PIXI.Text('Hello', baseStyle.clone());
     altitudeText.anchor.set(0.5, 0.55);
-    altitudeText.style.fill = '#333'; // This now only affects the clone!
-    planetScene.addChild(altitudeText);
+    altitudeText.style.fill = '#777'; // This now only affects the clone!
+
+    // 4. Create the Background Graphic
+    textBg = new PIXI.Graphics();
+    
+    // Calculate size with some padding so the text doesn't touch the edges
+    const paddingX = 0;
+    const paddingY = 10;
+    const bgWidth = altitudeText.width + paddingX;
+    const bgHeight = altitudeText.height + paddingY;
+
+    // Draw the rectangle (e.g., black with 80% opacity)
+    textBg.beginFill(0x141414, 0.9);
+    // Because your text is anchored at ~0.5, we offset the rectangle to match
+    textBg.drawRect(-bgWidth / 2, -bgHeight / 2, bgWidth, bgHeight);
+    textBg.endFill();
+
+    // 5. Add them to the Container (Order matters: Background FIRST!)
+    altitudeContainer.addChild(textBg);
+
+    altitudeContainer.addChild(altitudeText);
+
 }).catch((err) => {
     console.error("Google Font failed to load: ", err);
 });
 
-altitudeOn = false;
 
+
+altitudeOn = false;
 snappingOn = false;
+collectionOn = false;
 
 
 
@@ -729,16 +764,21 @@ app.ticker.add((delta) => {
     laserLineGraphic.clear();
 
     altitudeGraphic.clear();
-    altitudeText.visible = false;
+    altitudeContainer.visible = false;
+
+    collectionGraphic.clear();
 
     if (altitudeOn) {
-        altitudeGraphic.lineStyle(3, 0x333333, 1);
+        altitudeGraphic.lineStyle(4, 0x777777, 1);
         altitudeGraphic.drawCircle(0, 0, flightRadius + 12.5);
 
-        altitudeText.position.set(500, 500-flightRadius-40);
+        altitudeText.position.set(500, 500-flightRadius-45);
         altitudeText.text = Math.round(flightRadius);
-        altitudeText.visible = true;
+        textBg.position.set(500, 500-flightRadius-45);
+        altitudeContainer.visible = true;
     }
+
+    
     
 
 
@@ -812,6 +852,17 @@ app.ticker.add((delta) => {
         x: shipX,
         y: shipY
     };
+
+    if (collectionOn) {
+        // let visualCollectionRadius = (collectionRadius/2)**2
+        let visualCollectionRadius = collectionRadius
+        collectionGraphic.lineStyle(3, 0x444444, 0.75);
+        collectionGraphic.drawCircle(0, 0, flightRadius + 12.5 + visualCollectionRadius);
+        collectionGraphic.drawCircle(0, 0, flightRadius + 12.5 - visualCollectionRadius);
+
+        collectionGraphic.lineStyle(3, 0x444444, 0.75);
+        collectionGraphic.drawCircle(shipPosition.x-500, shipPosition.y-500, visualCollectionRadius);
+    }
 
     if (riseButtonHeld) {
         targetRadius += 2;
@@ -936,8 +987,8 @@ app.ticker.add((delta) => {
             drawThisPlanet = true;
 
              // Contain ship radius
-            // if (targetRadius < (planet.radius + 15)) targetRadius = (planet.radius + 15);
-            // if (targetRadius > 450) targetRadius = 450;
+            if (targetRadius < (planet.radius + 15)) targetRadius = (planet.radius + 15);
+            if (targetRadius > 450) targetRadius = 450;
             // flightRadius += (targetRadius - flightRadius) * 0.05; // Otherwise, keep lerping
             // flightRadius = Math.round(flightRadius * 100) / 100;
             // shipRotationSpeed = changeShipSpeed(flightRadius);
@@ -953,6 +1004,8 @@ app.ticker.add((delta) => {
             let target = snappingOn 
                 ? Math.round(targetRadius / snapIncrement) * snapIncrement 
                 : targetRadius;
+
+            
 
             // 2. Apply the constraints (Clamping)
             // This runs regardless of whether snapping is on or off
@@ -3828,6 +3881,17 @@ toggleButtons.forEach(button => {
         } else {
             setGreenGlow(event);
             snappingOn = true;
+        }
+    }
+
+    // Collection
+    if (event.currentTarget.id == "collection") {
+        if (collectionOn) {
+            resetToggle(event);
+            collectionOn = false;
+        } else {
+            setGreenGlow(event);
+            collectionOn = true;
         }
     }
     
