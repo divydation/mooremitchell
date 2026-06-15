@@ -9,7 +9,7 @@ const app = new PIXI.Application({
     // resolution: Math.min(window.devicePixelRatio || 1, 2),
     resolution: 2,
     backgroundColor: 0x141414,
-    // antialias: true,
+    antialias: true,
 });
 
 app.ticker.maxFPS = 60;
@@ -337,6 +337,28 @@ planets.push({
     ...baseCosts
 });
 
+planets.push({
+    name: "sun",
+    radius: 415,
+    orbitRadius: 0,
+    orbitSpeed: 0,
+    currentOrbitRotation: 0,
+    rotationSpeed: 0.006,
+    currentRotation: 0,
+    hasShip: false,
+    selected: false,
+    color: "#FFE347",
+    description: "THE SUN",
+    unlocked: false,
+    neededProbes: 0,
+    landedProbes: 0,
+    solarFactor: 0,
+    cometFactor: 0,
+    gravityFactor: 0.5,
+    ...getBaseDevices(),
+    ...baseCosts
+});
+
 let currentPlanet = planets[1];
 
 
@@ -368,6 +390,18 @@ function drawPlanetAndShadow() {
     planetGraphic.beginFill(hexColor);
     planetGraphic.drawCircle(500, 500, currentPlanet.radius);
     planetGraphic.endFill();
+
+    if (currentPlanet.name == "sun") {
+        shadowGraphic.visible = false;
+        shipShadowGraphic.scale.set(0.5);
+        shipGraphic.scale.set(0.5);
+        fireContainer.visible = false;
+    } else {
+        shadowGraphic.visible = true;
+        shipShadowGraphic.scale.set(1);
+        shipGraphic.scale.set(1);
+        fireContainer.visible = true;
+    }
 }
 
 
@@ -594,6 +628,7 @@ sunGraphic.beginFill(0xFFE347);
 sunGraphic.drawCircle(0, 0, 100); // scaled down for map
 sunGraphic.endFill();
 systemScene.addChild(sunGraphic);
+sunGraphic.visible = false;
 
 const systemShipPivot = new PIXI.Container();
 systemScene.addChild(systemShipPivot);
@@ -618,6 +653,8 @@ planets.forEach(p => {
     let scaledRadius = p.radius * 0.2;
     p.orbitRadius = 50 + p.orbitRadius*1.5
 
+    if (p.name == "sun") p.orbitRadius = 0;
+
     // The Pivot
     p.pivot = new PIXI.Container();
 
@@ -634,16 +671,22 @@ planets.forEach(p => {
     p.graphics.x = p.orbitRadius;
 
     // The Planet's Shadow
-    p.shadowGraphic = new PIXI.Graphics();
 
-    p.shadowGraphic.beginFill(0x000000, 0.8);
-    p.shadowGraphic.drawRect(0, -scaledRadius, 4000, 2 * scaledRadius);
-    p.shadowGraphic.endFill();
-    p.shadowGraphic.x = p.orbitRadius;
+    if (p.name != "sun") {
+        p.shadowGraphic = new PIXI.Graphics();
+
+        p.shadowGraphic.beginFill(0x000000, 0.8);
+        p.shadowGraphic.drawRect(0, -scaledRadius, 4000, 2 * scaledRadius);
+        p.shadowGraphic.endFill();
+        p.shadowGraphic.x = p.orbitRadius;
+
+        p.pivot.addChild(p.shadowGraphic);
+    }
+    
 
     // Add to Scene
     systemScene.addChild(p.pivot);
-    p.pivot.addChild(p.shadowGraphic);
+    
 
     p.pivot.addChild(p.graphics);
 
@@ -1029,7 +1072,13 @@ app.ticker.add((delta) => {
 
             // Ship Shadow
             shipShadowGraphic.position.set(shipPosition.x, shipPosition.y);
-            shipShadowGraphic.rotation = planet.currentOrbitRotation;
+            
+            if (planet.name == "sun") {
+                shipShadowGraphic.rotation = shipRotation;
+            } else {
+                shipShadowGraphic.rotation = planet.currentOrbitRotation;
+            }
+            
         }
 
         // Draw Materials
@@ -1409,10 +1458,18 @@ app.ticker.add((delta) => {
         for (let i = 0; i < planet.drills.length; i++) {
             let p = planet.drills[i];
 
+            if (p.radius < 30) {
+                p.graphic.destroy();
+                p.pivot.destroy();
+                planet.drills.splice(i, 1);
+                i--;
+                continue;
+            }
 
-            if (p.radius > planet.radius && !p.arrived) {
+
+            if ((p.radius > planet.radius && !p.arrived) || planet.name == "sun") {
                 p.radius -= (planet.gravityFactor * 2 * (300 / p.radius) ** 2);
-                p.radius = Math.max(p.radius, planet.radius);
+                // p.radius = Math.max(p.radius, planet.radius);
                 p.angle = p.angle % toRadians(360);
             } else {
                 p.arrived = true;
@@ -1483,6 +1540,8 @@ app.ticker.add((delta) => {
             p.angle = p.angle % toRadians(360);
 
             p.productionTimer += dt;
+
+            
 
             if (p.productionTimer >= 300) { 
                 p.powerStored += 0.1 * planet.solarFactor;
@@ -1883,6 +1942,7 @@ app.ticker.add((delta) => {
             sprite.scale.x -= 0.02;
             sprite.scale.y -= 0.02;
             sprite.alpha -= 0.01;
+
             
             // let coords = polarToCartesian(sprite.flightRadius, sprite.flightAngle);
             // sprite.position.set(coords.x, coords.y);
@@ -3747,6 +3807,18 @@ function travelToSelectedPlanet() {
             shadowGraphic.beginFill(0x000000, 0.8);
             shadowGraphic.drawRect(0, -currentPlanet.radius, 4000, 2 * currentPlanet.radius);
             shadowGraphic.endFill();
+
+            if (currentPlanet.name == "sun") {
+                shadowGraphic.visible = false;
+                shipShadowGraphic.scale.set(0.5);
+                shipGraphic.scale.set(0.5);
+                fireContainer.visible = false;
+            } else {
+                shadowGraphic.visible = true;
+                shipShadowGraphic.scale.set(1);
+                shipGraphic.scale.set(1);
+                fireContainer.visible = true;
+            }
 
             let hexColor = parseInt(currentPlanet.color.replace(/^#/, ''), 16);
             planetGraphic.clear();
