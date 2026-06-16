@@ -600,7 +600,7 @@ const alienItems = [
         itemCost: 1000,
         textColour: "#d338f2",
         resourceType: "crystal",
-        reward: 30,
+        reward: 40,
     }
 ];
 
@@ -1834,9 +1834,48 @@ app.ticker.add((delta) => {
             }
         }
 
-        // Alien Ships
-        if (currentPlanet.name == "greenPlanet" && drawThisPlanet) {
+        
+
+    }
+
+    // Ship
+    shipGraphic.position.set(shipPosition.x, shipPosition.y);
+    shipGraphic.rotation = shipRotation;
+
+    
+    
+
+    // Fire
+    for (let i = 0; i < MAX_FIRE; i++) {
+        let sprite = fireSprites[i];
+        
+        if (sprite.life > 0) {
+            sprite.life -= shipRotationSpeed;
+            
+            sprite.scale.x -= 0.02;
+            sprite.scale.y -= 0.02;
+            sprite.alpha -= 0.01;
+
+            
+            // let coords = polarToCartesian(sprite.flightRadius, sprite.flightAngle);
+            // sprite.position.set(coords.x, coords.y);
+            let cx = 500 + sprite.flightRadius * Math.cos(sprite.flightAngle);
+            let cy = 500 + sprite.flightRadius * Math.sin(sprite.flightAngle);
+            sprite.position.set(cx, cy);
+
+            sprite.rotation = sprite.flightAngle;
+
+            if (sprite.alpha <= 0 || sprite.scale.x <= 0 || sprite.life <= 0) {
+                sprite.life = 0; 
+                sprite.alpha = 0; 
+            }
+        }
+    }
+
+    // Alien Ships
+        if (currentPlanet.name == "greenPlanet") {
             alienShipsContainer.visible = true;
+
             
 
             alienShipsContainer.rotation += changeShipSpeed(265);
@@ -1922,42 +1961,6 @@ app.ticker.add((delta) => {
             alienShipsContainer.visible = false;
             alienShipTextContainer.visible = false;
         }
-
-    }
-
-    // Ship
-    shipGraphic.position.set(shipPosition.x, shipPosition.y);
-    shipGraphic.rotation = shipRotation;
-
-    
-    
-
-    // Fire
-    for (let i = 0; i < MAX_FIRE; i++) {
-        let sprite = fireSprites[i];
-        
-        if (sprite.life > 0) {
-            sprite.life -= shipRotationSpeed;
-            
-            sprite.scale.x -= 0.02;
-            sprite.scale.y -= 0.02;
-            sprite.alpha -= 0.01;
-
-            
-            // let coords = polarToCartesian(sprite.flightRadius, sprite.flightAngle);
-            // sprite.position.set(coords.x, coords.y);
-            let cx = 500 + sprite.flightRadius * Math.cos(sprite.flightAngle);
-            let cy = 500 + sprite.flightRadius * Math.sin(sprite.flightAngle);
-            sprite.position.set(cx, cy);
-
-            sprite.rotation = sprite.flightAngle;
-
-            if (sprite.alpha <= 0 || sprite.scale.x <= 0 || sprite.life <= 0) {
-                sprite.life = 0; 
-                sprite.alpha = 0; 
-            }
-        }
-    }
 
     // Probes
     for (let i = 0; i < probes.length; i++) {
