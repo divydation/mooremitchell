@@ -1835,7 +1835,7 @@ app.ticker.add((delta) => {
         }
 
         // Alien Ships
-        if (p.name == "greenPlanet" && drawThisPlanet) {
+        if (currentPlanet.name == "greenPlanet" && drawThisPlanet) {
             alienShipsContainer.visible = true;
             
 
