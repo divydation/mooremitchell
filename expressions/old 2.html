@@ -204,19 +204,16 @@
         <button id="upg-auto">Auto-Turret (Cost: <span id="cost-auto">40</span>)</button>
         <button id="upg-trail">Toxic Trail (Cost: <span id="cost-trail">35</span>)</button>
         <button id="upg-spread">Spread Shot (Cost: <span id="cost-spread">45</span>)</button>
-        <button id="upg-pet">Pet Drone (Cost: <span id="cost-pet">50</span>)</button>
         <button id="btn-shop-close" style="margin-top: 20px; border-style: dashed;">Resume</button>
     </div>
 
     <div id="settings-menu" class="menu">
         <h2>Settings</h2>
-        <label>Difficulty:</label>
+        <label>Difficulty (Enemy Spawn Rate):</label>
         <select id="set-diff">
-            <option value="0">Peaceful (No Enemies)</option>
             <option value="0.5">Easy (Fewer Enemies)</option>
             <option value="1" selected>Normal</option>
             <option value="2">Hard (More Enemies)</option>
-            <option value="3">Extra Hard (Swarm & Tougher)</option>
         </select>
         
         <label>Controls:</label>
@@ -242,8 +239,8 @@
 
     // Game Settings
     let appSettings = {
-        difficulty: 1, // 0 = peaceful, 3 = extra hard
-        swapControls: false 
+        difficulty: 1,
+        swapControls: false // false = WASD moves, true = Arrows move
     };
 
     // Game State
@@ -271,10 +268,7 @@
     let trailDrops = [];
     let lastTrailDrop = 0;
 
-    let spreadLevel = 0; 
-
-    let petLevel = 0;
-    let pet = { x: player.x, y: player.y - 40, size: 12, lastShot: 0 };
+    let spreadLevel = 0; // Multishot
 
     let bullets = [];
     let enemies = [];
@@ -284,7 +278,7 @@
     let questionActive = false;
 
     // Upgrades Cost
-    let costs = { speed: 10, fire: 15, dmg: 20, orb: 30, auto: 40, trail: 35, spread: 45, pet: 50 };
+    let costs = { speed: 10, fire: 15, dmg: 20, orb: 30, auto: 40, trail: 35, spread: 45 };
 
     // Input Handling
     const keys = {};
@@ -340,14 +334,16 @@
         answersLayer.innerHTML = '';
         answers = [];
 
+        // Define 4 screen quadrants (margins factored in)
         let w = 120, h = 50;
         let quadrants = [
-            { xMin: 50, xMax: 300, yMin: 80, yMax: 250 }, 
-            { xMin: 450, xMax: 650, yMin: 80, yMax: 250 }, 
-            { xMin: 50, xMax: 300, yMin: 350, yMax: 500 }, 
-            { xMin: 450, xMax: 650, yMin: 350, yMax: 500 } 
+            { xMin: 50, xMax: 300, yMin: 80, yMax: 250 },  // Top-Left
+            { xMin: 450, xMax: 650, yMin: 80, yMax: 250 }, // Top-Right
+            { xMin: 50, xMax: 300, yMin: 350, yMax: 500 }, // Bottom-Left
+            { xMin: 450, xMax: 650, yMin: 350, yMax: 500 } // Bottom-Right
         ];
 
+        // Shuffle quadrants and pick 3
         quadrants.sort(() => 0.5 - Math.random());
 
         for(let i=0; i<3; i++) {
@@ -355,12 +351,13 @@
             let x, y, dist;
             let attempts = 0;
             
+            // Try to find a spot in the quadrant far from the player
             do {
                 x = q.xMin + Math.random() * (q.xMax - q.xMin);
                 y = q.yMin + Math.random() * (q.yMax - q.yMin);
                 dist = Math.hypot((x + w/2) - player.x, (y + h/2) - player.y);
                 attempts++;
-            } while (dist < 100 && attempts < 10); 
+            } while (dist < 100 && attempts < 10); // Ensure it doesn't spawn ON the player
 
             answers.push({
                 x: x, y: y, width: w, height: h,
@@ -380,6 +377,7 @@
         questionActive = true;
     }
 
+    // Logic
     function handlePlayerMovement() {
         let up = appSettings.swapControls ? keys['ArrowUp'] : (keys['KeyW'] || keys['Keyw']);
         let down = appSettings.swapControls ? keys['ArrowDown'] : (keys['KeyS'] || keys['Keys']);
@@ -421,6 +419,7 @@
             let baseAngle = Math.atan2(dy, dx);
             fireBullet(player.x, player.y, baseAngle);
             
+            // Spread Shot
             for(let i=1; i<=spreadLevel; i++) {
                 fireBullet(player.x, player.y, baseAngle + (i * 0.25));
                 fireBullet(player.x, player.y, baseAngle - (i * 0.25));
@@ -428,7 +427,7 @@
             player.lastShot = now;
         }
 
-        // Auto-Turret
+        // Auto-Turret Shooting
         if (autoShootLevel > 0) {
             let autoCooldown = Math.max(300, 2000 - (autoShootLevel * 300));
             if (now - lastAutoShoot > autoCooldown) {
@@ -454,37 +453,7 @@
         }
     }
 
-    function handlePet(now) {
-        if (petLevel <= 0) return;
-
-        // Smoothly follow player, offset slightly upwards
-        let targetX = player.x;
-        let targetY = player.y - 40;
-        pet.x += (targetX - pet.x) * 0.05;
-        pet.y += (targetY - pet.y) * 0.05;
-
-        // Pet Shooting
-        let petCooldown = Math.max(200, 1500 - (petLevel * 200));
-        if (now - pet.lastShot > petCooldown) {
-            let nearest = null;
-            let minDist = Infinity;
-            
-            enemies.forEach(e => {
-                let d = Math.hypot(pet.x - e.x, pet.y - e.y);
-                if (d < minDist) { minDist = d; nearest = e; }
-            });
-
-            if (nearest) {
-                let angle = Math.atan2(nearest.y - pet.y, nearest.x - pet.x);
-                fireBullet(pet.x, pet.y, angle);
-                pet.lastShot = now;
-            }
-        }
-    }
-
     function spawnEnemy() {
-        if (appSettings.difficulty === 0) return; // Peaceful Mode
-
         let x, y;
         if (Math.random() < 0.5) {
             x = Math.random() < 0.5 ? -20 : canvas.width + 20;
@@ -494,17 +463,11 @@
             y = Math.random() < 0.5 ? -20 : canvas.height + 20;
         }
         
-        // 20% chance to spawn a Brute once past 3 questions
-        let isBrute = Math.random() < 0.2 && questionsAnswered > 2;
-        let radius = isBrute ? 24 : 12;
-        let enemySpeed = isBrute ? (0.15 + Math.random() * 0.15) : (0.3 + Math.random() * 0.4);
-        
+        let enemySpeed = 0.3 + Math.random() * 0.4;
         let hpScale = 2 + Math.floor(questionsAnswered / 5);
-        if (isBrute) hpScale *= 4; // Brutes are 4x tankier
-        if (appSettings.difficulty >= 2) hpScale = Math.floor(hpScale * 1.5); // Hard/Extra Hard multiplier
 
         enemies.push({
-            x: x, y: y, radius: radius, speed: enemySpeed, health: hpScale, lastHitTime: 0, isBrute: isBrute
+            x: x, y: y, radius: 12, speed: enemySpeed, health: hpScale, lastHitTime: 0
         });
     }
 
@@ -522,11 +485,10 @@
                 let fbText = document.getElementById('feedback-box');
 
                 if (ans.isCorrect) {
-                    let reward = 10 + questionsAnswered; // Scales up by 1 coin every answered question
-                    coins += reward;
+                    coins += 10;
                     questionsAnswered++;
-                    player.health = Math.min(player.maxHealth, player.health + 2); 
-                    fbText.innerHTML = `<span class="correct">Correct! +${reward} Coins & +2 HP</span>`;
+                    player.health = Math.min(player.maxHealth, player.health + 2); // Heal on correct
+                    fbText.innerHTML = `<span class="correct">Correct! +10 Coins & +2 HP</span>`;
                 } else {
                     fbText.innerHTML = `<span class="wrong">Wrong! Correct was: ${currentQuestion.correct}</span>`;
                 }
@@ -543,14 +505,12 @@
     }
 
     function updateEntities(now) {
-        // Enforce Peaceful mode immediately despawning existing enemies
-        if (appSettings.difficulty === 0) enemies = [];
-
         // Toxic Trail Drops
         if (trailLevel > 0 && now - lastTrailDrop > 250) {
             trailDrops.push({ x: player.x, y: player.y, spawnTime: now, size: 20 + trailLevel * 5 });
             lastTrailDrop = now;
         }
+        // Remove old trail drops (last 3 seconds)
         trailDrops = trailDrops.filter(t => now - t.spawnTime < 3000);
 
         // Orbiters
@@ -584,18 +544,19 @@
 
             // Collision with player
             if (dist < player.size/2 + e.radius) {
-                player.health -= e.isBrute ? 2 : 1; // Brutes hit harder
+                player.health -= 1;
                 enemies.splice(i, 1);
                 updateUI();
                 if (player.health <= 0) gameOver();
                 continue;
             }
 
+            // Damage i-frame check wrapper
             const tryDamageEnemy = (dmg, knockbackSrcX, knockbackSrcY, force) => {
                 if (now - e.lastHitTime > 300) { 
                     e.health -= dmg;
                     e.lastHitTime = now;
-                    if (force && !e.isBrute) { // Brutes don't take knockback easily
+                    if (force) {
                         let kbAngle = Math.atan2(e.y - knockbackSrcY, e.x - knockbackSrcX);
                         e.x += Math.cos(kbAngle) * force;
                         e.y += Math.sin(kbAngle) * force;
@@ -606,20 +567,20 @@
             // Collision with Orbiters
             for (let o of orbiterPositions) {
                 if (Math.hypot(o.x - e.x, o.y - e.y) < e.radius + o.size/2) {
-                    tryDamageEnemy(player.damage, player.x, player.y, 20); 
+                    tryDamageEnemy(player.damage, player.x, player.y, 20); // Knockback away from player
                 }
             }
 
             // Collision with Toxic Trail
             for (let t of trailDrops) {
                 if (Math.hypot(t.x - e.x, t.y - e.y) < e.radius + t.size/2) {
-                    tryDamageEnemy(player.damage, 0, 0, 0); 
+                    tryDamageEnemy(player.damage, 0, 0, 0); // No knockback for trail
                 }
             }
 
             if (e.health <= 0) {
                 enemies.splice(i, 1);
-                coins += e.isBrute ? 3 : 1; // Brutes drop more coins
+                coins += 1;
                 updateUI();
                 continue; 
             }
@@ -632,7 +593,7 @@
                     bullets.splice(j, 1);
                     if (e.health <= 0) {
                         enemies.splice(i, 1);
-                        coins += e.isBrute ? 3 : 1;
+                        coins += 1;
                         updateUI();
                     }
                     break;
@@ -646,7 +607,7 @@
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
         // Draw Trail Drops
-        ctx.fillStyle = 'rgba(46, 204, 113, 0.4)'; 
+        ctx.fillStyle = 'rgba(46, 204, 113, 0.4)'; // Toxic green, slightly transparent
         trailDrops.forEach(t => {
             ctx.beginPath();
             ctx.arc(t.x, t.y, t.size/2, 0, Math.PI * 2);
@@ -656,15 +617,6 @@
         // Draw Player
         ctx.fillStyle = '#000';
         ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
-
-        // Draw Pet
-        if (petLevel > 0) {
-            ctx.fillStyle = '#3498db'; // Blue Pet
-            ctx.fillRect(pet.x - pet.size/2, pet.y - pet.size/2, pet.size, pet.size);
-            // Draw eyes or a little detail so it looks like a drone
-            ctx.fillStyle = '#fff';
-            ctx.fillRect(pet.x - 2, pet.y - 2, 4, 4);
-        }
 
         // Draw Orbiters
         ctx.fillStyle = '#000';
@@ -688,19 +640,10 @@
         // Draw Enemies 
         enemies.forEach(e => {
             if (performance.now() - e.lastHitTime < 100) ctx.fillStyle = '#e74c3c';
-            else ctx.fillStyle = e.isBrute ? '#2c3e50' : '#000'; // Brutes are a dark grayish-blue
-
+            else ctx.fillStyle = '#000';
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
             ctx.fill();
-
-            // Draw Brute health indicator
-            if (e.isBrute && e.health > 1) {
-                ctx.fillStyle = '#fff';
-                ctx.font = '10px Arial';
-                ctx.textAlign = 'center';
-                ctx.fillText(Math.ceil(e.health), e.x, e.y + 4);
-            }
         });
     }
 
@@ -728,11 +671,13 @@
         if (isGameOver) return;
         
         if (menuElement.style.display === 'block') {
+            // Unpause
             isPaused = false;
             closeAllMenus();
             answersLayer.style.display = 'block'; 
             requestAnimationFrame(gameLoop);
         } else {
+            // Pause & Open
             isPaused = true;
             closeAllMenus();
             menuElement.style.display = 'block';
@@ -750,6 +695,7 @@
     
     window.addEventListener('keydown', e => {
         if (e.code === 'Space') {
+            // Space prioritizes closing an open menu, or opening shop
             if(settingsMenu.style.display === 'block') toggleMenu(settingsMenu);
             else toggleMenu(shopMenu);
             e.preventDefault(); 
@@ -786,9 +732,6 @@
     document.getElementById('upg-spread').addEventListener('click', () => {
         if (coins >= costs.spread) { coins -= costs.spread; spreadLevel += 1; costs.spread = Math.floor(costs.spread * 2); updateUI(); document.getElementById('cost-spread').innerText = costs.spread; }
     });
-    document.getElementById('upg-pet').addEventListener('click', () => {
-        if (coins >= costs.pet) { coins -= costs.pet; petLevel += 1; costs.pet = Math.floor(costs.pet * 1.8); updateUI(); document.getElementById('cost-pet').innerText = costs.pet; }
-    });
 
     // Main Game Loop
     let lastEnemySpawn = 0;
@@ -797,23 +740,17 @@
 
         handlePlayerMovement();
         handleShooting(now);
-        handlePet(now);
         updateEntities(now);
         checkAnswerCollisions();
         draw();
 
         // Spawn logic influenced by difficulty setting
-        if (appSettings.difficulty > 0) {
-            let baseRate = Math.max(800, 2000 - (questionsAnswered * 50));
-            
-            // Adjust rate based on difficulty selection
-            let effectiveDiff = appSettings.difficulty === 3 ? 2.5 : appSettings.difficulty;
-            let finalSpawnRate = baseRate / effectiveDiff;
+        let baseRate = Math.max(800, 2000 - (questionsAnswered * 50));
+        let finalSpawnRate = baseRate / appSettings.difficulty;
 
-            if (now - lastEnemySpawn > finalSpawnRate) { 
-                spawnEnemy();
-                lastEnemySpawn = now;
-            }
+        if (now - lastEnemySpawn > finalSpawnRate) { 
+            spawnEnemy();
+            lastEnemySpawn = now;
         }
 
         requestAnimationFrame(gameLoop);
