@@ -121,8 +121,7 @@
             box-shadow: 10px 10px 0px rgba(0,0,0,0.2);
             max-height: 80vh;
             overflow-y: auto;
-            width: 320px;
-            z-index: 10;
+            width: 300px;
         }
 
         .menu h2 { margin-top: 0; }
@@ -143,32 +142,18 @@
             color: #fff;
         }
         
-        .menu select {
-            width: 100%;
-            padding: 10px;
-            margin: 10px 0;
-            font-family: inherit;
-            border: 2px solid #000;
-        }
-
-        .ui-btn {
+        #btn-shop-open {
             pointer-events: auto;
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
             font-family: inherit;
             background: #fff;
             border: 2px solid #000;
             padding: 5px 10px;
             cursor: pointer;
         }
-        .ui-btn:hover { background: #000; color: #fff; }
-
-        #btn-container {
-            position: absolute;
-            bottom: 10px;
-            right: 10px;
-            display: flex;
-            gap: 10px;
-            pointer-events: auto;
-        }
+        #btn-shop-open:hover { background: #000; color: #fff; }
 
     </style>
 </head>
@@ -179,18 +164,14 @@
     
     <div id="ui-layer">
         <div id="top-bar">
-            <div id="stats">HP: <span id="ui-health">10</span> | Coins: <span id="ui-coins">0</span></div>
+            <div id="stats">Health: <span id="ui-health">10</span> | Coins: <span id="ui-coins">0</span></div>
             <div id="question-box">Loading...</div>
             <div style="width: 150px;"></div>
         </div>
         
         <div id="answers-layer"></div>
         <div id="feedback-box"></div>
-        
-        <div id="btn-container">
-            <button id="btn-settings-open" class="ui-btn">Settings</button>
-            <button id="btn-shop-open" class="ui-btn">Shop (Space)</button>
-        </div>
+        <button id="btn-shop-open">Shop (Space)</button>
     </div>
 
     <div id="shop-menu" class="menu">
@@ -199,30 +180,11 @@
         <button id="upg-speed">Move Speed (Cost: <span id="cost-speed">10</span>)</button>
         <button id="upg-fire">Fire Rate (Cost: <span id="cost-fire">15</span>)</button>
         <button id="upg-dmg">Damage (Cost: <span id="cost-dmg">20</span>)</button>
+        <button id="upg-hp">Heal + Max HP (Cost: <span id="cost-hp">15</span>)</button>
         <hr>
         <button id="upg-orb">Orbiting Orb (Cost: <span id="cost-orb">30</span>)</button>
         <button id="upg-auto">Auto-Turret (Cost: <span id="cost-auto">40</span>)</button>
-        <button id="upg-trail">Toxic Trail (Cost: <span id="cost-trail">35</span>)</button>
-        <button id="upg-spread">Spread Shot (Cost: <span id="cost-spread">45</span>)</button>
         <button id="btn-shop-close" style="margin-top: 20px; border-style: dashed;">Resume</button>
-    </div>
-
-    <div id="settings-menu" class="menu">
-        <h2>Settings</h2>
-        <label>Difficulty (Enemy Spawn Rate):</label>
-        <select id="set-diff">
-            <option value="0.5">Easy (Fewer Enemies)</option>
-            <option value="1" selected>Normal</option>
-            <option value="2">Hard (More Enemies)</option>
-        </select>
-        
-        <label>Controls:</label>
-        <select id="set-ctrl">
-            <option value="false" selected>Move: WASD | Shoot: Arrows</option>
-            <option value="true">Move: Arrows | Shoot: WASD</option>
-        </select>
-        
-        <button id="btn-settings-close" style="margin-top: 20px; border-style: dashed;">Resume</button>
     </div>
 
     <div id="game-over-menu" class="menu">
@@ -236,12 +198,6 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
     const answersLayer = document.getElementById('answers-layer');
-
-    // Game Settings
-    let appSettings = {
-        difficulty: 1,
-        swapControls: false // false = WASD moves, true = Arrows move
-    };
 
     // Game State
     let isPaused = false;
@@ -264,12 +220,6 @@
     let autoShootLevel = 0;
     let lastAutoShoot = 0;
 
-    let trailLevel = 0;
-    let trailDrops = [];
-    let lastTrailDrop = 0;
-
-    let spreadLevel = 0; // Multishot
-
     let bullets = [];
     let enemies = [];
     let answers = [];
@@ -278,14 +228,14 @@
     let questionActive = false;
 
     // Upgrades Cost
-    let costs = { speed: 10, fire: 15, dmg: 20, orb: 30, auto: 40, trail: 35, spread: 45 };
+    let costs = { speed: 10, fire: 15, dmg: 20, hp: 15, orb: 30, auto: 40 };
 
     // Input Handling
     const keys = {};
     window.addEventListener('keydown', e => { keys[e.code] = true; });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-    // Math Question Generator 
+    // Math Question Generator with Difficulty Scaling
     function generateMathProblem() {
         const difficulty = Math.floor(questionsAnswered / 3);
         
@@ -296,18 +246,21 @@
 
         let templates = [];
 
+        // Tier 0
         templates.push(
             { q: `${n1} more than ${v}`, a: `${v} + ${n1}`, w: [`${n1}${v}`, `${v} - ${n1}`, `${n1} - ${v}`] },
             { q: `${n1} less than ${v}`, a: `${v} - ${n1}`, w: [`${v} + ${n1}`, `${n1} - ${v}`, `${n1}${v}`] },
             { q: `the product of ${n1} and ${v}`, a: `${n1}${v}`, w: [`${v} + ${n1}`, `frac(${v},${n1})`, `frac(${n1},${v})`] }
         );
 
+        // Tier 1
         if (difficulty >= 1) {
             templates.push(
                 { q: `the quotient of ${v} and ${n1}`, a: `frac(${v},${n1})`, w: [`frac(${n1},${v})`, `${n1}${v}`, `${v} - ${n1}`] }
             );
         }
 
+        // Tier 2+
         if (difficulty >= 2) {
             templates.push(
                 { q: `the sum of ${n1} and ${v}, multiplied by ${n2}`, a: `${n2}(${v} + ${n1})`, w: [`${n2}${v} + ${n1}`, `${v}(${n2} + ${n1})`, `${n1}(${v} + ${n2})`] },
@@ -334,31 +287,12 @@
         answersLayer.innerHTML = '';
         answers = [];
 
-        // Define 4 screen quadrants (margins factored in)
-        let w = 120, h = 50;
-        let quadrants = [
-            { xMin: 50, xMax: 300, yMin: 80, yMax: 250 },  // Top-Left
-            { xMin: 450, xMax: 650, yMin: 80, yMax: 250 }, // Top-Right
-            { xMin: 50, xMax: 300, yMin: 350, yMax: 500 }, // Bottom-Left
-            { xMin: 450, xMax: 650, yMin: 350, yMax: 500 } // Bottom-Right
-        ];
-
-        // Shuffle quadrants and pick 3
-        quadrants.sort(() => 0.5 - Math.random());
-
         for(let i=0; i<3; i++) {
-            let q = quadrants[i];
-            let x, y, dist;
-            let attempts = 0;
+            let w = 120; 
+            let h = 50;  
+            let x = 50 + Math.random() * (canvas.width - w - 100); 
+            let y = 100 + Math.random() * (canvas.height - h - 150);
             
-            // Try to find a spot in the quadrant far from the player
-            do {
-                x = q.xMin + Math.random() * (q.xMax - q.xMin);
-                y = q.yMin + Math.random() * (q.yMax - q.yMin);
-                dist = Math.hypot((x + w/2) - player.x, (y + h/2) - player.y);
-                attempts++;
-            } while (dist < 100 && attempts < 10); // Ensure it doesn't spawn ON the player
-
             answers.push({
                 x: x, y: y, width: w, height: h,
                 text: currentQuestion.options[i],
@@ -379,51 +313,29 @@
 
     // Logic
     function handlePlayerMovement() {
-        let up = appSettings.swapControls ? keys['ArrowUp'] : (keys['KeyW'] || keys['Keyw']);
-        let down = appSettings.swapControls ? keys['ArrowDown'] : (keys['KeyS'] || keys['Keys']);
-        let left = appSettings.swapControls ? keys['ArrowLeft'] : (keys['KeyA'] || keys['Keya']);
-        let right = appSettings.swapControls ? keys['ArrowRight'] : (keys['KeyD'] || keys['Keyd']);
-
-        if (up) player.y -= player.speed;
-        if (down) player.y += player.speed;
-        if (left) player.x -= player.speed;
-        if (right) player.x += player.speed;
+        if (keys['KeyW'] || keys['Keyw']) player.y -= player.speed;
+        if (keys['KeyS'] || keys['Keys']) player.y += player.speed;
+        if (keys['KeyA'] || keys['Keya']) player.x -= player.speed;
+        if (keys['KeyD'] || keys['Keyd']) player.x += player.speed;
 
         player.x = Math.max(player.size/2, Math.min(canvas.width - player.size/2, player.x));
         player.y = Math.max(player.size/2 + 50, Math.min(canvas.height - player.size/2, player.y));
     }
 
-    function fireBullet(x, y, angle) {
-        bullets.push({
-            x: x, y: y,
-            vx: Math.cos(angle) * 7, 
-            vy: Math.sin(angle) * 7,
-            size: 6, 
-            damage: player.damage
-        });
-    }
-
     function handleShooting(now) {
-        let sUp = appSettings.swapControls ? (keys['KeyW'] || keys['Keyw']) : keys['ArrowUp'];
-        let sDown = appSettings.swapControls ? (keys['KeyS'] || keys['Keys']) : keys['ArrowDown'];
-        let sLeft = appSettings.swapControls ? (keys['KeyA'] || keys['Keya']) : keys['ArrowLeft'];
-        let sRight = appSettings.swapControls ? (keys['KeyD'] || keys['Keyd']) : keys['ArrowRight'];
-
+        // Manual Shooting
         let dx = 0, dy = 0;
-        if (sUp) dy = -1;
-        else if (sDown) dy = 1;
-        else if (sLeft) dx = -1;
-        else if (sRight) dx = 1;
+        if (keys['ArrowUp']) dy = -1;
+        else if (keys['ArrowDown']) dy = 1;
+        else if (keys['ArrowLeft']) dx = -1;
+        else if (keys['ArrowRight']) dx = 1;
 
         if ((dx !== 0 || dy !== 0) && now - player.lastShot > player.fireRate) {
-            let baseAngle = Math.atan2(dy, dx);
-            fireBullet(player.x, player.y, baseAngle);
-            
-            // Spread Shot
-            for(let i=1; i<=spreadLevel; i++) {
-                fireBullet(player.x, player.y, baseAngle + (i * 0.25));
-                fireBullet(player.x, player.y, baseAngle - (i * 0.25));
-            }
+            bullets.push({
+                x: player.x, y: player.y,
+                vx: dx * 7, vy: dy * 7,
+                size: 6, damage: player.damage
+            });
             player.lastShot = now;
         }
 
@@ -441,12 +353,11 @@
 
                 if (nearest) {
                     let angle = Math.atan2(nearest.y - player.y, nearest.x - player.x);
-                    fireBullet(player.x, player.y, angle);
-                    
-                    for(let i=1; i<=spreadLevel; i++) {
-                        fireBullet(player.x, player.y, angle + (i * 0.25));
-                        fireBullet(player.x, player.y, angle - (i * 0.25));
-                    }
+                    bullets.push({
+                        x: player.x, y: player.y,
+                        vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
+                        size: 6, damage: player.damage
+                    });
                     lastAutoShoot = now;
                 }
             }
@@ -467,7 +378,7 @@
         let hpScale = 2 + Math.floor(questionsAnswered / 5);
 
         enemies.push({
-            x: x, y: y, radius: 12, speed: enemySpeed, health: hpScale, lastHitTime: 0
+            x: x, y: y, radius: 12, speed: enemySpeed, health: hpScale, lastOrbHit: 0
         });
     }
 
@@ -487,8 +398,7 @@
                 if (ans.isCorrect) {
                     coins += 10;
                     questionsAnswered++;
-                    player.health = Math.min(player.maxHealth, player.health + 2); // Heal on correct
-                    fbText.innerHTML = `<span class="correct">Correct! +10 Coins & +2 HP</span>`;
+                    fbText.innerHTML = `<span class="correct">Correct! +10 Coins</span>`;
                 } else {
                     fbText.innerHTML = `<span class="wrong">Wrong! Correct was: ${currentQuestion.correct}</span>`;
                 }
@@ -505,21 +415,17 @@
     }
 
     function updateEntities(now) {
-        // Toxic Trail Drops
-        if (trailLevel > 0 && now - lastTrailDrop > 250) {
-            trailDrops.push({ x: player.x, y: player.y, spawnTime: now, size: 20 + trailLevel * 5 });
-            lastTrailDrop = now;
-        }
-        // Remove old trail drops (last 3 seconds)
-        trailDrops = trailDrops.filter(t => now - t.spawnTime < 3000);
-
-        // Orbiters
+        // Orbiters positions calculation
         orbiterAngle += 0.04;
         let orbiterPositions = [];
         let orbRadius = 45;
         for (let i = 0; i < numOrbiters; i++) {
             let angle = orbiterAngle + (i * Math.PI * 2 / numOrbiters);
-            orbiterPositions.push({ x: player.x + Math.cos(angle) * orbRadius, y: player.y + Math.sin(angle) * orbRadius, size: 10 });
+            orbiterPositions.push({
+                x: player.x + Math.cos(angle) * orbRadius,
+                y: player.y + Math.sin(angle) * orbRadius,
+                size: 10
+            });
         }
 
         // Bullets
@@ -551,30 +457,19 @@
                 continue;
             }
 
-            // Damage i-frame check wrapper
-            const tryDamageEnemy = (dmg, knockbackSrcX, knockbackSrcY, force) => {
-                if (now - e.lastHitTime > 300) { 
-                    e.health -= dmg;
-                    e.lastHitTime = now;
-                    if (force) {
-                        let kbAngle = Math.atan2(e.y - knockbackSrcY, e.x - knockbackSrcX);
-                        e.x += Math.cos(kbAngle) * force;
-                        e.y += Math.sin(kbAngle) * force;
-                    }
-                }
-            };
-
             // Collision with Orbiters
             for (let o of orbiterPositions) {
-                if (Math.hypot(o.x - e.x, o.y - e.y) < e.radius + o.size/2) {
-                    tryDamageEnemy(player.damage, player.x, player.y, 20); // Knockback away from player
-                }
-            }
-
-            // Collision with Toxic Trail
-            for (let t of trailDrops) {
-                if (Math.hypot(t.x - e.x, t.y - e.y) < e.radius + t.size/2) {
-                    tryDamageEnemy(player.damage, 0, 0, 0); // No knockback for trail
+                let odx = o.x - e.x;
+                let ody = o.y - e.y;
+                if (Math.sqrt(odx*odx + ody*ody) < e.radius + o.size/2) {
+                    if (now - e.lastOrbHit > 500) { // 500ms iframe for orb hits
+                        e.health -= player.damage;
+                        e.lastOrbHit = now;
+                        // Knockback
+                        let kbAngle = Math.atan2(e.y - player.y, e.x - player.x);
+                        e.x += Math.cos(kbAngle) * 20;
+                        e.y += Math.sin(kbAngle) * 20;
+                    }
                 }
             }
 
@@ -588,7 +483,9 @@
             // Collision with bullets
             for (let j = bullets.length - 1; j >= 0; j--) {
                 let b = bullets[j];
-                if (Math.hypot(b.x - e.x, b.y - e.y) < e.radius + b.size/2) {
+                let bdx = b.x - e.x;
+                let bdy = b.y - e.y;
+                if (Math.sqrt(bdx*bdx + bdy*bdy) < e.radius + b.size/2) {
                     e.health -= b.damage;
                     bullets.splice(j, 1);
                     if (e.health <= 0) {
@@ -606,14 +503,6 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        // Draw Trail Drops
-        ctx.fillStyle = 'rgba(46, 204, 113, 0.4)'; // Toxic green, slightly transparent
-        trailDrops.forEach(t => {
-            ctx.beginPath();
-            ctx.arc(t.x, t.y, t.size/2, 0, Math.PI * 2);
-            ctx.fill();
-        });
-
         // Draw Player
         ctx.fillStyle = '#000';
         ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
@@ -626,6 +515,7 @@
             let ox = player.x + Math.cos(angle) * orbRadius;
             let oy = player.y + Math.sin(angle) * orbRadius;
             
+            // Draw as hollow squares to look slightly different from player/bullets
             ctx.strokeStyle = '#000';
             ctx.lineWidth = 2;
             ctx.strokeRect(ox - 5, oy - 5, 10, 10);
@@ -639,8 +529,12 @@
 
         // Draw Enemies 
         enemies.forEach(e => {
-            if (performance.now() - e.lastHitTime < 100) ctx.fillStyle = '#e74c3c';
-            else ctx.fillStyle = '#000';
+            // Flash red if recently hit by orb
+            if (performance.now() - e.lastOrbHit < 100) {
+                ctx.fillStyle = '#e74c3c';
+            } else {
+                ctx.fillStyle = '#000';
+            }
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
             ctx.fill();
@@ -658,56 +552,25 @@
         document.getElementById('game-over-menu').style.display = 'block';
     }
 
-    // Menu Management
+    // Shop Logic
     const shopMenu = document.getElementById('shop-menu');
-    const settingsMenu = document.getElementById('settings-menu');
-
-    function closeAllMenus() {
-        shopMenu.style.display = 'none';
-        settingsMenu.style.display = 'none';
-    }
-
-    function toggleMenu(menuElement) {
+    function toggleShop() {
         if (isGameOver) return;
-        
-        if (menuElement.style.display === 'block') {
-            // Unpause
-            isPaused = false;
-            closeAllMenus();
-            answersLayer.style.display = 'block'; 
-            requestAnimationFrame(gameLoop);
-        } else {
-            // Pause & Open
-            isPaused = true;
-            closeAllMenus();
-            menuElement.style.display = 'block';
-            answersLayer.style.display = 'none'; 
-        }
+        isPaused = !isPaused;
+        shopMenu.style.display = isPaused ? 'block' : 'none';
+        answersLayer.style.display = isPaused ? 'none' : 'block'; 
+        if (!isPaused) requestAnimationFrame(gameLoop);
         updateUI();
     }
 
-    // Buttons
-    document.getElementById('btn-shop-open').addEventListener('click', () => toggleMenu(shopMenu));
-    document.getElementById('btn-shop-close').addEventListener('click', () => toggleMenu(shopMenu));
-    
-    document.getElementById('btn-settings-open').addEventListener('click', () => toggleMenu(settingsMenu));
-    document.getElementById('btn-settings-close').addEventListener('click', () => toggleMenu(settingsMenu));
+    document.getElementById('btn-shop-open').addEventListener('click', toggleShop);
+    document.getElementById('btn-shop-close').addEventListener('click', toggleShop);
     
     window.addEventListener('keydown', e => {
         if (e.code === 'Space') {
-            // Space prioritizes closing an open menu, or opening shop
-            if(settingsMenu.style.display === 'block') toggleMenu(settingsMenu);
-            else toggleMenu(shopMenu);
+            toggleShop();
             e.preventDefault(); 
         }
-    });
-
-    // Settings Dropdowns
-    document.getElementById('set-diff').addEventListener('change', (e) => {
-        appSettings.difficulty = parseFloat(e.target.value);
-    });
-    document.getElementById('set-ctrl').addEventListener('change', (e) => {
-        appSettings.swapControls = e.target.value === 'true';
     });
 
     // Upgrade buttons
@@ -720,17 +583,16 @@
     document.getElementById('upg-dmg').addEventListener('click', () => {
         if (coins >= costs.dmg) { coins -= costs.dmg; player.damage += 1; costs.dmg = Math.floor(costs.dmg * 2); updateUI(); document.getElementById('cost-dmg').innerText = costs.dmg; }
     });
+    document.getElementById('upg-hp').addEventListener('click', () => {
+        if (coins >= costs.hp) { coins -= costs.hp; player.maxHealth += 2; player.health = player.maxHealth; costs.hp = Math.floor(costs.hp * 1.5); updateUI(); document.getElementById('cost-hp').innerText = costs.hp; }
+    });
+    
+    // New Upgrades
     document.getElementById('upg-orb').addEventListener('click', () => {
         if (coins >= costs.orb) { coins -= costs.orb; numOrbiters += 1; costs.orb = Math.floor(costs.orb * 1.6); updateUI(); document.getElementById('cost-orb').innerText = costs.orb; }
     });
     document.getElementById('upg-auto').addEventListener('click', () => {
         if (coins >= costs.auto) { coins -= costs.auto; autoShootLevel += 1; costs.auto = Math.floor(costs.auto * 1.8); updateUI(); document.getElementById('cost-auto').innerText = costs.auto; }
-    });
-    document.getElementById('upg-trail').addEventListener('click', () => {
-        if (coins >= costs.trail) { coins -= costs.trail; trailLevel += 1; costs.trail = Math.floor(costs.trail * 1.7); updateUI(); document.getElementById('cost-trail').innerText = costs.trail; }
-    });
-    document.getElementById('upg-spread').addEventListener('click', () => {
-        if (coins >= costs.spread) { coins -= costs.spread; spreadLevel += 1; costs.spread = Math.floor(costs.spread * 2); updateUI(); document.getElementById('cost-spread').innerText = costs.spread; }
     });
 
     // Main Game Loop
@@ -744,11 +606,9 @@
         checkAnswerCollisions();
         draw();
 
-        // Spawn logic influenced by difficulty setting
-        let baseRate = Math.max(800, 2000 - (questionsAnswered * 50));
-        let finalSpawnRate = baseRate / appSettings.difficulty;
-
-        if (now - lastEnemySpawn > finalSpawnRate) { 
+        // Spawn logic speeds up slightly as you answer questions
+        let spawnRate = Math.max(800, 2000 - (questionsAnswered * 50));
+        if (now - lastEnemySpawn > spawnRate) { 
             spawnEnemy();
             lastEnemySpawn = now;
         }
