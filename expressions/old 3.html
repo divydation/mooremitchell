@@ -170,15 +170,6 @@
             pointer-events: auto;
         }
 
-        .danger-btn {
-            color: #e74c3c;
-            border-color: #e74c3c !important;
-        }
-        .danger-btn:hover {
-            background-color: #e74c3c !important;
-            color: #fff !important;
-        }
-
     </style>
 </head>
 <body>
@@ -234,10 +225,6 @@
             <option value="true">Move: Arrows | Shoot: WASD</option>
         </select>
         
-        <hr>
-        <button id="btn-save-game">Save Game Manually</button>
-        <button id="btn-reset-game" class="danger-btn">Wipe Save Data</button>
-
         <button id="btn-settings-close" style="margin-top: 20px; border-style: dashed;">Resume</button>
     </div>
 
@@ -255,7 +242,7 @@
 
     // Game Settings
     let appSettings = {
-        difficulty: 1, 
+        difficulty: 1, // 0 = peaceful, 3 = extra hard
         swapControls: false 
     };
 
@@ -298,62 +285,6 @@
 
     // Upgrades Cost
     let costs = { speed: 10, fire: 15, dmg: 20, orb: 30, auto: 40, trail: 35, spread: 45, pet: 50 };
-
-    // --- SAVE & LOAD SYSTEM ---
-    function saveGame() {
-        const saveData = {
-            coins, questionsAnswered,
-            pSpeed: player.speed, pMaxHp: player.maxHealth,
-            pDmg: player.damage, pFireRate: player.fireRate,
-            numOrbiters, autoShootLevel, trailLevel, spreadLevel, petLevel,
-            costs
-        };
-        localStorage.setItem('algebraArenaSave', JSON.stringify(saveData));
-    }
-
-    function loadGame() {
-        const saved = localStorage.getItem('algebraArenaSave');
-        if (saved) {
-            const data = JSON.parse(saved);
-            coins = data.coins || 0;
-            questionsAnswered = data.questionsAnswered || 0;
-            player.speed = data.pSpeed || 3;
-            player.maxHealth = data.pMaxHp || 10;
-            player.health = player.maxHealth; // Restore to full health on load
-            player.damage = data.pDmg || 1;
-            player.fireRate = data.pFireRate || 500;
-
-            numOrbiters = data.numOrbiters || 0;
-            autoShootLevel = data.autoShootLevel || 0;
-            trailLevel = data.trailLevel || 0;
-            spreadLevel = data.spreadLevel || 0;
-            petLevel = data.petLevel || 0;
-
-            if (data.costs) costs = data.costs;
-
-            // Sync UI numbers
-            document.getElementById('cost-speed').innerText = costs.speed;
-            document.getElementById('cost-fire').innerText = costs.fire;
-            document.getElementById('cost-dmg').innerText = costs.dmg;
-            document.getElementById('cost-orb').innerText = costs.orb;
-            document.getElementById('cost-auto').innerText = costs.auto;
-            document.getElementById('cost-trail').innerText = costs.trail;
-            document.getElementById('cost-spread').innerText = costs.spread;
-            document.getElementById('cost-pet').innerText = costs.pet;
-        }
-    }
-
-    document.getElementById('btn-save-game').addEventListener('click', () => {
-        saveGame();
-        alert("Game Saved Successfully!");
-    });
-
-    document.getElementById('btn-reset-game').addEventListener('click', () => {
-        if(confirm("Are you sure you want to completely wipe your save data? This cannot be undone.")) {
-            localStorage.removeItem('algebraArenaSave');
-            location.reload();
-        }
-    });
 
     // Input Handling
     const keys = {};
@@ -526,11 +457,13 @@
     function handlePet(now) {
         if (petLevel <= 0) return;
 
+        // Smoothly follow player, offset slightly upwards
         let targetX = player.x;
         let targetY = player.y - 40;
         pet.x += (targetX - pet.x) * 0.05;
         pet.y += (targetY - pet.y) * 0.05;
 
+        // Pet Shooting
         let petCooldown = Math.max(200, 1500 - (petLevel * 200));
         if (now - pet.lastShot > petCooldown) {
             let nearest = null;
@@ -550,7 +483,7 @@
     }
 
     function spawnEnemy() {
-        if (appSettings.difficulty === 0) return; 
+        if (appSettings.difficulty === 0) return; // Peaceful Mode
 
         let x, y;
         if (Math.random() < 0.5) {
@@ -561,13 +494,14 @@
             y = Math.random() < 0.5 ? -20 : canvas.height + 20;
         }
         
+        // 20% chance to spawn a Brute once past 3 questions
         let isBrute = Math.random() < 0.2 && questionsAnswered > 2;
         let radius = isBrute ? 24 : 12;
         let enemySpeed = isBrute ? (0.15 + Math.random() * 0.15) : (0.3 + Math.random() * 0.4);
         
         let hpScale = 2 + Math.floor(questionsAnswered / 5);
-        if (isBrute) hpScale *= 4; 
-        if (appSettings.difficulty >= 2) hpScale = Math.floor(hpScale * 1.5); 
+        if (isBrute) hpScale *= 4; // Brutes are 4x tankier
+        if (appSettings.difficulty >= 2) hpScale = Math.floor(hpScale * 1.5); // Hard/Extra Hard multiplier
 
         enemies.push({
             x: x, y: y, radius: radius, speed: enemySpeed, health: hpScale, lastHitTime: 0, isBrute: isBrute
@@ -588,12 +522,11 @@
                 let fbText = document.getElementById('feedback-box');
 
                 if (ans.isCorrect) {
-                    let reward = 10 + questionsAnswered; 
+                    let reward = 10 + questionsAnswered; // Scales up by 1 coin every answered question
                     coins += reward;
                     questionsAnswered++;
                     player.health = Math.min(player.maxHealth, player.health + 2); 
                     fbText.innerHTML = `<span class="correct">Correct! +${reward} Coins & +2 HP</span>`;
-                    saveGame(); // Auto-save on correct answer
                 } else {
                     fbText.innerHTML = `<span class="wrong">Wrong! Correct was: ${currentQuestion.correct}</span>`;
                 }
@@ -610,14 +543,17 @@
     }
 
     function updateEntities(now) {
+        // Enforce Peaceful mode immediately despawning existing enemies
         if (appSettings.difficulty === 0) enemies = [];
 
+        // Toxic Trail Drops
         if (trailLevel > 0 && now - lastTrailDrop > 250) {
             trailDrops.push({ x: player.x, y: player.y, spawnTime: now, size: 20 + trailLevel * 5 });
             lastTrailDrop = now;
         }
         trailDrops = trailDrops.filter(t => now - t.spawnTime < 3000);
 
+        // Orbiters
         orbiterAngle += 0.04;
         let orbiterPositions = [];
         let orbRadius = 45;
@@ -626,6 +562,7 @@
             orbiterPositions.push({ x: player.x + Math.cos(angle) * orbRadius, y: player.y + Math.sin(angle) * orbRadius, size: 10 });
         }
 
+        // Bullets
         for (let i = bullets.length - 1; i >= 0; i--) {
             let b = bullets[i];
             b.x += b.vx;
@@ -635,6 +572,7 @@
             }
         }
 
+        // Enemies
         for (let i = enemies.length - 1; i >= 0; i--) {
             let e = enemies[i];
             let dx = player.x - e.x;
@@ -644,8 +582,9 @@
             e.x += (dx/dist) * e.speed;
             e.y += (dy/dist) * e.speed;
 
+            // Collision with player
             if (dist < player.size/2 + e.radius) {
-                player.health -= e.isBrute ? 2 : 1;
+                player.health -= e.isBrute ? 2 : 1; // Brutes hit harder
                 enemies.splice(i, 1);
                 updateUI();
                 if (player.health <= 0) gameOver();
@@ -656,7 +595,7 @@
                 if (now - e.lastHitTime > 300) { 
                     e.health -= dmg;
                     e.lastHitTime = now;
-                    if (force && !e.isBrute) { 
+                    if (force && !e.isBrute) { // Brutes don't take knockback easily
                         let kbAngle = Math.atan2(e.y - knockbackSrcY, e.x - knockbackSrcX);
                         e.x += Math.cos(kbAngle) * force;
                         e.y += Math.sin(kbAngle) * force;
@@ -664,12 +603,14 @@
                 }
             };
 
+            // Collision with Orbiters
             for (let o of orbiterPositions) {
                 if (Math.hypot(o.x - e.x, o.y - e.y) < e.radius + o.size/2) {
                     tryDamageEnemy(player.damage, player.x, player.y, 20); 
                 }
             }
 
+            // Collision with Toxic Trail
             for (let t of trailDrops) {
                 if (Math.hypot(t.x - e.x, t.y - e.y) < e.radius + t.size/2) {
                     tryDamageEnemy(player.damage, 0, 0, 0); 
@@ -678,11 +619,12 @@
 
             if (e.health <= 0) {
                 enemies.splice(i, 1);
-                coins += e.isBrute ? 3 : 1; 
+                coins += e.isBrute ? 3 : 1; // Brutes drop more coins
                 updateUI();
                 continue; 
             }
 
+            // Collision with bullets
             for (let j = bullets.length - 1; j >= 0; j--) {
                 let b = bullets[j];
                 if (Math.hypot(b.x - e.x, b.y - e.y) < e.radius + b.size/2) {
@@ -703,6 +645,7 @@
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Draw Trail Drops
         ctx.fillStyle = 'rgba(46, 204, 113, 0.4)'; 
         trailDrops.forEach(t => {
             ctx.beginPath();
@@ -710,16 +653,20 @@
             ctx.fill();
         });
 
+        // Draw Player
         ctx.fillStyle = '#000';
         ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
 
+        // Draw Pet
         if (petLevel > 0) {
-            ctx.fillStyle = '#3498db'; 
+            ctx.fillStyle = '#3498db'; // Blue Pet
             ctx.fillRect(pet.x - pet.size/2, pet.y - pet.size/2, pet.size, pet.size);
+            // Draw eyes or a little detail so it looks like a drone
             ctx.fillStyle = '#fff';
             ctx.fillRect(pet.x - 2, pet.y - 2, 4, 4);
         }
 
+        // Draw Orbiters
         ctx.fillStyle = '#000';
         let orbRadius = 45;
         for (let i = 0; i < numOrbiters; i++) {
@@ -732,19 +679,22 @@
             ctx.strokeRect(ox - 5, oy - 5, 10, 10);
         }
 
+        // Draw Bullets
         ctx.fillStyle = '#333';
         bullets.forEach(b => {
             ctx.fillRect(b.x - b.size/2, b.y - b.size/2, b.size, b.size);
         });
 
+        // Draw Enemies 
         enemies.forEach(e => {
             if (performance.now() - e.lastHitTime < 100) ctx.fillStyle = '#e74c3c';
-            else ctx.fillStyle = e.isBrute ? '#2c3e50' : '#000'; 
+            else ctx.fillStyle = e.isBrute ? '#2c3e50' : '#000'; // Brutes are a dark grayish-blue
 
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
             ctx.fill();
 
+            // Draw Brute health indicator
             if (e.isBrute && e.health > 1) {
                 ctx.fillStyle = '#fff';
                 ctx.font = '10px Arial';
@@ -791,6 +741,7 @@
         updateUI();
     }
 
+    // Buttons
     document.getElementById('btn-shop-open').addEventListener('click', () => toggleMenu(shopMenu));
     document.getElementById('btn-shop-close').addEventListener('click', () => toggleMenu(shopMenu));
     
@@ -805,6 +756,7 @@
         }
     });
 
+    // Settings Dropdowns
     document.getElementById('set-diff').addEventListener('change', (e) => {
         appSettings.difficulty = parseFloat(e.target.value);
     });
@@ -812,38 +764,30 @@
         appSettings.swapControls = e.target.value === 'true';
     });
 
-    // Upgrades (Now trigger auto-saves)
+    // Upgrade buttons
     document.getElementById('upg-speed').addEventListener('click', () => {
-        if (coins >= costs.speed) { coins -= costs.speed; player.speed += 0.5; costs.speed = Math.floor(costs.speed * 1.5); updateUI(); saveGame(); document.getElementById('cost-speed').innerText = costs.speed; }
+        if (coins >= costs.speed) { coins -= costs.speed; player.speed += 0.5; costs.speed = Math.floor(costs.speed * 1.5); updateUI(); document.getElementById('cost-speed').innerText = costs.speed; }
     });
     document.getElementById('upg-fire').addEventListener('click', () => {
-        // Lowered cap down to 20ms
-        if (coins >= costs.fire && player.fireRate > 20) { 
-            coins -= costs.fire; 
-            player.fireRate = Math.max(20, player.fireRate - 40); 
-            costs.fire = Math.floor(costs.fire * 1.5); 
-            updateUI(); 
-            saveGame(); 
-            document.getElementById('cost-fire').innerText = costs.fire; 
-        }
+        if (coins >= costs.fire && player.fireRate > 100) { coins -= costs.fire; player.fireRate -= 50; costs.fire = Math.floor(costs.fire * 1.5); updateUI(); document.getElementById('cost-fire').innerText = costs.fire; }
     });
     document.getElementById('upg-dmg').addEventListener('click', () => {
-        if (coins >= costs.dmg) { coins -= costs.dmg; player.damage += 1; costs.dmg = Math.floor(costs.dmg * 2); updateUI(); saveGame(); document.getElementById('cost-dmg').innerText = costs.dmg; }
+        if (coins >= costs.dmg) { coins -= costs.dmg; player.damage += 1; costs.dmg = Math.floor(costs.dmg * 2); updateUI(); document.getElementById('cost-dmg').innerText = costs.dmg; }
     });
     document.getElementById('upg-orb').addEventListener('click', () => {
-        if (coins >= costs.orb) { coins -= costs.orb; numOrbiters += 1; costs.orb = Math.floor(costs.orb * 1.6); updateUI(); saveGame(); document.getElementById('cost-orb').innerText = costs.orb; }
+        if (coins >= costs.orb) { coins -= costs.orb; numOrbiters += 1; costs.orb = Math.floor(costs.orb * 1.6); updateUI(); document.getElementById('cost-orb').innerText = costs.orb; }
     });
     document.getElementById('upg-auto').addEventListener('click', () => {
-        if (coins >= costs.auto) { coins -= costs.auto; autoShootLevel += 1; costs.auto = Math.floor(costs.auto * 1.8); updateUI(); saveGame(); document.getElementById('cost-auto').innerText = costs.auto; }
+        if (coins >= costs.auto) { coins -= costs.auto; autoShootLevel += 1; costs.auto = Math.floor(costs.auto * 1.8); updateUI(); document.getElementById('cost-auto').innerText = costs.auto; }
     });
     document.getElementById('upg-trail').addEventListener('click', () => {
-        if (coins >= costs.trail) { coins -= costs.trail; trailLevel += 1; costs.trail = Math.floor(costs.trail * 1.7); updateUI(); saveGame(); document.getElementById('cost-trail').innerText = costs.trail; }
+        if (coins >= costs.trail) { coins -= costs.trail; trailLevel += 1; costs.trail = Math.floor(costs.trail * 1.7); updateUI(); document.getElementById('cost-trail').innerText = costs.trail; }
     });
     document.getElementById('upg-spread').addEventListener('click', () => {
-        if (coins >= costs.spread) { coins -= costs.spread; spreadLevel += 1; costs.spread = Math.floor(costs.spread * 2); updateUI(); saveGame(); document.getElementById('cost-spread').innerText = costs.spread; }
+        if (coins >= costs.spread) { coins -= costs.spread; spreadLevel += 1; costs.spread = Math.floor(costs.spread * 2); updateUI(); document.getElementById('cost-spread').innerText = costs.spread; }
     });
     document.getElementById('upg-pet').addEventListener('click', () => {
-        if (coins >= costs.pet) { coins -= costs.pet; petLevel += 1; costs.pet = Math.floor(costs.pet * 1.8); updateUI(); saveGame(); document.getElementById('cost-pet').innerText = costs.pet; }
+        if (coins >= costs.pet) { coins -= costs.pet; petLevel += 1; costs.pet = Math.floor(costs.pet * 1.8); updateUI(); document.getElementById('cost-pet').innerText = costs.pet; }
     });
 
     // Main Game Loop
@@ -858,8 +802,11 @@
         checkAnswerCollisions();
         draw();
 
+        // Spawn logic influenced by difficulty setting
         if (appSettings.difficulty > 0) {
             let baseRate = Math.max(800, 2000 - (questionsAnswered * 50));
+            
+            // Adjust rate based on difficulty selection
             let effectiveDiff = appSettings.difficulty === 3 ? 2.5 : appSettings.difficulty;
             let finalSpawnRate = baseRate / effectiveDiff;
 
@@ -872,10 +819,7 @@
         requestAnimationFrame(gameLoop);
     }
 
-    // Initialize Save Data First
-    loadGame();
-    
-    // Start Game
+    // Start
     spawnQuestion();
     updateUI();
     requestAnimationFrame(gameLoop);
