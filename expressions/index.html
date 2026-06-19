@@ -179,6 +179,15 @@
             color: #fff !important;
         }
 
+        #custom-diff-container {
+            display: none;
+            text-align: center;
+            margin: 10px 0;
+            background: #f9f9f9;
+            padding: 10px;
+            border: 2px dashed #000;
+        }
+
     </style>
 </head>
 <body>
@@ -228,7 +237,18 @@
             <option value="1" selected>Normal</option>
             <option value="2">Hard (More Enemies)</option>
             <option value="3">Extra Hard (Swarm & Tougher)</option>
+            <option value="custom">Custom Multiplier (Infinite Scaling)</option>
         </select>
+
+        <div id="custom-diff-container">
+            <label>Multiplier Tier:</label>
+            <div style="display:flex; justify-content:center; align-items:center; gap: 10px; margin-top: 5px;">
+                <button id="btn-diff-down" class="ui-btn" style="width: 40px; margin: 0;">-</button>
+                <span id="custom-diff-val" style="font-size: 20px; font-weight: bold; width: 40px;">1</span>
+                <button id="btn-diff-up" class="ui-btn" style="width: 40px; margin: 0;">+</button>
+            </div>
+            <small style="display:block; margin-top: 5px; color: #555;">Increases enemy HP, speed, and spawn rate infinitely.</small>
+        </div>
         
         <label>Controls:</label>
         <select id="set-ctrl">
@@ -258,6 +278,7 @@
     // Game Settings
     let appSettings = {
         difficulty: 1, 
+        customDiff: 1,
         swapControls: false 
     };
 
@@ -311,7 +332,7 @@
             pDmg: player.damage, pFireRate: player.fireRate,
             numOrbiters, autoShootLevel, trailLevel, spreadLevel, 
             mirrorLevel, multiLevel, petLevel,
-            costs
+            costs, customDiff: appSettings.customDiff
         };
         localStorage.setItem('algebraArenaSave', JSON.stringify(saveData));
     }
@@ -332,20 +353,19 @@
             autoShootLevel = data.autoShootLevel || 0;
             trailLevel = data.trailLevel || 0;
             spreadLevel = data.spreadLevel || 0;
-            
-            // New upgrades with fallbacks to avoid corruption
             mirrorLevel = data.mirrorLevel || 0;
             multiLevel = data.multiLevel || 0;
             petLevel = data.petLevel || 0;
+            
+            appSettings.customDiff = data.customDiff || 1;
+            document.getElementById('custom-diff-val').innerText = appSettings.customDiff;
 
-            // Load costs safely, injecting missing costs for old saves
             if (data.costs) {
                 costs = data.costs;
                 if (!costs.mirror) costs.mirror = 50;
                 if (!costs.multi) costs.multi = 60;
             }
 
-            // Sync UI numbers
             document.getElementById('cost-speed').innerText = costs.speed;
             document.getElementById('cost-fire').innerText = costs.fire;
             document.getElementById('cost-dmg').innerText = costs.dmg;
@@ -357,7 +377,6 @@
             document.getElementById('cost-multi').innerText = costs.multi;
             document.getElementById('cost-pet').innerText = costs.pet;
 
-            // Re-initialize pets based on loaded level
             petsData = [];
             for(let i=0; i<petLevel; i++) {
                 petsData.push({ x: player.x, y: player.y, lastShot: 0 });
@@ -496,7 +515,6 @@
         });
     }
 
-    // A unified firing system handling Spread, Multi-shot, and Mirror for Player and Pets
     function executeWeaponFire(originX, originY, aimAngle) {
         let numMirrors = mirrorLevel + 1;
         let mirrorAngleInc = (Math.PI * 2) / numMirrors;
@@ -509,7 +527,7 @@
                 
                 let numMulti = multiLevel + 1;
                 let perpAngle = finalAngle + Math.PI / 2;
-                let spacing = 8; // Parallel spacing distance
+                let spacing = 8; 
                 
                 for (let p = 0; p < numMulti; p++) {
                     let offsetMult = p - (multiLevel / 2);
@@ -540,7 +558,6 @@
             player.lastShot = now;
         }
 
-        // Auto-Turret
         if (autoShootLevel > 0) {
             let autoCooldown = Math.max(300, 2000 - (autoShootLevel * 300));
             if (now - lastAutoShoot > autoCooldown) {
@@ -564,14 +581,13 @@
     function handlePets(now) {
         if (petLevel <= 0) return;
 
-        let orbitRadius = 60 + (petLevel * 2); // Slightly larger orbit as swarm grows
+        let orbitRadius = 60 + (petLevel * 2); 
         let basePetAngle = now / 1000; 
 
         for (let i = 0; i < petLevel; i++) {
             if (!petsData[i]) petsData.push({ x: player.x, y: player.y, lastShot: 0 });
             let p = petsData[i];
 
-            // Hover around the player in a circle
             let targetAngle = basePetAngle + (i * Math.PI * 2 / petLevel);
             let targetX = player.x + Math.cos(targetAngle) * orbitRadius;
             let targetY = player.y + Math.sin(targetAngle) * orbitRadius;
@@ -579,7 +595,6 @@
             p.x += (targetX - p.x) * 0.08;
             p.y += (targetY - p.y) * 0.08;
 
-            // Pet Shooting (Pets use the exact same logic & upgrades as the player)
             if (now - p.lastShot > player.fireRate) {
                 let nearest = null;
                 let minDist = Infinity;
@@ -601,6 +616,8 @@
     function spawnEnemy() {
         if (appSettings.difficulty === 0) return; 
 
+        let diffMult = appSettings.difficulty === 'custom' ? appSettings.customDiff : parseFloat(appSettings.difficulty);
+
         let x, y;
         if (Math.random() < 0.5) {
             x = Math.random() < 0.5 ? -20 : canvas.width + 20;
@@ -610,16 +627,35 @@
             y = Math.random() < 0.5 ? -20 : canvas.height + 20;
         }
         
-        let isBrute = Math.random() < 0.2 && questionsAnswered > 2;
-        let radius = isBrute ? 24 : 12;
-        let enemySpeed = isBrute ? (0.15 + Math.random() * 0.15) : (0.3 + Math.random() * 0.4);
+        let rand = Math.random();
+        let isBrute = false;
+        let isStalker = false;
+
+        if (questionsAnswered > 4 && rand < 0.20) {
+            isStalker = true;
+        } else if (questionsAnswered > 2 && rand < 0.40) {
+            isBrute = true;
+        }
         
+        let radius = isBrute ? 24 : (isStalker ? 8 : 12);
+        
+        // Base speeds for archetypes
+        let enemySpeed = isBrute ? (0.15 + Math.random() * 0.15) : (isStalker ? (0.8 + Math.random() * 0.4) : (0.3 + Math.random() * 0.4));
+        
+        // Scale speed moderately using square root so they don't break the sound barrier
+        enemySpeed *= Math.max(1, Math.sqrt(diffMult));
+
+        // Base HP scaling
         let hpScale = 2 + Math.floor(questionsAnswered / 5);
         if (isBrute) hpScale *= 4; 
-        if (appSettings.difficulty >= 2) hpScale = Math.floor(hpScale * 1.5); 
+        if (isStalker) hpScale = Math.max(1, Math.floor(hpScale / 2));
+        
+        // Apply infinite multiplier to HP
+        hpScale = Math.floor(hpScale * diffMult);
+        if(hpScale < 1) hpScale = 1;
 
         enemies.push({
-            x: x, y: y, radius: radius, speed: enemySpeed, health: hpScale, lastHitTime: 0, isBrute: isBrute
+            x: x, y: y, radius: radius, speed: enemySpeed, health: hpScale, lastHitTime: 0, isBrute: isBrute, isStalker: isStalker
         });
     }
 
@@ -661,7 +697,6 @@
     function updateEntities(now) {
         if (appSettings.difficulty === 0) enemies = [];
 
-        // Toxic Trail Logic (Player + Pets)
         if (trailLevel > 0 && now - lastTrailDrop > 250) {
             trailDrops.push({ x: player.x, y: player.y, spawnTime: now, size: 20 + trailLevel * 5 });
             
@@ -734,7 +769,7 @@
 
             if (e.health <= 0) {
                 enemies.splice(i, 1);
-                coins += e.isBrute ? 3 : 1; 
+                coins += e.isBrute ? 3 : (e.isStalker ? 2 : 1); 
                 updateUI();
                 continue; 
             }
@@ -746,7 +781,7 @@
                     bullets.splice(j, 1);
                     if (e.health <= 0) {
                         enemies.splice(i, 1);
-                        coins += e.isBrute ? 3 : 1;
+                        coins += e.isBrute ? 3 : (e.isStalker ? 2 : 1);
                         updateUI();
                     }
                     break;
@@ -755,7 +790,6 @@
         }
     }
 
-    // Drawing 
     function draw() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -769,7 +803,6 @@
         ctx.fillStyle = '#000';
         ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
 
-        // Draw Swarm of Pets
         if (petLevel > 0) {
             petsData.forEach(p => {
                 ctx.fillStyle = '#3498db'; 
@@ -799,17 +832,18 @@
 
         enemies.forEach(e => {
             if (performance.now() - e.lastHitTime < 100) ctx.fillStyle = '#e74c3c';
+            else if (e.isStalker) ctx.fillStyle = '#8e44ad'; // Purple Void Stalker
             else ctx.fillStyle = e.isBrute ? '#2c3e50' : '#000'; 
 
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.radius, 0, Math.PI * 2);
             ctx.fill();
 
-            if (e.isBrute && e.health > 1) {
+            if ((e.isBrute || e.isStalker) && e.health > 1) {
                 ctx.fillStyle = '#fff';
-                ctx.font = '10px Arial';
+                ctx.font = e.isStalker ? '8px Arial' : '10px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText(Math.ceil(e.health), e.x, e.y + 4);
+                ctx.fillText(Math.ceil(e.health), e.x, e.y + (e.isStalker ? 3 : 4));
             }
         });
     }
@@ -865,9 +899,32 @@
         }
     });
 
+    // Modified Settings Listeners for Infinite Custom Difficulty
     document.getElementById('set-diff').addEventListener('change', (e) => {
-        appSettings.difficulty = parseFloat(e.target.value);
+        let val = e.target.value;
+        if(val === 'custom') {
+            appSettings.difficulty = 'custom';
+            document.getElementById('custom-diff-container').style.display = 'block';
+        } else {
+            appSettings.difficulty = parseFloat(val);
+            document.getElementById('custom-diff-container').style.display = 'none';
+        }
     });
+
+    document.getElementById('btn-diff-down').addEventListener('click', () => {
+        if (appSettings.customDiff > 1) {
+            appSettings.customDiff -= 1;
+            document.getElementById('custom-diff-val').innerText = appSettings.customDiff;
+            saveGame();
+        }
+    });
+
+    document.getElementById('btn-diff-up').addEventListener('click', () => {
+        appSettings.customDiff += 1;
+        document.getElementById('custom-diff-val').innerText = appSettings.customDiff;
+        saveGame();
+    });
+
     document.getElementById('set-ctrl').addEventListener('change', (e) => {
         appSettings.swapControls = e.target.value === 'true';
     });
@@ -923,9 +980,12 @@
         checkAnswerCollisions();
         draw();
 
-        if (appSettings.difficulty > 0) {
-            let baseRate = Math.max(800, 2000 - (questionsAnswered * 50));
-            let effectiveDiff = appSettings.difficulty === 3 ? 2.5 : appSettings.difficulty;
+        if (appSettings.difficulty !== 0) {
+            let diffMult = appSettings.difficulty === 'custom' ? appSettings.customDiff : parseFloat(appSettings.difficulty);
+            let effectiveDiff = diffMult === 3 ? 2.5 : diffMult; 
+
+            // Spawn rate accelerates aggressively with difficulty modifier
+            let baseRate = Math.max(200, 2000 - (questionsAnswered * 50));
             let finalSpawnRate = baseRate / effectiveDiff;
 
             if (now - lastEnemySpawn > finalSpawnRate) { 
