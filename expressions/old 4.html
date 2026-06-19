@@ -129,8 +129,8 @@
         .menu button {
             display: block;
             width: 100%;
-            margin: 8px 0;
-            padding: 8px;
+            margin: 10px 0;
+            padding: 10px;
             font-family: inherit;
             font-size: 14px;
             background-color: #fff;
@@ -213,10 +213,8 @@
         <button id="upg-auto">Auto-Turret (Cost: <span id="cost-auto">40</span>)</button>
         <button id="upg-trail">Toxic Trail (Cost: <span id="cost-trail">35</span>)</button>
         <button id="upg-spread">Spread Shot (Cost: <span id="cost-spread">45</span>)</button>
-        <button id="upg-mirror">Mirror Shot (Cost: <span id="cost-mirror">50</span>)</button>
-        <button id="upg-multi">Multi-Shot (Cost: <span id="cost-multi">60</span>)</button>
-        <button id="upg-pet">Pet Drone Swarm (Cost: <span id="cost-pet">50</span>)</button>
-        <button id="btn-shop-close" style="margin-top: 15px; border-style: dashed;">Resume</button>
+        <button id="upg-pet">Pet Drone (Cost: <span id="cost-pet">50</span>)</button>
+        <button id="btn-shop-close" style="margin-top: 20px; border-style: dashed;">Resume</button>
     </div>
 
     <div id="settings-menu" class="menu">
@@ -287,11 +285,9 @@
     let lastTrailDrop = 0;
 
     let spreadLevel = 0; 
-    let mirrorLevel = 0;
-    let multiLevel = 0;
 
     let petLevel = 0;
-    let petsData = [];
+    let pet = { x: player.x, y: player.y - 40, size: 12, lastShot: 0 };
 
     let bullets = [];
     let enemies = [];
@@ -301,7 +297,7 @@
     let questionActive = false;
 
     // Upgrades Cost
-    let costs = { speed: 10, fire: 15, dmg: 20, orb: 30, auto: 40, trail: 35, spread: 45, mirror: 50, multi: 60, pet: 50 };
+    let costs = { speed: 10, fire: 15, dmg: 20, orb: 30, auto: 40, trail: 35, spread: 45, pet: 50 };
 
     // --- SAVE & LOAD SYSTEM ---
     function saveGame() {
@@ -309,8 +305,7 @@
             coins, questionsAnswered,
             pSpeed: player.speed, pMaxHp: player.maxHealth,
             pDmg: player.damage, pFireRate: player.fireRate,
-            numOrbiters, autoShootLevel, trailLevel, spreadLevel, 
-            mirrorLevel, multiLevel, petLevel,
+            numOrbiters, autoShootLevel, trailLevel, spreadLevel, petLevel,
             costs
         };
         localStorage.setItem('algebraArenaSave', JSON.stringify(saveData));
@@ -324,7 +319,7 @@
             questionsAnswered = data.questionsAnswered || 0;
             player.speed = data.pSpeed || 3;
             player.maxHealth = data.pMaxHp || 10;
-            player.health = player.maxHealth; 
+            player.health = player.maxHealth; // Restore to full health on load
             player.damage = data.pDmg || 1;
             player.fireRate = data.pFireRate || 500;
 
@@ -332,18 +327,9 @@
             autoShootLevel = data.autoShootLevel || 0;
             trailLevel = data.trailLevel || 0;
             spreadLevel = data.spreadLevel || 0;
-            
-            // New upgrades with fallbacks to avoid corruption
-            mirrorLevel = data.mirrorLevel || 0;
-            multiLevel = data.multiLevel || 0;
             petLevel = data.petLevel || 0;
 
-            // Load costs safely, injecting missing costs for old saves
-            if (data.costs) {
-                costs = data.costs;
-                if (!costs.mirror) costs.mirror = 50;
-                if (!costs.multi) costs.multi = 60;
-            }
+            if (data.costs) costs = data.costs;
 
             // Sync UI numbers
             document.getElementById('cost-speed').innerText = costs.speed;
@@ -353,15 +339,7 @@
             document.getElementById('cost-auto').innerText = costs.auto;
             document.getElementById('cost-trail').innerText = costs.trail;
             document.getElementById('cost-spread').innerText = costs.spread;
-            document.getElementById('cost-mirror').innerText = costs.mirror;
-            document.getElementById('cost-multi').innerText = costs.multi;
             document.getElementById('cost-pet').innerText = costs.pet;
-
-            // Re-initialize pets based on loaded level
-            petsData = [];
-            for(let i=0; i<petLevel; i++) {
-                petsData.push({ x: player.x, y: player.y, lastShot: 0 });
-            }
         }
     }
 
@@ -496,32 +474,6 @@
         });
     }
 
-    // A unified firing system handling Spread, Multi-shot, and Mirror for Player and Pets
-    function executeWeaponFire(originX, originY, aimAngle) {
-        let numMirrors = mirrorLevel + 1;
-        let mirrorAngleInc = (Math.PI * 2) / numMirrors;
-
-        for (let m = 0; m < numMirrors; m++) {
-            let mirrorBaseAngle = aimAngle + (m * mirrorAngleInc);
-
-            for (let s = -spreadLevel; s <= spreadLevel; s++) {
-                let finalAngle = mirrorBaseAngle + (s * 0.25);
-                
-                let numMulti = multiLevel + 1;
-                let perpAngle = finalAngle + Math.PI / 2;
-                let spacing = 8; // Parallel spacing distance
-                
-                for (let p = 0; p < numMulti; p++) {
-                    let offsetMult = p - (multiLevel / 2);
-                    let bx = originX + Math.cos(perpAngle) * (offsetMult * spacing);
-                    let by = originY + Math.sin(perpAngle) * (offsetMult * spacing);
-                    
-                    fireBullet(bx, by, finalAngle);
-                }
-            }
-        }
-    }
-
     function handleShooting(now) {
         let sUp = appSettings.swapControls ? (keys['KeyW'] || keys['Keyw']) : keys['ArrowUp'];
         let sDown = appSettings.swapControls ? (keys['KeyS'] || keys['Keys']) : keys['ArrowDown'];
@@ -536,7 +488,12 @@
 
         if ((dx !== 0 || dy !== 0) && now - player.lastShot > player.fireRate) {
             let baseAngle = Math.atan2(dy, dx);
-            executeWeaponFire(player.x, player.y, baseAngle);
+            fireBullet(player.x, player.y, baseAngle);
+            
+            for(let i=1; i<=spreadLevel; i++) {
+                fireBullet(player.x, player.y, baseAngle + (i * 0.25));
+                fireBullet(player.x, player.y, baseAngle - (i * 0.25));
+            }
             player.lastShot = now;
         }
 
@@ -554,46 +511,40 @@
 
                 if (nearest) {
                     let angle = Math.atan2(nearest.y - player.y, nearest.x - player.x);
-                    executeWeaponFire(player.x, player.y, angle);
+                    fireBullet(player.x, player.y, angle);
+                    
+                    for(let i=1; i<=spreadLevel; i++) {
+                        fireBullet(player.x, player.y, angle + (i * 0.25));
+                        fireBullet(player.x, player.y, angle - (i * 0.25));
+                    }
                     lastAutoShoot = now;
                 }
             }
         }
     }
 
-    function handlePets(now) {
+    function handlePet(now) {
         if (petLevel <= 0) return;
 
-        let orbitRadius = 60 + (petLevel * 2); // Slightly larger orbit as swarm grows
-        let basePetAngle = now / 1000; 
+        let targetX = player.x;
+        let targetY = player.y - 40;
+        pet.x += (targetX - pet.x) * 0.05;
+        pet.y += (targetY - pet.y) * 0.05;
 
-        for (let i = 0; i < petLevel; i++) {
-            if (!petsData[i]) petsData.push({ x: player.x, y: player.y, lastShot: 0 });
-            let p = petsData[i];
+        let petCooldown = Math.max(200, 1500 - (petLevel * 200));
+        if (now - pet.lastShot > petCooldown) {
+            let nearest = null;
+            let minDist = Infinity;
+            
+            enemies.forEach(e => {
+                let d = Math.hypot(pet.x - e.x, pet.y - e.y);
+                if (d < minDist) { minDist = d; nearest = e; }
+            });
 
-            // Hover around the player in a circle
-            let targetAngle = basePetAngle + (i * Math.PI * 2 / petLevel);
-            let targetX = player.x + Math.cos(targetAngle) * orbitRadius;
-            let targetY = player.y + Math.sin(targetAngle) * orbitRadius;
-
-            p.x += (targetX - p.x) * 0.08;
-            p.y += (targetY - p.y) * 0.08;
-
-            // Pet Shooting (Pets use the exact same logic & upgrades as the player)
-            if (now - p.lastShot > player.fireRate) {
-                let nearest = null;
-                let minDist = Infinity;
-                
-                enemies.forEach(e => {
-                    let d = Math.hypot(p.x - e.x, p.y - e.y);
-                    if (d < minDist) { minDist = d; nearest = e; }
-                });
-
-                if (nearest) {
-                    let angle = Math.atan2(nearest.y - p.y, nearest.x - p.x);
-                    executeWeaponFire(p.x, p.y, angle);
-                    p.lastShot = now;
-                }
+            if (nearest) {
+                let angle = Math.atan2(nearest.y - pet.y, nearest.x - pet.x);
+                fireBullet(pet.x, pet.y, angle);
+                pet.lastShot = now;
             }
         }
     }
@@ -642,7 +593,7 @@
                     questionsAnswered++;
                     player.health = Math.min(player.maxHealth, player.health + 2); 
                     fbText.innerHTML = `<span class="correct">Correct! +${reward} Coins & +2 HP</span>`;
-                    saveGame(); 
+                    saveGame(); // Auto-save on correct answer
                 } else {
                     fbText.innerHTML = `<span class="wrong">Wrong! Correct was: ${currentQuestion.correct}</span>`;
                 }
@@ -661,15 +612,8 @@
     function updateEntities(now) {
         if (appSettings.difficulty === 0) enemies = [];
 
-        // Toxic Trail Logic (Player + Pets)
         if (trailLevel > 0 && now - lastTrailDrop > 250) {
             trailDrops.push({ x: player.x, y: player.y, spawnTime: now, size: 20 + trailLevel * 5 });
-            
-            if (petLevel > 0) {
-                petsData.forEach(p => {
-                    trailDrops.push({ x: p.x, y: p.y, spawnTime: now, size: 20 + trailLevel * 5 });
-                });
-            }
             lastTrailDrop = now;
         }
         trailDrops = trailDrops.filter(t => now - t.spawnTime < 3000);
@@ -769,15 +713,11 @@
         ctx.fillStyle = '#000';
         ctx.fillRect(player.x - player.size/2, player.y - player.size/2, player.size, player.size);
 
-        // Draw Swarm of Pets
         if (petLevel > 0) {
-            petsData.forEach(p => {
-                ctx.fillStyle = '#3498db'; 
-                let pSize = 12;
-                ctx.fillRect(p.x - pSize/2, p.y - pSize/2, pSize, pSize);
-                ctx.fillStyle = '#fff';
-                ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
-            });
+            ctx.fillStyle = '#3498db'; 
+            ctx.fillRect(pet.x - pet.size/2, pet.y - pet.size/2, pet.size, pet.size);
+            ctx.fillStyle = '#fff';
+            ctx.fillRect(pet.x - 2, pet.y - 2, 4, 4);
         }
 
         ctx.fillStyle = '#000';
@@ -872,11 +812,12 @@
         appSettings.swapControls = e.target.value === 'true';
     });
 
-    // Upgrades
+    // Upgrades (Now trigger auto-saves)
     document.getElementById('upg-speed').addEventListener('click', () => {
         if (coins >= costs.speed) { coins -= costs.speed; player.speed += 0.5; costs.speed = Math.floor(costs.speed * 1.5); updateUI(); saveGame(); document.getElementById('cost-speed').innerText = costs.speed; }
     });
     document.getElementById('upg-fire').addEventListener('click', () => {
+        // Lowered cap down to 20ms
         if (coins >= costs.fire && player.fireRate > 20) { 
             coins -= costs.fire; 
             player.fireRate = Math.max(20, player.fireRate - 40); 
@@ -901,12 +842,6 @@
     document.getElementById('upg-spread').addEventListener('click', () => {
         if (coins >= costs.spread) { coins -= costs.spread; spreadLevel += 1; costs.spread = Math.floor(costs.spread * 2); updateUI(); saveGame(); document.getElementById('cost-spread').innerText = costs.spread; }
     });
-    document.getElementById('upg-mirror').addEventListener('click', () => {
-        if (coins >= costs.mirror) { coins -= costs.mirror; mirrorLevel += 1; costs.mirror = Math.floor(costs.mirror * 2); updateUI(); saveGame(); document.getElementById('cost-mirror').innerText = costs.mirror; }
-    });
-    document.getElementById('upg-multi').addEventListener('click', () => {
-        if (coins >= costs.multi) { coins -= costs.multi; multiLevel += 1; costs.multi = Math.floor(costs.multi * 2); updateUI(); saveGame(); document.getElementById('cost-multi').innerText = costs.multi; }
-    });
     document.getElementById('upg-pet').addEventListener('click', () => {
         if (coins >= costs.pet) { coins -= costs.pet; petLevel += 1; costs.pet = Math.floor(costs.pet * 1.8); updateUI(); saveGame(); document.getElementById('cost-pet').innerText = costs.pet; }
     });
@@ -918,7 +853,7 @@
 
         handlePlayerMovement();
         handleShooting(now);
-        handlePets(now);
+        handlePet(now);
         updateEntities(now);
         checkAnswerCollisions();
         draw();
