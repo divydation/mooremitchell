@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Percentage Increase and Decrease</title>
+  <style>
+    :root{
+      --sidebar:240px;
+      --pixel-scale:2.5;
+    }
+    html,body{overflow:hidden;height:100%;margin:0;background:#0f0f10;font-family:system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#ddd}
+    .wrap{display:flex;gap:12px;height:100vh;align-items:center;justify-content:center;padding:20px;box-sizing:border-box}
+    .game-container{position:relative;}
+    canvas{
+      image-rendering:pixelated;
+      width:calc(580px * var(--pixel-scale));
+      height:calc(330px * var(--pixel-scale));
+      display:block;
+      background:#1a1a1a;
+    }
+    .overlay{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;pointer-events:none}
+    .panel{pointer-events:auto;background:#0f0f10;border:2px solid #222;padding:18px;border-radius:8px;color:#eee}
+    button{background:#222;border:0;color:#eee;padding:8px 12px;border-radius:6px;cursor:pointer}
+    .stat-display{position:absolute;top:4px;left:4px;color:#eee;font-size:12px;font-family:monospace;white-space:pre;}
+    .threat-zone{position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="game-container">
+      <canvas id="game" width="640" height="360"></canvas>
+      <div id="stats-overlay" class="stat-display"></div>
+      <div id="ui-overlay" class="overlay" style="display:none;">
+        <div class="panel" id="game-over-panel">
+          <div style="font-size:18px;font-weight:700;margin-bottom:8px">Game Over</div>
+          <div id="final-score" style="margin-bottom:12px">You survived until: <span id="time-survived">0.0</span> s</div>
+          <button id="restart">Restart</button>
+        </div>
+      </div>
+      <div id="threat-zone" class="threat-zone"></div>
+    </div>
+  </div>
+<script>
+(() => {
+  const canvas=document.getElementById('game');
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width,H=canvas.height;
+  let speedMult=1,health=1,firerate=1,trailTime=0.1;
+  const player={x:W/2,y:H/2,size:12};
+  const bullets=[],enemies=[],pickups=[],trails=[];
+  let last=performance.now(),elapsed=0,gameOver=false,spawnTimer=0, pickupReady=true, threatTimer=0, activeThreat=null;
+
+  const overlay=document.getElementById('ui-overlay');
+  const timeSurvived=document.getElementById('time-survived');
+  const restartBtn=document.getElementById('restart');
+  const statsOverlay=document.getElementById('stats-overlay');
+  const threatZone=document.getElementById('threat-zone');
+  const keys={};
+  window.addEventListener('keydown',e=>{keys[e.key.toLowerCase()]=true;});
+  window.addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false;});
+
+  function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+  function spawnEnemy(){
+    const side=randInt(0,3);let x,y;
+    if(side===0){x=Math.random()*W;y=-10;} else if(side===1){x=W+10;y=Math.random()*H;} else if(side===2){x=Math.random()*W;y=H+10;} else{x=-10;y=Math.random()*H;}
+    enemies.push({x,y,size:12,hp:1});
+  }
+
+  function spawnPickup(){
+    const stats=['speed','health','firerate','trail'];
+    // pick two different stats
+    let s1=stats[randInt(0,stats.length-1)];
+    let s2; do{s2=stats[randInt(0,stats.length-1)];}while(s2===s1);
+
+    function makePickup(stat,isNegative=false){
+      let x,y;
+      do{x=Math.random()*(W-40)+20;y=Math.random()*(H-40)+20;}while(Math.hypot(x-player.x,y-player.y)<40);
+      const pct=randInt(1,50);
+      return {x,y,size:14,stat,pct,text:`${stat} ${isNegative?'-':'+'}${pct}%`,negative:isNegative};
+    }
+
+    pickups.push(makePickup(s1));
+    pickups.push(makePickup(s2));
+    pickups.push(makePickup(stats[randInt(0,stats.length-1)],true)); // add one negative
+    pickupReady=false;
+  }
+
+  function applyPickup(p){
+    let factor;
+    if(p.negative){ factor=1-p.pct/100; }
+    else{ factor=1+p.pct/100; }
+
+    if(p.stat==='speed') speedMult*=factor;
+    if(p.stat==='health') health*=factor;
+    if(p.stat==='firerate') firerate*=factor;
+    // if(p.stat==='trail') trailTime+= (p.negative?-0.1:0.1)*Math.abs(factor);
+    if(p.stat==='trail') trailTime*=factor;
+    if(trailTime<0) trailTime=0;
+  }
+
+  let shootCooldown=0;
+  function step(now){
+    const dt=Math.min(0.05,(now-last)/1000); last=now; if(!gameOver) elapsed+=dt;
+    spawnTimer+=dt; if(spawnTimer>1.2){spawnTimer=0;spawnEnemy();}
+    if(pickupReady&&pickups.length===0) spawnPickup();
+    threatTimer+=dt;
+    if(threatTimer>=10){threatTimer=0;activateThreat();}
+    if(activeThreat&&now>activeThreat.end){checkThreat();activeThreat=null;threatZone.style.background='';}
+
+    // Movement + clamp
+    let vx=0,vy=0;
+    if(keys['w']) vy-=1;if(keys['s']) vy+=1;if(keys['a']) vx-=1;if(keys['d']) vx+=1;
+    if(vx||vy){const len=Math.hypot(vx,vy);vx/=len;vy/=len;}
+    player.x+=vx*speedMult*80*dt; player.y+=vy*speedMult*80*dt;
+    player.x=Math.max(player.size/2,Math.min(W-player.size/2,player.x));
+    player.y=Math.max(player.size/2,Math.min(H-player.size/2,player.y));
+
+    // Shooting
+    shootCooldown-=dt;
+    for(const arrow of ['arrowleft','arrowup','arrowright','arrowdown']){
+      if(keys[arrow]){
+        if(shootCooldown<=0){
+          shootCooldown=1/(firerate*1.5);
+          let dx=0,dy=0;
+          if(arrow==='arrowleft')dx=-1;if(arrow==='arrowright')dx=1;if(arrow==='arrowup')dy=-1;if(arrow==='arrowdown')dy=1;
+          bullets.push({x:player.x,y:player.y,dx,dy,size:6,speed:300});
+        }
+      }
+    }
+
+    // Trails
+    trails.push({x:player.x,y:player.y,size:8,time:trailTime});
+    for(let i=trails.length-1;i>=0;i--){trails[i].time-=dt;if(trails[i].time<=0)trails.splice(i,1);}
+
+    // Bullets
+    for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];b.x+=b.dx*b.speed*dt;b.y+=b.dy*b.speed*dt;if(b.x<0||b.x>W||b.y<0||b.y>H)bullets.splice(i,1);}
+
+    // Enemies
+    for(let i=enemies.length-1;i>=0;i--){const e=enemies[i];const dx=player.x-e.x,dy=player.y-e.y;const len=Math.hypot(dx,dy)||1;e.x+=dx/len*25*dt;e.y+=dy/len*25*dt;if(Math.abs(e.x-player.x)<(e.size+player.size)/2&&Math.abs(e.y-player.y)<(e.size+player.size)/2){health-=1;enemies.splice(i,1);if(health<=0){endGame();}}}
+
+    // Collisions
+    for(let i=bullets.length-1;i>=0;i--){for(let j=enemies.length-1;j>=0;j--){if(Math.abs(bullets[i].x-enemies[j].x)<10&&Math.abs(bullets[i].y-enemies[j].y)<10){enemies.splice(j,1);bullets.splice(i,1);break;}}}
+    for(let i=pickups.length-1;i>=0;i--){if(Math.abs(pickups[i].x-player.x)<14&&Math.abs(pickups[i].y-player.y)<14){
+        applyPickup(pickups[i]);
+        pickups.length=0; // remove all
+        pickupReady=true;
+        break;
+    }}
+    for(let i=enemies.length-1;i>=0;i--){for(const t of trails){if(Math.abs(enemies[i].x-t.x)<t.size&&Math.abs(enemies[i].y-t.y)<t.size){enemies.splice(i,1);break;}}}
+
+    render();
+    if(!gameOver)requestAnimationFrame(step);
+  }
+
+  function render(){
+    
+    
+    ctx.fillStyle='#151515';ctx.fillRect(0,0,W,H);
+
+    ctx.fillStyle='rgba(0,255,255,1)';for(const t of trails){ctx.fillRect(t.x-t.size/2,t.y-t.size/2,t.size,t.size);}
+    for(const p of pickups){
+      ctx.fillStyle=p.negative?'#a33':'#fff';
+      ctx.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size);
+      ctx.fillStyle=p.negative?'#f55':'#eee';
+      ctx.fillText(p.text,p.x-10,p.y-10);
+    }
+    
+    ctx.fillStyle='#6f6f6f';for(const e of enemies){ctx.fillRect(e.x-e.size/2,e.y-e.size/2,e.size,e.size);}
+    ctx.fillStyle='#fff';for(const b of bullets){ctx.fillRect(b.x-b.size/2,b.y-b.size/2,b.size,b.size);}
+    
+    // Player
+    ctx.fillStyle='#fff';ctx.fillRect(player.x-player.size/2,player.y-player.size/2,player.size,player.size);
+    
+    // Stats
+    ctx.fillStyle='#a3a';ctx.fillText(`Speed: ${speedMult.toFixed(2)}`,200,40);
+    ctx.fillStyle='#a33';ctx.fillText(`Health: ${health.toFixed(2)}`,275,40);
+    ctx.fillStyle='#39f';ctx.fillText(`Fire Rate: ${firerate.toFixed(2)}`,350,40);
+    ctx.fillStyle='rgb(32,155,49)';ctx.fillText(`Trail: ${trailTime.toFixed(2)}`,440,40);
+  }
+
+  function activateThreat(){
+    const quarter=randInt(0,3);
+    const w=W/2,h=H/2;
+    const x=(quarter%2)*w,y=(quarter>1? h:0);
+    threatZone.style.background=`rgba(200,0,0,0.2)`;
+    threatZone.style.clipPath=`polygon(${x/W*100}% ${y/H*100}%, ${(x+w)/W*100}% ${y/H*100}%, ${(x+w)/W*100}% ${(y+h)/H*100}%, ${x/W*100}% ${(y+h)/H*100}%)`;
+    activeThreat={quarter,end:performance.now()+3000,x,y,w,h};
+  }
+  function checkThreat(){
+    if(player.x>=activeThreat.x&&player.x<=activeThreat.x+activeThreat.w&&player.y>=activeThreat.y&&player.y<=activeThreat.y+activeThreat.h){
+      speedMult*=0.25;health*=0.25;firerate*=0.25;trailTime*=0.25;
+    }
+  }
+
+  function endGame(){gameOver=true;overlay.style.display='flex';timeSurvived.textContent=elapsed.toFixed(1);}
+    restartBtn.addEventListener('click', () => {
+    location.reload();
+    });
+  last=performance.now(); requestAnimationFrame(step);
+})();
+</script>
+</body>
+</html>
