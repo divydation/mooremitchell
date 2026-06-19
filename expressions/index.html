@@ -222,7 +222,6 @@
         <button id="upg-auto">Auto-Turret (Cost: <span id="cost-auto">40</span>)</button>
         <button id="upg-trail">Toxic Trail (Cost: <span id="cost-trail">35</span>)</button>
         <button id="upg-spread">Spread Shot (Cost: <span id="cost-spread">45</span>)</button>
-        <button id="upg-mirror">Mirror Shot (Cost: <span id="cost-mirror">50</span>)</button>
         <button id="upg-multi">Multi-Shot (Cost: <span id="cost-multi">60</span>)</button>
         <button id="upg-pet">Pet Drone Swarm (Cost: <span id="cost-pet">50</span>)</button>
         <button id="btn-shop-close" style="margin-top: 15px; border-style: dashed;">Resume</button>
@@ -308,7 +307,6 @@
     let lastTrailDrop = 0;
 
     let spreadLevel = 0; 
-    let mirrorLevel = 0;
     let multiLevel = 0;
 
     let petLevel = 0;
@@ -322,7 +320,7 @@
     let questionActive = false;
 
     // Upgrades Cost
-    let costs = { speed: 10, fire: 15, dmg: 20, orb: 30, auto: 40, trail: 35, spread: 45, mirror: 50, multi: 60, pet: 50 };
+    let costs = { speed: 10, fire: 15, dmg: 20, orb: 30, auto: 40, trail: 35, spread: 45, multi: 60, pet: 50 };
 
     // --- SAVE & LOAD SYSTEM ---
     function saveGame() {
@@ -331,7 +329,7 @@
             pSpeed: player.speed, pMaxHp: player.maxHealth,
             pDmg: player.damage, pFireRate: player.fireRate,
             numOrbiters, autoShootLevel, trailLevel, spreadLevel, 
-            mirrorLevel, multiLevel, petLevel,
+            multiLevel, petLevel,
             costs, customDiff: appSettings.customDiff
         };
         localStorage.setItem('algebraArenaSave', JSON.stringify(saveData));
@@ -353,7 +351,6 @@
             autoShootLevel = data.autoShootLevel || 0;
             trailLevel = data.trailLevel || 0;
             spreadLevel = data.spreadLevel || 0;
-            mirrorLevel = data.mirrorLevel || 0;
             multiLevel = data.multiLevel || 0;
             petLevel = data.petLevel || 0;
             
@@ -362,7 +359,6 @@
 
             if (data.costs) {
                 costs = data.costs;
-                if (!costs.mirror) costs.mirror = 50;
                 if (!costs.multi) costs.multi = 60;
             }
 
@@ -373,7 +369,6 @@
             document.getElementById('cost-auto').innerText = costs.auto;
             document.getElementById('cost-trail').innerText = costs.trail;
             document.getElementById('cost-spread').innerText = costs.spread;
-            document.getElementById('cost-mirror').innerText = costs.mirror;
             document.getElementById('cost-multi').innerText = costs.multi;
             document.getElementById('cost-pet').innerText = costs.pet;
 
@@ -505,37 +500,30 @@
         player.y = Math.max(player.size/2 + 50, Math.min(canvas.height - player.size/2, player.y));
     }
 
-    function fireBullet(x, y, angle) {
+    function fireBullet(x, y, angle, customDamage = null) {
         bullets.push({
             x: x, y: y,
             vx: Math.cos(angle) * 7, 
             vy: Math.sin(angle) * 7,
             size: 6, 
-            damage: player.damage
+            damage: customDamage !== null ? customDamage : player.damage
         });
     }
 
     function executeWeaponFire(originX, originY, aimAngle) {
-        let numMirrors = mirrorLevel + 1;
-        let mirrorAngleInc = (Math.PI * 2) / numMirrors;
-
-        for (let m = 0; m < numMirrors; m++) {
-            let mirrorBaseAngle = aimAngle + (m * mirrorAngleInc);
-
-            for (let s = -spreadLevel; s <= spreadLevel; s++) {
-                let finalAngle = mirrorBaseAngle + (s * 0.25);
+        for (let s = -spreadLevel; s <= spreadLevel; s++) {
+            let finalAngle = aimAngle + (s * 0.25);
+            
+            let numMulti = multiLevel + 1;
+            let perpAngle = finalAngle + Math.PI / 2;
+            let spacing = 8; 
+            
+            for (let p = 0; p < numMulti; p++) {
+                let offsetMult = p - (multiLevel / 2);
+                let bx = originX + Math.cos(perpAngle) * (offsetMult * spacing);
+                let by = originY + Math.sin(perpAngle) * (offsetMult * spacing);
                 
-                let numMulti = multiLevel + 1;
-                let perpAngle = finalAngle + Math.PI / 2;
-                let spacing = 8; 
-                
-                for (let p = 0; p < numMulti; p++) {
-                    let offsetMult = p - (multiLevel / 2);
-                    let bx = originX + Math.cos(perpAngle) * (offsetMult * spacing);
-                    let by = originY + Math.sin(perpAngle) * (offsetMult * spacing);
-                    
-                    fireBullet(bx, by, finalAngle);
-                }
+                fireBullet(bx, by, finalAngle);
             }
         }
     }
@@ -595,7 +583,8 @@
             p.x += (targetX - p.x) * 0.08;
             p.y += (targetY - p.y) * 0.08;
 
-            if (now - p.lastShot > player.fireRate) {
+            // Pets have a fixed 800ms fire rate and do not inherit spread, multishot, or player damage.
+            if (now - p.lastShot > 800) {
                 let nearest = null;
                 let minDist = Infinity;
                 
@@ -606,7 +595,8 @@
 
                 if (nearest) {
                     let angle = Math.atan2(nearest.y - p.y, nearest.x - p.x);
-                    executeWeaponFire(p.x, p.y, angle);
+                    // Fires exactly 1 basic bullet with 1 damage
+                    fireBullet(p.x, p.y, angle, 1);
                     p.lastShot = now;
                 }
             }
@@ -638,19 +628,13 @@
         }
         
         let radius = isBrute ? 24 : (isStalker ? 8 : 12);
-        
-        // Base speeds for archetypes
         let enemySpeed = isBrute ? (0.15 + Math.random() * 0.15) : (isStalker ? (0.8 + Math.random() * 0.4) : (0.3 + Math.random() * 0.4));
-        
-        // Scale speed moderately using square root so they don't break the sound barrier
         enemySpeed *= Math.max(1, Math.sqrt(diffMult));
 
-        // Base HP scaling
         let hpScale = 2 + Math.floor(questionsAnswered / 5);
         if (isBrute) hpScale *= 4; 
         if (isStalker) hpScale = Math.max(1, Math.floor(hpScale / 2));
         
-        // Apply infinite multiplier to HP
         hpScale = Math.floor(hpScale * diffMult);
         if(hpScale < 1) hpScale = 1;
 
@@ -832,7 +816,7 @@
 
         enemies.forEach(e => {
             if (performance.now() - e.lastHitTime < 100) ctx.fillStyle = '#e74c3c';
-            else if (e.isStalker) ctx.fillStyle = '#8e44ad'; // Purple Void Stalker
+            else if (e.isStalker) ctx.fillStyle = '#8e44ad'; 
             else ctx.fillStyle = e.isBrute ? '#2c3e50' : '#000'; 
 
             ctx.beginPath();
@@ -899,7 +883,6 @@
         }
     });
 
-    // Modified Settings Listeners for Infinite Custom Difficulty
     document.getElementById('set-diff').addEventListener('change', (e) => {
         let val = e.target.value;
         if(val === 'custom') {
@@ -958,9 +941,6 @@
     document.getElementById('upg-spread').addEventListener('click', () => {
         if (coins >= costs.spread) { coins -= costs.spread; spreadLevel += 1; costs.spread = Math.floor(costs.spread * 2); updateUI(); saveGame(); document.getElementById('cost-spread').innerText = costs.spread; }
     });
-    document.getElementById('upg-mirror').addEventListener('click', () => {
-        if (coins >= costs.mirror) { coins -= costs.mirror; mirrorLevel += 1; costs.mirror = Math.floor(costs.mirror * 2); updateUI(); saveGame(); document.getElementById('cost-mirror').innerText = costs.mirror; }
-    });
     document.getElementById('upg-multi').addEventListener('click', () => {
         if (coins >= costs.multi) { coins -= costs.multi; multiLevel += 1; costs.multi = Math.floor(costs.multi * 2); updateUI(); saveGame(); document.getElementById('cost-multi').innerText = costs.multi; }
     });
@@ -984,7 +964,6 @@
             let diffMult = appSettings.difficulty === 'custom' ? appSettings.customDiff : parseFloat(appSettings.difficulty);
             let effectiveDiff = diffMult === 3 ? 2.5 : diffMult; 
 
-            // Spawn rate accelerates aggressively with difficulty modifier
             let baseRate = Math.max(200, 2000 - (questionsAnswered * 50));
             let finalSpawnRate = baseRate / effectiveDiff;
 
