@@ -3719,16 +3719,16 @@ function updateLabels() {
 
     // UPGRADES
     document.getElementById("drillRateUpgradeCost").textContent = formatNumber(drillRateUpgradeCost);
-    document.getElementById("drillLevel").textContent = "" + formatNumber(drillLevel).toString();
+    document.getElementById("drillLevel").textContent = "LVL " + formatNumber(drillLevel).toString();
 
     document.getElementById("collectionRadiusUpgradeCost").textContent = formatNumber(collectionRadiusUpgradeCost);
-    document.getElementById("collectionRadiusLevel").textContent = "" + formatNumber(collectionRadiusLevel).toString();
+    document.getElementById("collectionRadiusLevel").textContent = "LVL " + formatNumber(collectionRadiusLevel).toString();
 
     document.getElementById("boostSpeedUpgradeCost").textContent = formatNumber(boostSpeedUpgradeCost);
-    document.getElementById("boostSpeedLevel").textContent = "" + formatNumber(boostSpeedLevel).toString();
+    document.getElementById("boostSpeedLevel").textContent = "LVL " + formatNumber(boostSpeedLevel).toString();
 
     document.getElementById("materialValueUpgradeCost").textContent = formatNumber(materialValueUpgradeCost);
-    document.getElementById("materialValueLevel").textContent = "" + formatNumber(materialValueLevel).toString();
+    document.getElementById("materialValueLevel").textContent = "LVL " + formatNumber(materialValueLevel).toString();
 }
 
 

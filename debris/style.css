@@ -528,6 +528,13 @@ span {
     gap: 1vw;
 }
 
+.uiText {
+    width: 80vw;
+    color: rgba(255, 255, 255, 1);
+    font-size: 3.5vw;
+    text-align: center;
+    text-wrap-style: pretty;
+}
 
 .navigationButton {
     width: 30vw;
