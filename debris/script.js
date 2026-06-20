@@ -2619,240 +2619,6 @@ function playRiserSweep(currentRadius) {
 }
 
 
-// -----------
-// MAIN THREAD
-// -----------
-
-
-// function mainThread() {
-    
-
-//     for (let i = 0; i < probes.length; i++) {
-//         let p = probes[i];
-
-//         if (p.probeProgress < 1.0) {
-//             // Track the previous progress so we know exactly how much distance is left
-//             let prevProgress = p.probeProgress;
-            
-//             p.probeProgress += p.probeSpeed;
-//             if (p.probeProgress > 1.0) p.probeProgress = 1.0; 
-
-//             // 1. UPDATE RADIUS
-//             let r1 = p.originPlanet.orbitRadius;
-//             let r2 = p.targetPlanet.orbitRadius;
-//             p.currentRadius = r1 + (r2 - r1) * p.probeProgress;
-
-//             // 2. CALCULATE SHORTEST PATH FROM PROBE TO TARGET
-//             let targetAngle = p.targetPlanet.currentOrbitRotation;
-//             let diff = targetAngle - p.currentAngle;
-
-//             // Force the difference to be between -180 and 180 degrees
-//             while (diff > Math.PI) diff -= Math.PI * 2;
-//             while (diff < -Math.PI) diff += Math.PI * 2;
-
-//             // 3. APPLY ROTATION
-//             let remainingProgress = 1.0 - prevProgress;
-//             if (remainingProgress > 0) {
-//                 // Calculate what fraction of the remaining angle we need to cover this frame
-//                 let stepFraction = p.probeSpeed / remainingProgress;
-                
-//                 // Move the probe's angle by that fraction (capped at 1.0 so it snaps perfectly at the end)
-//                 p.currentAngle += diff * Math.min(stepFraction, 1.0); 
-//             }
-
-//             p.productionTimer += dt;
-
-//             if (p.productionTimer >= 500) { 
-//                 p.productionTimer = 0; // Reset the timer
-
-//                 probeParticles.push({
-//                     radius: p.currentRadius,
-//                     angle: p.currentAngle,
-//                     // life: Math.random() * 40,
-//                     // size: 10,
-//                     // color: Math.floor(Math.random() * 60),
-//                     alpha: 1,
-//                 });
-//             }
-//         }
-
-//         if (p.probeProgress >= 1) {
-//             probes.splice(i, 1);
-//             i--;
-//             p.targetPlanet.landedProbes += 1;
-//             // console.log(planets[2]);
-//         }
-//     }
-
-//     for (let j = 0; j < probeParticles.length; j++) {
-//         let g = probeParticles[j];
-
-//         g.alpha -= 0.002;
-
-//         if (g.alpha <= 0) {
-//             probeParticles.splice(j, 1);
-//             j--;
-//         }
-//     }
-    
-
-    
-
-//     // --------------------------------------------------
-//     // GO THROUGH EACH PLANET AND CALCULATE AND/OR RENDER
-//     // --------------------------------------------------
-//     for (let i = 0; i < planets.length; i++) {
-//         let p = planets[i]
-
-
-
-
-//         // Unlock if needed
-//         if (p.landedProbes == p.neededProbes) {
-//             p.unlocked = true;
-//         }
-        
-        
-
-
-//         // Draw smart collectors
-//         // CRYSTAL COLLECTORS
-//         for (let i = 0; i < planet.smartCollectors.length; i++) {
-//             let sc = planet.smartCollectors[i];  
-
-//             let closestMaterial = null;
-//             let closestDistance = 10000000000000;
-
-//             smartCollectorPosition = polarToCartesian(sc.radius, sc.angle);
-
-//             // Go through the crystals
-//             // Check which are in range
-//             // Check which is closest
-//             // Move towards it
-//             if (sc.battery > 0) {
-//                 for (let j = 0; j < planet.crystals.length; j++) {
-//                     let m = planet.crystals[j];
-
-
-//                     // if (m.value < 3) continue;
-//                     // if (m.radius > 450) continue;
-                
-
-//                     materialPosition = polarToCartesian(m.radius, m.angle);
-                    
-
-//                     distance = calculateDistance(smartCollectorPosition, materialPosition);
-
-//                     if (distance < closestDistance) {
-//                         closestDistance = distance;
-//                         closestMaterial = m;
-//                     }
-//                 }
-
-//                 if (closestMaterial) {
-//                     // 1. Calculate raw differences
-//                     let rDiff = closestMaterial.radius - sc.radius;
-//                     let angleDiff = Math.atan2(
-//                         Math.sin(closestMaterial.angle - sc.angle), 
-//                         Math.cos(closestMaterial.angle - sc.angle)
-//                     );
-
-//                     // 2. Convert Angle difference to "Arc Distance" (actual pixels)
-//                     // Distance = Radius * Angle
-//                     let arcDiff = angleDiff * sc.radius;
-
-//                     // 3. Calculate Total Pixel Distance (Pythagoras)
-//                     let totalDist = Math.sqrt(rDiff * rDiff + arcDiff * arcDiff);
-
-//                     if (totalDist > 0.1) {
-//                         // --- TWEAK THESE TWO ---
-//                         const maxSpeed = Math.min(0.3, sc.battery);  // Constant travel speed in pixels
-//                         const easing = 0.1;    // How soon it starts slowing down (0.1 = 10% of distance)
-                        
-//                         // 4. Determine Step Size (Constant Speed + Easing)
-//                         // This ensures the collector moves at 'maxSpeed' until it's close.
-//                         let stepSize = Math.min(maxSpeed, totalDist * easing);
-
-//                         // 5. Calculate the Movement Ratio
-//                         let ratio = stepSize / totalDist;
-
-//                         // 6. Apply Movement proportionally
-//                         sc.radius += rDiff * ratio;
-//                         sc.radius = Math.min(sc.radius, 450);
-//                         sc.angle += angleDiff * ratio;
-//                         sc.angle = sc.angle % toRadians(360);
-//                     }
-
-//                     // Angle cleanup
-//                     if (sc.angle > Math.PI) sc.angle -= Math.PI * 2;
-//                     if (sc.angle < -Math.PI) sc.angle += Math.PI * 2;
-
-//                     // ctx.save();
-//                     // ctx.strokeStyle = `rgba(255,255,255, ${Math.min(sc.battery, 0.3)})`;
-//                     // ctx.beginPath();
-//                     // ctx.moveTo(polarToCartesian(sc.radius, sc.angle).x, polarToCartesian(sc.radius, sc.angle).y);
-//                     // ctx.lineTo(polarToCartesian(closestMaterial.radius, closestMaterial.angle).x, polarToCartesian(closestMaterial.radius, closestMaterial.angle).y);
-//                     // ctx.lineWidth = 2;
-//                     // ctx.setLineDash([]);
-//                     // ctx.stroke();
-//                     // ctx.fillStyle = "rgb(255 255 255)";
-//                     // ctx.restore();
-//                 }
-//             }
-        
-//             if (drawThisPlanet) canvasDrawSmartCollector(sc);
-//         }
-
-//         // Draw bundles
-//         for (let i = 0; i < planet.bundles.length; i++) {
-//             let p = planet.bundles[i];
-
-
-//             p.rotation += p.rotationSpeed;
-
-//             const bundlePosition = polarToCartesian(p.radius, p.angle);
-
-//             // Don't need to calculate bundles if ship isn't there
-//             if (drawThisPlanet) {
-//                 distance = calculateDistance(bundlePosition, shipPosition);
-
-//                 if (distance <= 15**2) {
-
-//                     planet.bundles.splice(i, 1);
-//                     i--;
-//                     material += Math.floor(p.mineralsAmount);
-
-//                 } 
-
-//                 // 4. Check if distance is 10 or less
-//                 if (distance <= collectionRadius**2) {
-                    
-//                     p.timeInTractorBeam += 0.05;
-
-//                     // start moving towards ship
-//                     p.radius += (flightRadius + 7.5 - p.radius) * Math.min(p.timeInTractorBeam, 1);
-
-//                     // Magically wraps the difference between -PI and PI
-//                     let angleDiff = Math.atan2(Math.sin(shipRotation - p.angle), Math.cos(shipRotation - p.angle));
-                    
-//                     p.angle += (angleDiff * Math.min(p.timeInTractorBeam, 1)) + toRadians(0.5);
-                    
-//                 }
-
-                
-//                 canvasDrawBundle(p);
-//             }            
-//         }
-
-//     }
-
-//     if (view == "system") {
-//         drawSolarSystem();
-//     }
-    
-//     window.requestAnimationFrame(mainThread);
-// }
-
 
 count = 0;
 
@@ -3071,270 +2837,6 @@ function getProbePosition(planetA, planetB, t) {
 
 
 
-// function drawSolarSystem() {
-//     ctx.clearRect(0, 0, canvas.width, canvas.height); 
-
-//     const scale = 0.15;
-//     let activePlanet = null;
-//     selectedPlanet = null;
-
-//     ctx.save();
-
-//     zoomLevel = 1.7;
-//     ctx.translate(500, 500);
-//     ctx.scale(zoomLevel, zoomLevel);
-//     ctx.translate(-500, -500);
-    
-
-//     // Draw shadows so no overlap
-//     for (let i = 0; i < planets.length; i++) {
-//         let p = planets[i];
-
-//         // Shadow
-//         ctx.save();
-//         ctx.translate(500,500);
-//         ctx.rotate(p.currentOrbitRotation);
-//         ctx.fillStyle = "rgb(0 0 0)";
-//         ctx.fillRect(p.orbitRadius, -p.radius*scale, 3000, 2*p.radius*scale);
-//         ctx.restore();
-//     }
-
-//     // Draw pathway from current planet to selected planet
-//     for (let i = 0; i < planets.length; i++) {
-//         let p = planets[i];
-
-//         // Pathway from current planet to selected planet
-
-//         if (p.hasShip) activePlanet = p;
-//         if (p.selected) selectedPlanet = p;
-
-//     }
-
-//     ctx.strokeStyle = "rgba(255,255,255,0.5";
-//     ctx.lineWidth = 3;
-//     ctx.lineDashOffset = ringOffset;
-//     ctx.setLineDash([3,3]);
-
-//     if (selectedPlanet != null && !selectedPlanet.unlocked) {
-//         document.getElementById("travelButton").style.display = "none";
-//         document.getElementById("unlockButton").style.display = "flex";
-//         // document.getElementById("unlockPlanetCost").innerHTML = selectedPlanet.cost;
-//     }
-
-//     if (selectedPlanet != null && selectedPlanet.unlocked) {
-//         document.getElementById("travelButton").style.display = "flex";
-//         document.getElementById("unlockButton").style.display = "none";
-//     }
-
-
-//     if (activePlanet != null && selectedPlanet != null) {
-//         // 1. Setup Sun and Planet data
-//         let sunX = 500;
-//         let sunY = 500;
-
-//         let planetA = activePlanet;
-//         let planetB = selectedPlanet;
-
-//         updateHelp(selectedPlanet.description);
-
-//         // Use variables directly to ensure we know which is Start and which is End
-//         let r1 = planetA.orbitRadius;
-//         let r2 = planetB.orbitRadius;
-
-//         // 2. NORMALIZE ANGLES
-//         let startAngle = planetA.currentOrbitRotation % (Math.PI * 2);
-//         let endAngle = planetB.currentOrbitRotation % (Math.PI * 2);
-
-//         if (startAngle < 0) startAngle += Math.PI * 2;
-//         if (endAngle < 0) endAngle += Math.PI * 2;
-
-//         // 3. CALCULATE THE SHORTEST DISTANCE (The "Flip" Logic)
-//         let diff = endAngle - startAngle;
-
-//         // Force the difference to be between -PI and PI (-180 to 180 degrees).
-//         // This guarantees the spiral never travels more than halfway around the sun.
-//         if (diff > Math.PI) {
-//             diff -= Math.PI * 2;
-//         } else if (diff < -Math.PI) {
-//             diff += Math.PI * 2;
-//         }
-
-//         let drawEnd = startAngle + diff;
-
-//         // 4. DRAWING
-//         ctx.save();
-//         ctx.beginPath();
-
-
-//         const segments = 40; 
-//         for (let i = 0; i <= segments; i++) {
-//             let t = i / segments;
-            
-//             // Smoothly transition the angle and the radius using our new shortest path
-//             let currentAngle = startAngle + (drawEnd - startAngle) * t;
-//             let currentRadius = r1 + (r2 - r1) * t;
-            
-//             let x = sunX + Math.cos(currentAngle) * currentRadius;
-//             let y = sunY + Math.sin(currentAngle) * currentRadius;
-            
-//             if (i === 0) {
-//                 ctx.moveTo(x, y);
-//             } else {
-//                 ctx.lineTo(x, y);
-//             }
-//         }
-
-//         // ctx.stroke();
-
-//         // Draw green particles
-//         for (let j = 0; j < probeParticles.length; j++) {
-//             let g = probeParticles[j];
-//             particleX = polarToCartesian(g.radius, g.angle).x;
-//             particleY = polarToCartesian(g.radius, g.angle).y;
-
-//             ctx.save();
-//             ctx.translate(particleX, particleY);
-//             ctx.rotate(g.angle);
-//             ctx.fillStyle = `rgba(50, 210, 150, ${g.alpha})`;
-//             ctx.fillRect(-1.5*g.alpha, -1.5*g.alpha, 3*g.alpha, 3*g.alpha); 
-//             ctx.restore();
-//         }
-
-//         for (let i = 0; i < probes.length; i++) {
-//             let p = probes[i];
-
-//             if (!p.originPlanet || !p.targetPlanet) continue;
-
-//             let x = 500 + Math.cos(p.currentAngle) * p.currentRadius;
-//             let y = 500 + Math.sin(p.currentAngle) * p.currentRadius;
-
-//             ctx.save();
-//             ctx.translate(x, y);
-
-//             ctx.save();
-
-//             let radarLength = 10;
-//             let sweepAngle = (p.radarAngle || (Date.now() / 600)) % (Math.PI * 2); 
-//             let trailAngle = Math.PI / 2; 
-
-//             // Rotate the canvas to the current sweep position
-//             ctx.rotate(sweepAngle);
-
-//             // Draw fading trail behind the line
-//             ctx.beginPath();
-//             ctx.moveTo(0, 0);
-//             ctx.arc(0, 0, radarLength, -trailAngle, 0);
-//             ctx.closePath();
-
-//             let gradient = ctx.createConicGradient(-trailAngle, 0, 0);
-//             let solidStop = trailAngle / (Math.PI * 2);
-//             // gradient.addColorStop(0, "rgba(50, 210, 150, 0)"); 
-//             // gradient.addColorStop(trailAngle / (Math.PI * 2), "rgba(50, 210, 150, 0.5)"); 
-
-//             gradient.addColorStop(0, "rgba(50, 210, 150, 0)"); 
-//             gradient.addColorStop(solidStop, "rgba(50, 210, 150, 0.75)"); 
-//             gradient.addColorStop(solidStop + 0.001, "rgba(50, 210, 150, 0)"); 
-//             gradient.addColorStop(1, "rgba(50, 210, 150, 0)");
-            
-//             ctx.fillStyle = gradient;
-//             ctx.fill();
-
-//             // Draw the solid leading edge
-//             ctx.beginPath();
-//             ctx.moveTo(0, 0);
-//             ctx.lineTo(radarLength, 0); 
-//             ctx.setLineDash([]);
-//             ctx.strokeStyle = "rgba(50, 210, 150, 1)";
-//             ctx.lineWidth = 2;
-//             ctx.stroke();
-
-//             ctx.restore();
-
-//             ctx.rotate(p.currentAngle);
-//             ctx.fillStyle = "rgba(255, 255, 255, 1)";
-//             ctx.fillRect(-2.5, -2.5, 5, 5); 
-//             ctx.restore();
-//         }
-
-        
-//         ctx.restore();
-//     }
-
-
-//     // Draw planets
-//     for (let i = 0; i < planets.length; i++) {
-//         let p = planets[i];
-
-//         // Pathway from current planet to selected planet
-
-//         if (p.hasShip) currentPlanet = p;
-//         if (p.selected) selectedPlanet = p;
-
-//         // Planet
-//         ctx.save();
-//         ctx.translate(500,500);
-//         ctx.rotate(p.currentOrbitRotation);
-//         ctx.fillStyle = p.color;
-//         ctx.beginPath();
-//         ctx.arc(p.orbitRadius, 0, p.radius*scale, 0, Math.PI*2, 1);
-//         ctx.fill();
-
-//         ringOffset = ringOffset - 0.2;
-
-//         if (ringOffset < -6) {
-//             ringOffset = 0;
-//         }
-
-//         if (p.selected) {
-//             ctx.beginPath();
-//             ctx.arc(p.orbitRadius, 0, p.radius*scale+3, 0, Math.PI*2, 1);
-//             ctx.strokeStyle = "rgba(255,255,255,0.5";
-//             ctx.lineWidth = 3;
-//             ctx.lineDashOffset = ringOffset;
-//             ctx.setLineDash([3,3]);
-//             ctx.stroke();
-//         }
-
-//         // Ship
-//         if (p.hasShip) {
-//             ctx.translate(p.orbitRadius,0);
-//             ctx.rotate(shipRotation - p.currentOrbitRotation);
-//             ctx.fillStyle = "#FFFFFF";
-//             ctx.fillRect(p.radius*scale+3, -2.5, 5, 5);
-//         }
-
-//         ctx.restore();
-
-        
-//     }
-
-//     // Draw sun
-//     ctx.fillStyle = "#FFE347";
-//     ctx.beginPath();
-//     ctx.arc(500, 500, 50, 0, Math.PI*2, 1);
-//     ctx.fill();
-
-//     for (let i = 0; i < planets.length; i++) {
-//         let p = planets[i];
-
-//         if (!p.unlocked && p.selected) {
-//             ctx.save();
-//             ctx.textAlign = 'center';
-//             ctx.textBaseline = 'middle';
-//             planetX = polarToCartesian(p.orbitRadius, p.currentOrbitRotation).x;
-//             planetY = polarToCartesian(p.orbitRadius, p.currentOrbitRotation).y;
-//             ctx.fillStyle = "rgba(255,255,255,0.5";
-//             ctx.font = '400 20px "Silkscreen", sans-serif';
-//             let text = p.landedProbes + "/" + p.neededProbes;
-//             ctx.fillText(text, planetX, planetY + p.radius*scale+15);
-//             ctx.restore();
-//         }
-//     }
-
-//     ctx.restore();
-// }
-
-
 // Deploy probe
 function deployProbeOLD() {
 
@@ -3536,9 +3038,11 @@ function changeShipSpeed(shipRadius) {
 
 function reset(element) {
     element.target.style.scale = "1";
-    element.target.style.backgroundColor = "rgba(100,100,100,0.5)";
+    // element.target.style.backgroundColor = "rgba(100,100,100,0.5)";
+    element.target.style.backgroundColor = "";
     element.target.style.boxShadow = "";
     element.target.style.textShadow = "";
+    element.target.style.zIndex = "";
 }
 
 function setRedGlow(element) {
@@ -3546,6 +3050,7 @@ function setRedGlow(element) {
     element.target.style.backgroundColor = "#EF233C";
     element.target.style.boxShadow = "0 0 6vw 0.1vw #EF233C";
     element.target.style.textShadow = "0 0 3vw #fff";
+    element.target.style.zIndex = "300";
 }
 
 
@@ -3917,7 +3422,8 @@ tipButtons.forEach(button => {
 
 
 function resetToggle(element) {
-    element.target.style.backgroundColor = "rgba(100,100,100,0.5)";
+    // element.target.style.backgroundColor = "rgba(100,100,100,0.5)";
+    element.target.style.backgroundColor = "";
     element.target.style.boxShadow = "";
     element.target.style.textShadow = "";
 }
@@ -4083,6 +3589,12 @@ document.getElementById("settingsMenu").style.display = "none";
 document.getElementById("statsMenu").style.display = "none";
 document.getElementById("gadgetMenu").style.display = "none";
 
+// Upgrade Menus
+document.getElementById("drillUpgradeMenu").style.display = "none";
+
+
+
+
 function switchMenu(oldActiveMenuID, newActiveMenuID) {
     document.getElementById(oldActiveMenuID).style.display = "none";
     document.getElementById(newActiveMenuID).style.display = "flex";
@@ -4228,19 +3740,31 @@ const HOLD_DURATION = 750;
 holdButtons.forEach(button => {
     let animationFrameId;
     let startTime;
-    // let defaultText = button.innerHTML;
 
     // Function to completely reset the button state and stop the loop
     const resetBar = () => {
         cancelAnimationFrame(animationFrameId);
         button.style.background = ""; // Resets to the default CSS background
         button.style.scale = "1";
+        button.style.width = "";
+        button.style.height = "";
         button.style.boxShadow = "";
         button.style.textShadow = "";
         button.style.zIndex = "";
+        button.style.margin = "";
+        button.style.borderRadius = "";
+
+        
         svg = button.querySelector("svg");
-        if (svg) svg.style.filter = "";
-        // button.innerHTML = defaultText;
+        if (svg) {
+            svg.style.filter = "";
+        }
+
+        span = button.querySelector("span");
+        if (span) {
+            span.style.scale = "1";
+        }
+
         
         // updating = true;
         updateLabels();
@@ -4304,14 +3828,23 @@ holdButtons.forEach(button => {
 
         updating = false;
 
-        button.style.scale = "0.9";
+        // button.style.scale = "0.9";
+        
         button.style.zIndex = "1000";
         // button.target.style.backgroundColor = "#EF233C";
         button.style.boxShadow = "0 0 8vw 0.1vw #3083DC";
         button.style.textShadow = "0 0 3vw #fff";
 
         svg = button.querySelector("svg");
-        if (svg) svg.style.filter = "drop-shadow(0 0 2.5vw #fff)";
+        if (svg) {
+            svg.style.filter = "drop-shadow(0 0 2.5vw #fff)";
+        }
+
+        span = button.querySelector("span");
+        if (span) {
+            span.style.scale = "0.85";
+        }
+
 
 
         // Apply the gradient visually using template literals for cleaner syntax
@@ -4326,6 +3859,10 @@ holdButtons.forEach(button => {
     // When the user presses down
     button.addEventListener('pointerdown', (event) => {
         startTime = null; // Reset the timer
+        button.style.width = `calc(${getComputedStyle(button).width} - 4vw)`;
+        button.style.height = `calc(${getComputedStyle(button).height} - 4vw)`;
+        button.style.margin = "2vw";
+        button.style.borderRadius = "3vw";
         animationFrameId = requestAnimationFrame(updateBar);
     });
 
