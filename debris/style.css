@@ -103,14 +103,20 @@ button {
     /* Ensures text/buttons aren't accidentally selected while tapping fast */
     user-select: none;
     transition: 0.15s !important;
+
+    -webkit-appearance: none;
+    appearance: none;
 }
 
 
 
 .disapearingDiv {
-    transition: 0.2s !important;
+    transition: opacity 0.2s !important;
     width: 100%;
     /* overflow: hidden; */
+
+    transform: translateZ(0); 
+    will-change: opacity;
 }
 
 .emptyButton {
@@ -547,4 +553,8 @@ span {
 .navigationButton p {
     height: 5.5vw;
     line-height: 1;
+}
+
+.redButton {
+    will-change: transform, box-shadow, background-color;
 }
