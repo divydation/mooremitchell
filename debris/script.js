@@ -3859,9 +3859,9 @@ holdButtons.forEach(button => {
     // When the user presses down
     button.addEventListener('pointerdown', (event) => {
         startTime = null; // Reset the timer
-        button.style.width = `calc(${getComputedStyle(button).width} - 4vw)`;
-        button.style.height = `calc(${getComputedStyle(button).height} - 4vw)`;
-        button.style.margin = "2vw";
+        button.style.width = `calc(${getComputedStyle(button).width} - 3vw)`;
+        button.style.height = `calc(${getComputedStyle(button).height} - 3vw)`;
+        button.style.margin = "1.5vw";
         button.style.borderRadius = "3vw";
         animationFrameId = requestAnimationFrame(updateBar);
     });

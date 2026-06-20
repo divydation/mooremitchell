@@ -478,9 +478,9 @@ p {
 }
 
 .subButton {
-    margin-right: 2vw;
-    width: 16vw;
-    height: 16vw;
+    margin-right: 1.5vw;
+    width: 17vw;
+    height: 17vw;
     font-size: 5vw;
     border-radius: 3vw;
     outline: none;
