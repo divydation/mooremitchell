@@ -1107,7 +1107,7 @@ app.ticker.add((delta) => {
             // 1. Basic Background Math (Always runs)
             mat.radius += mat.radiusChange;
             mat.value *= materialValue;
-            mat.value = Math.min(mat.value, 20000); 
+            mat.value = Math.min(mat.value, 1000000); 
 
             let mRadius = mat.radius;
             let mAngle = mat.angle;
