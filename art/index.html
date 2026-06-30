@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Res Chromatic Fractal Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+        
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            width: 100%;
+            padding: 1.5rem;
+            box-sizing: border-box;
+            background-color: #050505;
+        }
+        
+        #renderCanvas {
+            aspect-ratio: 1 / 1;
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+            box-shadow: 0 0 50px rgba(0, 0, 0, 0.9);
+            border-radius: 6px;
+            background-color: #000;
+        }
+
+        input[type=range] { accent-color: #3b82f6; }
+        /* Hide spin buttons on number inputs for clean look */
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none; 
+            margin: 0; 
+        }
+        input[type=number] { -moz-appearance: textfield; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 h-screen overflow-hidden flex flex-col md:flex-row font-sans">
+
+    <div class="w-full md:w-96 bg-gray-800 border-r border-gray-700 flex flex-col h-full z-10 shadow-xl flex-shrink-0">
+        <div class="p-5 border-b border-gray-700">
+            <h1 class="text-xl font-bold text-white">Chromatic Engine v2</h1>
+            <p class="text-xs text-gray-400 mt-1">RGB Additive Math Pattern Generator</p>
+        </div>
+
+        <div class="p-5 space-y-5 flex-grow overflow-y-auto">
+            
+            <div class="space-y-3">
+                <h2 class="text-xs uppercase tracking-widest text-gray-500 font-semibold">Geometry Basis</h2>
+                
+                <div>
+                    <label class="block text-sm mb-1">Pattern Base Shape</label>
+                    <select id="shapeType" class="w-full bg-gray-700 border border-gray-600 rounded p-2 text-sm text-white focus:outline-none focus:border-blue-500">
+                        <optgroup label="Original Shapes">
+                            <option value="circle">Nested Circles</option>
+                            <option value="curve">Sweeping Curves</option>
+                            <option value="infinity">Infinity (Figure-8)</option>
+                            <option value="triangle">Triangle (Centered)</option>
+                        </optgroup>
+                        <optgroup label="New Polygons">
+                            <option value="square">Square</option>
+                            <option value="pentagon">Pentagon</option>
+                            <option value="hexagon">Hexagon</option>
+                            <option value="octagon">Octagon</option>
+                        </optgroup>
+                        <optgroup label="Mathematical Curves & Fractals">
+                            <option value="star">7-Point Star</option>
+                            <option value="rose">Rose Curve (Petals)</option>
+                            <option value="astroid">Astroid Star</option>
+                            <option value="spirograph">Spirograph (Hypotrochoid)</option>
+                            <option value="cardioid">Cardioid (Heart)</option>
+                            <option value="butterfly">Butterfly Curve</option>
+                            <option value="spiral">Archimedean Spiral</option>
+                            <option value="gear">Mechanical Gear</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm">Iterations (Detail)</label>
+                        <input type="number" id="num_iterations" min="5" max="1000" value="150" class="w-20 bg-gray-700 border border-gray-600 rounded text-center text-sm text-blue-400 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <input type="range" id="iterations" min="5" max="500" value="150" class="w-full">
+                </div>
+            </div>
+
+            <hr class="border-gray-700">
+
+            <div class="space-y-3">
+                <h2 class="text-xs uppercase tracking-widest text-gray-500 font-semibold">Optics & Chroma</h2>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm">Line Width (px)</label>
+                        <input type="number" id="num_lineWidth" min="0.5" max="50" step="0.5" value="3.5" class="w-20 bg-gray-700 border border-gray-600 rounded text-center text-sm text-blue-400 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <input type="range" id="lineWidth" min="0.5" max="20" step="0.5" value="3.5" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm">Chroma Split Split</label>
+                        <input type="number" id="num_splitDist" min="0" max="200" step="0.5" value="6" class="w-20 bg-gray-700 border border-gray-600 rounded text-center text-sm text-blue-400 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <input type="range" id="splitDist" min="0" max="60" step="0.5" value="6" class="w-full">
+                </div>
+            </div>
+
+            <hr class="border-gray-700">
+
+            <div class="space-y-3">
+                <h2 class="text-xs uppercase tracking-widest text-gray-500 font-semibold">Transformations</h2>
+                
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm">Rotation Step (°)</label>
+                        <input type="number" id="num_rotation" min="-180" max="180" step="0.01" value="4.2" class="w-20 bg-gray-700 border border-gray-600 rounded text-center text-sm text-blue-400 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <input type="range" id="rotation" min="-15" max="15" step="0.1" value="4.2" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm">Scale Zoom Factor</label>
+                        <input type="number" id="num_scale" min="0.5" max="1.5" step="0.001" value="0.982" class="w-20 bg-gray-700 border border-gray-600 rounded text-center text-sm text-blue-400 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <input type="range" id="scale" min="0.85" max="1.05" step="0.001" value="0.982" class="w-full">
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm">X Displacement Offset</label>
+                        <input type="number" id="num_offsetX" min="-1000" max="1000" value="15" class="w-20 bg-gray-700 border border-gray-600 rounded text-center text-sm text-blue-400 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <input type="range" id="offsetX" min="-200" max="200" value="15" class="w-full">
+                </div>
+                
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="text-sm">Y Displacement Offset</label>
+                        <input type="number" id="num_offsetY" min="-1000" max="1000" value="0" class="w-20 bg-gray-700 border border-gray-600 rounded text-center text-sm text-blue-400 focus:outline-none focus:border-blue-500">
+                    </div>
+                    <input type="range" id="offsetY" min="-200" max="200" value="0" class="w-full">
+                </div>
+            </div>
+        </div>
+
+        <div class="p-5 border-t border-gray-700 bg-gray-800">
+            <button id="btnDownload" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded transition-colors shadow-lg flex justify-center items-center">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                Download Master PNG
+            </button>
+        </div>
+    </div>
+
+    <div class="flex-1 canvas-container relative">
+        <canvas id="renderCanvas" width="2400" height="2400"></canvas>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('renderCanvas');
+        const ctx = canvas.getContext('2d', { alpha: false });
+
+        // Configuration Map matching range sliders and typed numeric inputs
+        const controlPairs = [
+            { range: document.getElementById('iterations'), num: document.getElementById('num_iterations'), key: 'iterations' },
+            { range: document.getElementById('lineWidth'), num: document.getElementById('num_lineWidth'), key: 'lineWidth' },
+            { range: document.getElementById('splitDist'), num: document.getElementById('num_splitDist'), key: 'splitDist' },
+            { range: document.getElementById('rotation'), num: document.getElementById('num_rotation'), key: 'rotation' },
+            { range: document.getElementById('scale'), num: document.getElementById('num_scale'), key: 'scale' },
+            { range: document.getElementById('offsetX'), num: document.getElementById('num_offsetX'), key: 'offsetX' },
+            { range: document.getElementById('offsetY'), num: document.getElementById('num_offsetY'), key: 'offsetY' }
+        ];
+
+        const shapeSelect = document.getElementById('shapeType');
+        let renderTimeout;
+
+        function init() {
+            // Establish bidirectional binding hooks between range bars and numeric input slots
+            controlPairs.forEach(pair => {
+                pair.range.addEventListener('input', () => {
+                    pair.num.value = pair.range.value;
+                    requestRender();
+                });
+                
+                pair.num.addEventListener('input', () => {
+                    // Sync value across
+                    pair.range.value = pair.num.value;
+                    requestRender();
+                });
+            });
+
+            shapeSelect.addEventListener('change', requestRender);
+            document.getElementById('btnDownload').addEventListener('click', downloadImage);
+            
+            render();
+        }
+
+        function requestRender() {
+            // Anti-freeze mechanism: clears existing execution frames when modifying inputs rapidly
+            if (renderTimeout) cancelAnimationFrame(renderTimeout);
+            renderTimeout = requestAnimationFrame(() => {
+                render();
+            });
+        }
+
+        // Generator Pipeline: Math Engine mapping parametric paths
+        function createShapePath(type) {
+            ctx.beginPath();
+            const radius = 750; // Standardize safe internal bounds for rendering asset
+
+            switch (type) {
+                case 'circle':
+                    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                    break;
+                case 'curve':
+                    ctx.moveTo(-1000, 0);
+                    ctx.bezierCurveTo(-500, -1100, 500, 1100, 1000, 0);
+                    break;
+                case 'triangle':
+                    // FIXED CENTERING: Adjusted vertical center from geometric centroid calculation
+                    const triOffset = radius * 0.28; 
+                    for (let i = 0; i <= 3; i++) {
+                        let a = (i * 2 * Math.PI) / 3 - (Math.PI / 2);
+                        let px = radius * Math.cos(a);
+                        let py = radius * Math.sin(a) + triOffset;
+                        i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+                    }
+                    break;
+                case 'square':
+                    for (let i = 0; i <= 4; i++) {
+                        let a = (i * 2 * Math.PI) / 4 - (Math.PI / 4);
+                        i === 0 ? ctx.moveTo(radius * Math.cos(a), radius * Math.sin(a)) : ctx.lineTo(radius * Math.cos(a), radius * Math.sin(a));
+                    }
+                    break;
+                case 'pentagon':
+                    for (let i = 0; i <= 5; i++) {
+                        let a = (i * 2 * Math.PI) / 5 - (Math.PI / 2);
+                        i === 0 ? ctx.moveTo(radius * Math.cos(a), radius * Math.sin(a)) : ctx.lineTo(radius * Math.cos(a), radius * Math.sin(a));
+                    }
+                    break;
+                case 'hexagon':
+                    for (let i = 0; i <= 6; i++) {
+                        let a = (i * 2 * Math.PI) / 6;
+                        i === 0 ? ctx.moveTo(radius * Math.cos(a), radius * Math.sin(a)) : ctx.lineTo(radius * Math.cos(a), radius * Math.sin(a));
+                    }
+                    break;
+                case 'octagon':
+                    for (let i = 0; i <= 8; i++) {
+                        let a = (i * 2 * Math.PI) / 8 - (Math.PI / 8);
+                        i === 0 ? ctx.moveTo(radius * Math.cos(a), radius * Math.sin(a)) : ctx.lineTo(radius * Math.cos(a), radius * Math.sin(a));
+                    }
+                    break;
+                case 'star':
+                    const points = 7;
+                    const innerRadius = radius * 0.38;
+                    for (let i = 0; i <= points * 2; i++) {
+                        let a = (i * Math.PI) / points - (Math.PI / 2);
+                        let r = i % 2 === 0 ? radius : innerRadius;
+                        i === 0 ? ctx.moveTo(r * Math.cos(a), r * Math.sin(a)) : ctx.lineTo(r * Math.cos(a), r * Math.sin(a));
+                    }
+                    break;
+                case 'infinity':
+                    for (let t = 0; t <= Math.PI * 2.02; t += 0.04) {
+                        let scaleFactor = radius * 1.25 / (1 + Math.sin(t) * Math.sin(t));
+                        let x = scaleFactor * Math.cos(t);
+                        let y = scaleFactor * Math.cos(t) * Math.sin(t);
+                        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    break;
+                case 'rose':
+                    const k = 6; // Petal frequency modifier
+                    for (let t = 0; t <= Math.PI * 2 + 0.02; t += 0.02) {
+                        let r = radius * Math.cos(k * t);
+                        let x = r * Math.cos(t);
+                        let y = r * Math.sin(t);
+                        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    break;
+                case 'astroid':
+                    for (let t = 0; t <= Math.PI * 2 + 0.04; t += 0.03) {
+                        let x = radius * Math.pow(Math.cos(t), 3);
+                        let y = radius * Math.pow(Math.sin(t), 3);
+                        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    break;
+                case 'spirograph':
+                    for (let t = 0; t <= Math.PI * 6 + 0.05; t += 0.03) {
+                        let R_space = radius * 0.65;
+                        let r_space = radius * 0.35;
+                        let d_space = radius * 0.45;
+                        let x = (R_space - r_space) * Math.cos(t) + d_space * Math.cos((R_space - r_space) * t / r_space);
+                        let y = (R_space - r_space) * Math.sin(t) - d_space * Math.sin((R_space - r_space) * t / r_space);
+                        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    break;
+                case 'cardioid':
+                    for (let t = 0; t <= Math.PI * 2 + 0.04; t += 0.03) {
+                        let r = radius * 0.45 * (1 - Math.sin(t));
+                        let x = r * Math.cos(t);
+                        let y = r * Math.sin(t) - radius * 0.25; // Re-align visual heart sync
+                        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    break;
+                case 'butterfly':
+                    for (let t = 0; t <= Math.PI * 4; t += 0.04) {
+                        let r = radius * 0.32 * (Math.exp(Math.cos(t)) - 2 * Math.cos(4 * t) + Math.pow(Math.sin(t / 12), 5));
+                        let x = r * Math.sin(t);
+                        let y = -r * Math.cos(t);
+                        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    break;
+                case 'spiral':
+                    for (let t = 0; t <= Math.PI * 10; t += 0.04) {
+                        let r = (t / (Math.PI * 10)) * radius;
+                        let x = r * Math.cos(t);
+                        let y = r * Math.sin(t);
+                        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    break;
+                case 'gear':
+                    const teeth = 12;
+                    for (let t = 0; t <= Math.PI * 2 + 0.02; t += 0.01) {
+                        let r = radius * 0.75 + Math.sin(t * teeth) * (radius * 0.1);
+                        let x = r * Math.cos(t);
+                        let y = r * Math.sin(t);
+                        t === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }
+                    break;
+            }
+        }
+
+        function render() {
+            // Direct numerical resolution bounds reading, ensuring type validation defaults
+            let iterations = parseInt(document.getElementById('num_iterations').value);
+            let lineWidth = parseFloat(document.getElementById('num_lineWidth').value);
+            let splitDist = parseFloat(document.getElementById('num_splitDist').value);
+            let rotStep = parseFloat(document.getElementById('num_rotation').value) * (Math.PI / 180);
+            let scaleStep = parseFloat(document.getElementById('num_scale').value);
+            let offX = parseFloat(document.getElementById('num_offsetX').value);
+            let offY = parseFloat(document.getElementById('num_offsetY').value);
+            
+            // Safety sanitization logic to absolutely block thread-locking loops if inputs are modified manually
+            if (isNaN(iterations) || iterations < 1) iterations = 10;
+            if (iterations > 1000) iterations = 1000; // Hard cap boundary parameter
+            if (isNaN(lineWidth) || lineWidth <= 0) lineWidth = 2;
+            if (isNaN(splitDist)) splitDist = 0;
+            if (isNaN(rotStep)) rotStep = 0;
+            if (isNaN(scaleStep)) scaleStep = 1;
+            if (isNaN(offX)) offX = 0;
+            if (isNaN(offY)) offY = 0;
+
+            const width = canvas.width;
+            const height = canvas.height;
+            const cx = width / 2;
+            const cy = height / 2;
+            const type = shapeSelect.value;
+
+            // Clear Frame with Pure Solid Deep Black
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.fillStyle = '#000000';
+            ctx.fillRect(0, 0, width, height);
+
+            // Configure Matrix to Additive Blending (R+G+B overlaps stack back up into Pure White)
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            ctx.save();
+            ctx.translate(cx, cy);
+
+            for (let i = 0; i < iterations; i++) {
+                ctx.save();
+                
+                // Iterative space morph transformation calculations
+                ctx.rotate(i * rotStep);
+                const currentScale = Math.pow(scaleStep, i);
+                ctx.scale(currentScale, currentScale);
+                ctx.translate(offX, offY);
+
+                // --- OPTICAL CHROMATIC SPLIT DRAW MATRIX ---
+                
+                // Channel 1: Pure Red Layer (Offset top-left quadrant)
+                ctx.save();
+                ctx.translate(-splitDist, -splitDist * 0.5);
+                ctx.strokeStyle = '#FF0000';
+                createShapePath(type);
+                ctx.stroke();
+                ctx.restore();
+
+                // Channel 2: Pure Green Layer (True geometric coordinate center)
+                ctx.save();
+                ctx.strokeStyle = '#00FF00';
+                createShapePath(type);
+                ctx.stroke();
+                ctx.restore();
+
+                // Channel 3: Pure Blue Layer (Offset bottom-right quadrant)
+                ctx.save();
+                ctx.translate(splitDist, splitDist * 0.5);
+                ctx.strokeStyle = '#0000FF';
+                createShapePath(type);
+                ctx.stroke();
+                ctx.restore();
+
+                ctx.restore();
+            }
+            
+            ctx.restore();
+        }
+
+        function downloadImage() {
+            const dataUrl = canvas.toDataURL('image/png');
+            const link = document.createElement('a');
+            link.download = `chromatic-fractal-${Date.now()}.png`;
+            link.href = dataUrl;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

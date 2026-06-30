@@ -100,7 +100,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-if (userHasSeenUpdate == "2.1.3") {
+if (userHasSeenUpdate == "3.0") {
     document.getElementById("changelog").style.display = "none";
 } else {
     document.getElementById("changelog").style.display = "flex";
@@ -110,7 +110,7 @@ if (userHasSeenUpdate == "2.1.3") {
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
-        localStorage.setItem("updateVerified", "2.1.3");
+        localStorage.setItem("updateVerified", "3.0");
     }, 200);
 });
 
@@ -214,6 +214,52 @@ materialValue = 1.005;
 materialValueLevel = 1;
 
 
+// Better Upgrade System
+
+upgrades = {
+  refinerMultiplier: {
+    level: 1,
+    cost: 10,
+    idLevel: "refinerMultiplierLevel",
+    idCost: "refinerMultiplerUpgradeCost",
+  },
+  satelliteBeamCount: {
+    level: 1,
+    cost: 10,
+    idLevel: "satelliteBeamCountLevel",
+    idCost: "satelliteBeamCountUpgradeCost",
+    upgradeID: "satelliteBeamCount",
+  },
+  satelliteBeamDistance: {
+    level: 1,
+    cost: 10,
+    idLevel: "satelliteBeamDistanceLevel",
+    idCost: "satelliteBeamDistanceUpgradeCost"
+  },
+  satelliteEfficiency: {
+    level: 1,
+    cost: 10,
+    idLevel: "satelliteEfficiencyLevel",
+    idCost: "satelliteEfficiencyUpgradeCost"
+  },
+};
+
+function purchaseUpgrade(upgradeKey) {
+    // Find the specific upgrade inside your upgrades object
+    let selectedUpgrade = upgrades[upgradeKey];
+
+    // Check if the player has enough crystals
+    if (crystal >= selectedUpgrade.cost) {
+        
+        // Deduct cost and scale up for the next level
+        crystal -= selectedUpgrade.cost;
+        selectedUpgrade.cost = Math.floor(selectedUpgrade.cost * 1.5);
+        selectedUpgrade.level++;
+        
+        // Update the UI so the player sees the changes immediately
+        updateLabels(); 
+    }
+}
 
 
 // Timing control
@@ -1107,7 +1153,7 @@ app.ticker.add((delta) => {
             // 1. Basic Background Math (Always runs)
             mat.radius += mat.radiusChange;
             mat.value *= materialValue;
-            mat.value = Math.min(mat.value, 1000000); 
+            mat.value = Math.min(mat.value, 10000000); 
 
             let mRadius = mat.radius;
             let mAngle = mat.angle;
@@ -1166,6 +1212,7 @@ app.ticker.add((delta) => {
             // -----------------------------------------
             let materialCollected = false;
             for (let c = 0; c < planet.collectors.length; c++) {
+
 
                 let collector = planet.collectors[c];
 
@@ -1267,7 +1314,6 @@ app.ticker.add((delta) => {
                         mat.angle += (angleDiff * beamTime) + toRadians(0.5);
                     }
 
-                    // Start the refine at 100 material value
                     if (refiner.mineralsStored > refiner.radius && refiner.animationScale == -1) refiner.animationScale = 1;
                 }
             }
@@ -1360,7 +1406,8 @@ app.ticker.add((delta) => {
 
         // Power Lines
 
-        const MAX_DISTANCE_SQ = 100 ** 2; // Maximum range (10,000)
+        MAX_DISTANCE_SQ = (50 + upgrades.satelliteBeamDistance.level*10) ** 2; // Maximum range (10,000)
+        MAX_TARGETS = upgrades.satelliteBeamCount.level;
 
         for (let i = 0; i < planet.satellites.length; i++) {
             let p = planet.satellites[i];
@@ -1372,18 +1419,22 @@ app.ticker.add((delta) => {
             // 1. Get the satellite's current position
             const satPos = polarToCartesian(p.radius, p.angle);
 
-            let closestDistance = Infinity;
-            let targetPos = null;
-            let targetType = null; // Will be 'ship' or 'collector'
-            let closestCollector = null;
+            let potentialTargets = [];
+
+            // let closestDistance = Infinity;
+            // let targetPos = null;
+            // let targetType = null; // Will be 'ship' or 'collector'
+            // let closestCollector = null;
 
             // 2. Check distance to the ship (only on current planet)
             if (drawThisPlanet) {
                 let shipDistance = calculateDistance(satPos, shipPosition);
-                if (shipDistance < closestDistance) {
-                    closestDistance = shipDistance;
-                    targetType = 'ship';
-                    targetPos = { x: shipX, y: shipY }; 
+                if (shipDistance < MAX_DISTANCE_SQ) {
+                    potentialTargets.push({
+                        type: 'ship',
+                        distance: shipDistance,
+                        pos: { x: shipX, y: shipY }
+                    });
                 }
             }
 
@@ -1398,57 +1449,158 @@ app.ticker.add((delta) => {
                 let collectorPos = polarToCartesian(c.radius, c.angle);
                 let collectorDistance = calculateDistance(satPos, collectorPos);
 
-                // If this collector is closer than anything we've checked so far
-                if (collectorDistance < closestDistance) {
-                    closestDistance = collectorDistance;
-                    targetType = 'collector';
-                    targetPos = collectorPos;
-                    closestCollector = c; // Save the reference so we can update its battery later
+                if (collectorDistance <= MAX_DISTANCE_SQ) {
+                    potentialTargets.push({
+                        type: 'collector',
+                        distance: collectorDistance,
+                        pos: collectorPos,
+                        ref: c // Save the reference so we can update its battery later
+                    });
                 }
             }
 
             // 3. Check distance to all refiners
             for (let j = 0; j < planet.refiners.length; j++) {
-                let c = planet.refiners[j];
-                let refinerPos = polarToCartesian(c.radius, c.angle);
+                let r = planet.refiners[j];
+                let refinerPos = polarToCartesian(r.radius, r.angle);
                 let refinerDistance = calculateDistance(satPos, refinerPos);
 
-                // If this collector is closer than anything we've checked so far
-                if (refinerDistance < closestDistance) {
-                    closestDistance = refinerDistance;
-                    targetType = 'collector';
-                    targetPos = refinerPos;
-                    closestCollector = c; // Save the reference so we can update its battery later
+                if (refinerDistance <= MAX_DISTANCE_SQ) {
+                    potentialTargets.push({
+                        type: 'refiner',
+                        distance: refinerDistance,
+                        pos: refinerPos,
+                        ref: r // Save the reference so we can update its battery later
+                    });
                 }
             }
 
-            // 4. If the absolute closest target is within range, draw line and transfer power
-            if (closestDistance <= MAX_DISTANCE_SQ && targetPos !== null) {
-                
-                // Draw the power line to the winning target
+            // 3. Check distance to all laers
+            for (let j = 0; j < planet.laserSatellites.length; j++) {
+                let ls = planet.laserSatellites[j];
+                let laserPos = polarToCartesian(ls.radius, ls.angle);
+                let laserDistance = calculateDistance(satPos, laserPos);
+
+                if (laserDistance <= MAX_DISTANCE_SQ) {
+                    potentialTargets.push({
+                        type: 'laser',
+                        distance: laserDistance,
+                        pos: laserPos,
+                        ref: ls // Save the reference so we can update its battery later
+                    });
+                }
+            }
+
+            // Sort array from closest to furthest
+            potentialTargets.sort((a, b) => a.distance - b.distance);
+
+            // Choose closest targets
+            let finalTargets = potentialTargets.slice(0, MAX_TARGETS);
+
+            // if (finalTargets.length > 0 && p.powerStored > 0) p.powerStored -= 0.1;
+
+            // 7. Loop through the winners, draw lines, and transfer power
+            for (let t = 0; t < finalTargets.length; t++) {
+                let target = finalTargets[t];
+
+                // Draw the power line to this specific target
                 if (drawThisPlanet) {
                     let randomWidth = Math.random() * 5;
                     powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
-
-                    // powerLineGraphic.lineStyle(3, 0xF5D752, 1);
                     powerLineGraphic.moveTo(satPos.x, satPos.y);
-                    powerLineGraphic.lineTo(targetPos.x, targetPos.y);
+                    powerLineGraphic.lineTo(target.pos.x, target.pos.y);
                 }
 
-                // Transfer power to the winning target
-                if (p.powerStored > 0) {
-                    p.powerStored -= 0.1;
-                    
-                    if (targetType === 'ship') {
-                        energy += 0.1;
-                    } else if (targetType === 'collector') {
-                        closestCollector.battery += 0.1;
-                    }
+                if (p.powerStored <= 0) continue;
+
+                p.powerStored -= 0.1
+                
+                // Transfer power to the targets
+                if (target.type === 'ship') {
+                    energy += 0.1;
+                } else {
+                    target.ref.battery += 0.1;
                 }
             }
         }
 
 
+        SHIP_MAX_DISTANCE_SQ = 75 ** 2;
+        // Ship can also transfer power if it has enough
+        if (energy > 1 && drawThisPlanet) {
+
+            let potentialTargets = [];
+
+            // 3. Check distance to all collectors
+            for (let j = 0; j < planet.collectors.length; j++) {
+                let c = planet.collectors[j];
+                let collectorPos = polarToCartesian(c.radius, c.angle);
+                let collectorDistance = calculateDistance(shipPosition, collectorPos);
+
+                if (collectorDistance <= SHIP_MAX_DISTANCE_SQ) {
+                    potentialTargets.push({
+                        type: 'collector',
+                        distance: collectorDistance,
+                        pos: collectorPos,
+                        ref: c // Save the reference so we can update its battery later
+                    });
+                }
+            }
+
+            // 3. Check distance to all refiners
+            for (let j = 0; j < planet.refiners.length; j++) {
+                let r = planet.refiners[j];
+                let refinerPos = polarToCartesian(r.radius, r.angle);
+                let refinerDistance = calculateDistance(shipPosition, refinerPos);
+
+                if (refinerDistance <= SHIP_MAX_DISTANCE_SQ) {
+                    potentialTargets.push({
+                        type: 'refiner',
+                        distance: refinerDistance,
+                        pos: refinerPos,
+                        ref: r // Save the reference so we can update its battery later
+                    });
+                }
+            }
+
+            // 3. Check distance to all laers
+            for (let j = 0; j < planet.laserSatellites.length; j++) {
+                let ls = planet.laserSatellites[j];
+                let laserPos = polarToCartesian(ls.radius, ls.angle);
+                let laserDistance = calculateDistance(shipPosition, laserPos);
+
+                if (laserDistance <= SHIP_MAX_DISTANCE_SQ) {
+                    potentialTargets.push({
+                        type: 'laser',
+                        distance: laserDistance,
+                        pos: laserPos,
+                        ref: ls // Save the reference so we can update its battery later
+                    });
+                }
+            }
+
+            // Sort array from closest to furthest
+            potentialTargets.sort((a, b) => a.distance - b.distance);
+
+            // Choose closest targets (ship can only beam to one target)
+            let finalTargets = potentialTargets.slice(0, 1);
+
+            // if (finalTargets.length > 0 && p.powerStored > 0) p.powerStored -= 0.1;
+
+            // 7. Loop through the winners, draw lines, and transfer power
+            for (let t = 0; t < finalTargets.length; t++) {
+                let target = finalTargets[t];
+
+                // Draw the power line to this specific target
+                let randomWidth = Math.random() * 5;
+                powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
+                powerLineGraphic.moveTo(shipPosition.x, shipPosition.y);
+                powerLineGraphic.lineTo(target.pos.x, target.pos.y);
+
+                energy -= 0.1
+                target.ref.battery += 0.1;
+            }
+        }
 
 
 
@@ -1541,10 +1693,8 @@ app.ticker.add((delta) => {
 
             p.productionTimer += dt;
 
-            
-
             if (p.productionTimer >= 300) { 
-                p.powerStored += 0.1 * planet.solarFactor;
+                p.powerStored += 0.1 * planet.solarFactor + upgrades.satelliteEfficiency.level/20;
                 p.productionTimer = 0;
             }
 
@@ -1553,14 +1703,11 @@ app.ticker.add((delta) => {
             // Draw Satellites
             if (drawThisPlanet) {
                 p.pivot.visible = true;
-                
-                // 2. Sync the pivot to the math
+            
                 p.pivot.rotation = p.angle; 
-                
-                // 3. Push the graphic out from the center to match the radius
                 p.graphic.x = p.radius; 
                 
-                // 4. THE FIX: Target Rotation MINUS Parent Rotation
+                // Face the sun
                 p.graphic.rotation = planet.currentOrbitRotation - p.angle; 
                 
             } else {
@@ -1616,7 +1763,7 @@ app.ticker.add((delta) => {
                     angleChange: 0,
                     alpha: 1,
                     timeInTractorBeam: 0,
-                    value: refiner.mineralsStored * 2,
+                    value: refiner.mineralsStored * (upgrades.refinerMultiplier.level+1),
                     refined: true,
                     x: refiner.x,
                     y: refiner.y,
@@ -1693,76 +1840,81 @@ app.ticker.add((delta) => {
 
             laserSatPosition = polarToCartesian(laserSat.radius, laserSat.angle);
 
-            closestComet = null;
-            smallestDistance = Infinity;
+            if (laserSat.battery && laserSat.battery > 0) {
+                closestComet = null;
+                smallestDistance = Infinity;
 
-            // Find closest comet
-            for (let j = 0; j < planet.comets.length; j++) {
-                let comet = planet.comets[j];
+                // Find closest comet
+                for (let j = 0; j < planet.comets.length; j++) {
+                    let comet = planet.comets[j];
 
-                cometPosition = {
-                    x: comet.currentX,
-                    y: comet.currentY
+                    cometPosition = {
+                        x: comet.currentX,
+                        y: comet.currentY
+                    }
+
+                    // if (cartesianToPolar(cometPosition.x, cometPosition.y).radius >= (475 + collectionRadius/2)) continue;
+
+                    let dxFromCenter = comet.currentX - 500;
+                    let dyFromCenter = comet.currentY - 500;
+                    let distFromCenterSq = (dxFromCenter * dxFromCenter) + (dyFromCenter * dyFromCenter);
+                    let maxRadius = 475 + collectionRadius / 2;
+
+                    if (distFromCenterSq >= (maxRadius * maxRadius)) continue;
+
+                    distanceToComet = calculateDistance(laserSatPosition, cometPosition);
+
+                    if (distanceToComet < smallestDistance && !isLaserBlocked(laserSatPosition, cometPosition, planet)) {
+                        smallestDistance = distanceToComet;
+                        closestComet = comet;
+                    }
                 }
 
-                // if (cartesianToPolar(cometPosition.x, cometPosition.y).radius >= (475 + collectionRadius/2)) continue;
+                // Rotate and Beam the closest comet
+                if  (closestComet != null) {
+                    closestCometPosition = {
+                        x: closestComet.currentX,
+                        y: closestComet.currentY,
+                    }
 
-                let dxFromCenter = comet.currentX - 500;
-                let dyFromCenter = comet.currentY - 500;
-                let distFromCenterSq = (dxFromCenter * dxFromCenter) + (dyFromCenter * dyFromCenter);
-                let maxRadius = 475 + collectionRadius / 2;
+                    damagePerFrame = 0.05
+                    closestComet.material -= damagePerFrame;
+                    laserSat.battery -= 0.025;
 
-                if (distFromCenterSq >= (maxRadius * maxRadius)) continue;
+                    drawLine = isLaserBlocked(laserSatPosition, closestCometPosition, planet);
 
-                distanceToComet = calculateDistance(laserSatPosition, cometPosition);
+                    let dy = closestCometPosition.y - laserSatPosition.y;
+                    let dx = closestCometPosition.x - laserSatPosition.x;
+                    
+                    // 1. Calculate the angle we WANT to be at
+                    let targetAngle = Math.atan2(dy, dx);
 
-                if (distanceToComet < smallestDistance && !isLaserBlocked(laserSatPosition, cometPosition, planet)) {
-                    smallestDistance = distanceToComet;
-                    closestComet = comet;
+                    // 2. Calculate the difference between current and target
+                    let angleDiff = targetAngle - laserSat.rotation;
+
+                    // 3. Normalize the angle to ensure the satellite takes the shortest path
+                    // This prevents the "360-degree spin" bug
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+                    // 4. Smoothly increment the rotation
+                    let rotationSpeed = 0.2; // Adjust this for "weight"
+                    if (Math.abs(angleDiff) > 0.01) {
+                        laserSat.rotation += angleDiff * rotationSpeed;
+                    } else {
+                        laserSat.rotation = targetAngle; // Snap to target if very close
+                    }
+                    
+                    // Draw the blue laser beam
+                    if (!drawLine && drawThisPlanet) {
+                        laserLineGraphic.lineStyle(Math.random() * damagePerFrame + Math.random() * 5, 0x3083DC, Math.min(laserSat.battery+0.1, 1));
+                        laserLineGraphic.moveTo(laserSatPosition.x, laserSatPosition.y);
+                        laserLineGraphic.lineTo(closestCometPosition.x, closestCometPosition.y);
+                    }
                 }
             }
 
-            // Rotate and Beam the closest comet
-            if  (closestComet != null) {
-                closestCometPosition = {
-                    x: closestComet.currentX,
-                    y: closestComet.currentY,
-                }
-
-                damagePerFrame = 0.05
-                closestComet.material -= damagePerFrame;
-
-                drawLine = isLaserBlocked(laserSatPosition, closestCometPosition, planet);
-
-                let dy = closestCometPosition.y - laserSatPosition.y;
-                let dx = closestCometPosition.x - laserSatPosition.x;
-                
-                // 1. Calculate the angle we WANT to be at
-                let targetAngle = Math.atan2(dy, dx);
-
-                // 2. Calculate the difference between current and target
-                let angleDiff = targetAngle - laserSat.rotation;
-
-                // 3. Normalize the angle to ensure the satellite takes the shortest path
-                // This prevents the "360-degree spin" bug
-                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-
-                // 4. Smoothly increment the rotation
-                let rotationSpeed = 0.2; // Adjust this for "weight"
-                if (Math.abs(angleDiff) > 0.01) {
-                    laserSat.rotation += angleDiff * rotationSpeed;
-                } else {
-                    laserSat.rotation = targetAngle; // Snap to target if very close
-                }
-                
-                // Draw the blue laser beam
-                if (!drawLine && drawThisPlanet) {
-                    laserLineGraphic.lineStyle(Math.random() * damagePerFrame + Math.random() * 5, 0x3083DC, 1);
-                    laserLineGraphic.moveTo(laserSatPosition.x, laserSatPosition.y);
-                    laserLineGraphic.lineTo(closestCometPosition.x, closestCometPosition.y);
-                }
-            }
+            
 
             // Draw Laser Satellites
             if (drawThisPlanet) {
@@ -2269,6 +2421,7 @@ function deployLaser() {
         damageStored: 0,
         productionTimer: 0,
         timeSinceLastShot: 0,
+        battery: 0,
 
         pivot: laserPivot,
         graphic: laserGraphic
@@ -2837,58 +2990,7 @@ function getProbePosition(planetA, planetB, t) {
 
 
 
-// Deploy probe
-function deployProbeOLD() {
 
-    price = 100;
-    if (energy < price) return;
-    energy -= price;
-    // currentPlanet.drillCostMaterial = Math.floor(price * 1.2);
-    // console.log(price)
-
-    // 1. Identify the origin and target
-    let origin = currentPlanet; 
-    let target = planets.find(p => p.selected);
-
-    console.log(target);
-
-    if (origin && target) {
-        // 2. Calculate the shortest angle difference (Delta Theta)
-        let startAngle = origin.currentOrbitRotation % (Math.PI * 2);
-        let endAngle = target.currentOrbitRotation % (Math.PI * 2);
-
-        if (startAngle < 0) startAngle += Math.PI * 2;
-        if (endAngle < 0) endAngle += Math.PI * 2;
-
-        let diff = endAngle - startAngle;
-        if (diff > Math.PI) diff -= Math.PI * 2;
-        else if (diff < -Math.PI) diff += Math.PI * 2;
-
-        // 3. Approximate the physical distance of the spiral path
-        let dr = target.orbitRadius - origin.orbitRadius;
-        let avgRadius = (origin.orbitRadius + target.orbitRadius) / 2;
-        
-        let pathDistance = Math.sqrt((dr * dr) + Math.pow(avgRadius * diff, 2));
-
-        // 4. Define your desired constant speed (pixels per frame)
-        let constantSpeed = 0.3; 
-        
-        // 5. Calculate the fractional speed for 't'
-        // Avoid division by zero if planets are perfectly aligned
-        let calculatedSpeed = pathDistance > 0 ? (constantSpeed / pathDistance) : 0.001;
-
-        probes.push({
-            probeProgress: 0,
-            probeSpeed: calculatedSpeed, 
-            originPlanet: origin,       
-            targetPlanet: target,       
-            currentAngle: origin.currentOrbitRotation, 
-            currentRadius: origin.orbitRadius,  
-            productionTimer: 0, 
-            particles: [],  
-        });
-    }
-}
 
 
 
@@ -3015,6 +3117,15 @@ function upgradeRefineChainLevel() {
 
     refineChainCount += 1;
     refineChainLevel++;
+}
+
+
+function upgradeRefinerMultiplier() {
+    if (crystal < upgrades.refinerMultiplier.cost) return;
+    crystal -= upgrades.refinerMultiplier.cost;
+    upgrades.refinerMultiplier.cost = Math.floor(upgrades.refinerMultiplier.cost * 1.5);
+
+    upgrades.refinerMultiplier.level++;
 }
 
 // Ship speed calculations
@@ -3588,17 +3699,68 @@ document.getElementById("planetSelectMenu").style.display = "none";
 document.getElementById("settingsMenu").style.display = "none";
 document.getElementById("statsMenu").style.display = "none";
 document.getElementById("gadgetMenu").style.display = "none";
+document.getElementById("infoMenu").style.display = "none";
 
 // Upgrade Menus
 document.getElementById("drillUpgradeMenu").style.display = "none";
+document.getElementById("refinerUpgradeMenu").style.display = "none";
+document.getElementById("satelliteUpgradeMenu").style.display = "none";
 
 
-
+allMenuLines = [];
 
 function switchMenu(oldActiveMenuID, newActiveMenuID) {
     document.getElementById(oldActiveMenuID).style.display = "none";
     document.getElementById(newActiveMenuID).style.display = "flex";
+
+    // // 1. Hide every single line globally so they don't float over other menus
+    // // allMenuLines.forEach(item => item.line.hide());
+
+    // // 2. Find all elements inside the newly opened menu that want to connect to something
+    // const nodesWithLines = document.querySelectorAll(`#${newActiveMenuID} [data-connect-to]`);
+
+    // nodesWithLines.forEach(startNode => {
+    //     // Get the target ID(s). The .split(',') allows you to branch to multiple skills!
+    //     const targetIds = startNode.getAttribute('data-connect-to').split(',');
+
+    //     targetIds.forEach(targetId => {
+    //         const targetNode = document.getElementById(targetId.trim());
+    //         if (!targetNode) return; // Skip if target doesn't exist
+
+    //         // Check if we've already generated this specific line before
+    //         let existingLine = allMenuLines.find(item => item.start === startNode && item.end === targetNode);
+
+    //         if (!existingLine) {
+    //             // If it doesn't exist, create it for the first time
+    //             const newLine = new LeaderLine(startNode, targetNode, {
+    //                 color: '#3f3f3f',
+    //                 size: 10,
+    //                 path: 'straight',
+    //                 startPlug: 'behind',
+    //                 endPlug: 'behind',
+    //                 dropShadow: false
+    //             });
+                
+    //             // Save it to our master array so we can hide/show it later
+    //             allMenuLines.push({ start: startNode, end: targetNode, line: newLine });
+
+    //             newLine.show('fade', { duration: 200 }); 
+    //         } else {
+    //             // Force it to recalculate its position, then fade in
+    //             existingLine.line.position();
+    //             existingLine.line.show('fade', { duration: 200 });
+    //         }
+    //     });
+    // });
 }
+
+function infoMenuSelect(infoId) {
+
+}
+
+// Info text paragraphs
+const container = document.getElementById('infoTexts');
+const paragraphs = container.querySelectorAll('p');
 
 const menuButtons = document.querySelectorAll('.menuButton');
 
@@ -3616,7 +3778,16 @@ menuButtons.forEach(button => {
 
     setTimeout(() => {
         switchMenu(oldActiveMenuID, activeMenu);
+        // console.log(button.dataset.info);
         acceptingInput = true;
+
+        paragraphs.forEach(p => {
+            p.style.display = 'none';
+        });
+
+        if (button.dataset.info) document.getElementById(button.dataset.info).style.display = "";
+
+
     }, 200);
 
     
@@ -3630,6 +3801,8 @@ function menuFade() {
         // buttons.forEach(currentbutton => {
         // currentbutton.style.opacity = "0";
         document.getElementById("disapearingDiv").style.opacity = "0";
+
+        // allMenuLines.forEach(item => item.line.hide('fade', { duration: 200 }));
     // });
     }, 100);
     
@@ -3729,6 +3902,11 @@ function updateLabels() {
 
     document.getElementById("materialValueUpgradeCost").textContent = formatNumber(materialValueUpgradeCost);
     document.getElementById("materialValueLevel").textContent = "LVL " + formatNumber(materialValueLevel).toString();
+
+    Object.values(upgrades).forEach(upgrade => {
+        document.getElementById(upgrade.idCost).textContent = formatNumber(upgrade.cost);
+        document.getElementById(upgrade.idLevel).textContent = "LVL " + formatNumber(upgrade.level).toString();
+    });
 }
 
 
@@ -3781,6 +3959,13 @@ holdButtons.forEach(button => {
 
         // If the user has held for the full 3 seconds (100%+)
         if (holdPercentage >= 100) {
+
+            const buttonId = button.id;
+
+            if (upgrades.hasOwnProperty(buttonId)) {
+                // 2. Pass the dynamic key to your purchase function
+                purchaseUpgrade(buttonId);
+            }
             
 
             if (button.id == "drill") {
@@ -3877,11 +4062,12 @@ holdButtons.forEach(button => {
 
 // Text formatting
 function formatNumber(num) {
-  const suffixes = ['', 'k', 'm', 'b', 't'];
+  // Added: q (quadrillion), Q (quintillion), s (sextillion), 
+  // S (septillion), o (octillion), n (nonillion), d (decillion)
+  const suffixes = ['', 'k', 'm', 'b', 't', 'qd', 'qn', 'sx', 'Sp', 'o', 'n', 'd'];
   let suffixIndex = 0;
 
   // Scale the number down by 1000s until it's under 1000
-  // or we run out of suffixes
   while (num >= 1000 && suffixIndex < suffixes.length - 1) {
     num /= 1000;
     suffixIndex++;
@@ -3889,15 +4075,14 @@ function formatNumber(num) {
 
   // Handle formatting based on the size of the resulting number
   if (num >= 100 || suffixIndex === 0) {
-    // No decimals needed if it's already 3 digits or under 1000
     return Math.floor(num) + suffixes[suffixIndex];
   } else if (num >= 10) {
-    // e.g., 28.1m (3 total digits)
     return num.toFixed(1).replace(/\.0$/, '') + suffixes[suffixIndex];
   } else {
-    // e.g., 1.56k (3 total digits)
     return num.toFixed(2).replace(/\.?0+$/, '') + suffixes[suffixIndex];
   }
+
+  
 }
 
 
@@ -4024,7 +4209,8 @@ function saveGame() {
         boostSpeedLevel, boostSpeedAdd, boostSpeedUpgradeCost, 
         materialValue, materialValueLevel, materialValueUpgradeCost,
         planets: planetsToSave,
-        probes: cleanProbes
+        probes: cleanProbes,
+        upgrades
     };
 
     // 4. Save with Error Catching
@@ -4040,6 +4226,20 @@ function loadGame() {
     if (!savedData) return;
 
     const state = JSON.parse(savedData);
+
+   if (state.upgrades) {
+        // Loop through each upgrade key found in the player's save file
+        for (const upgradeKey in state.upgrades) {
+            
+            // Ensure this upgrade still exists in the current game version
+            if (upgrades[upgradeKey]) {
+                
+                // Merge the saved stats (like level and cost) into your base object
+                Object.assign(upgrades[upgradeKey], state.upgrades[upgradeKey]);
+            }
+        }
+    }
+    
 
     // 1. Restore global variables
     energy = state.energy;
@@ -4233,6 +4433,8 @@ function loadGame() {
             laserPivot.addChild(laserGraphic);
             planetScene.addChild(laserPivot);
 
+            ls.battery = ls.battery !== undefined ? ls.battery : 0;
+
             ls.pivot = laserPivot;
             ls.graphic = laserGraphic;
             return ls;
@@ -4313,3 +4515,6 @@ updateLabels();
 
 currentPlanet.graphics.addChild(systemShipPivot);
 shipGraphic.tint = shipColours[currentShipColourIndex];
+
+
+

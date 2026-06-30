@@ -241,7 +241,8 @@ button > svg {
     color: #FFF;
     fill: rgba(0,0,0,0);
     stroke: #FFF;
-    scale: 1.25;
+    scale: 1;
+    /* rotate: -90deg; */
 }
 
 .upgradeSVG {
@@ -400,7 +401,7 @@ p {
     flex-direction: column;
     align-items: left;
     justify-content: center;
-    /* gap: 3vw; */
+    /* gap: 2vw; */
     margin-bottom: 2vw;
 }
 
@@ -412,6 +413,12 @@ p {
 .subtitle {
     font-size: 4vw;
     color: gray;
+    /* line-height: 0; */
+}
+
+.updateIcon {
+    width: 3vw;
+    height: 3vw;
 }
 
 
@@ -478,7 +485,7 @@ p {
 }
 
 .subButton {
-    margin-right: 1.5vw;
+    /* margin-right: 1.5vw; */
     width: 17vw;
     height: 17vw;
     font-size: 5vw;
@@ -512,10 +519,15 @@ p {
     touch-action: none;
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    /* justify-content: space-between; */
     flex-direction: row;
-    gap: 1vw;
+    gap: 1.5vw;
     transition: 0.15s !important;
+    /* padding-right: 1.5vw; */
+}
+
+.growing {
+    flex-grow: 1;
 }
 
 
@@ -528,10 +540,14 @@ span {
     gap: 1vw;
 }
 
+.inlineSpan {
+    display: inline;
+}
+
 .uiText {
     width: 80vw;
     color: rgba(255, 255, 255, 1);
-    font-size: 3.5vw;
+    font-size: 5vw;
     text-align: center;
     text-wrap-style: pretty;
 }
@@ -565,3 +581,5 @@ span {
 .redButton {
     will-change: transform, box-shadow, background-color;
 }
+
+
