@@ -1145,6 +1145,14 @@ app.ticker.add((delta) => {
             polarToCartesianWrite(planet.collectors[c].radius, planet.collectors[c].angle, planet.collectors[c]);
         }
 
+        for (let c = 0; c < planet.satellites.length; c++) {
+            polarToCartesianWrite(planet.satellites[c].radius, planet.satellites[c].angle, planet.satellites[c]);
+        }
+
+        for (let c = 0; c < planet.laserSatellites.length; c++) {
+            polarToCartesianWrite(planet.laserSatellites[c].radius, planet.laserSatellites[c].angle, planet.laserSatellites[c]);
+        }
+
         // Materials
         for (let m = 0; m < planet.materialsToCollect.length; m++) {
 
@@ -1417,7 +1425,8 @@ app.ticker.add((delta) => {
             if (planet.solarFactor == 0) break;
 
             // 1. Get the satellite's current position
-            const satPos = polarToCartesian(p.radius, p.angle);
+            // const satPos = polarToCartesian(p.radius, p.angle);
+
 
             let potentialTargets = [];
 
@@ -1428,12 +1437,12 @@ app.ticker.add((delta) => {
 
             // 2. Check distance to the ship (only on current planet)
             if (drawThisPlanet) {
-                let shipDistance = calculateDistance(satPos, shipPosition);
+                let shipDistance = calculateDistance(p, shipPosition);
                 if (shipDistance < MAX_DISTANCE_SQ) {
                     potentialTargets.push({
                         type: 'ship',
                         distance: shipDistance,
-                        pos: { x: shipX, y: shipY }
+                        ref: { x: shipX, y: shipY }
                     });
                 }
             }
@@ -1446,14 +1455,14 @@ app.ticker.add((delta) => {
             // 3. Check distance to all collectors
             for (let j = 0; j < planet.collectors.length; j++) {
                 let c = planet.collectors[j];
-                let collectorPos = polarToCartesian(c.radius, c.angle);
-                let collectorDistance = calculateDistance(satPos, collectorPos);
+                // let collectorPos = polarToCartesian(c.radius, c.angle);
+                let collectorDistance = calculateDistance(p, c);
 
                 if (collectorDistance <= MAX_DISTANCE_SQ) {
                     potentialTargets.push({
                         type: 'collector',
                         distance: collectorDistance,
-                        pos: collectorPos,
+                        // pos: collectorPos,
                         ref: c // Save the reference so we can update its battery later
                     });
                 }
@@ -1462,14 +1471,14 @@ app.ticker.add((delta) => {
             // 3. Check distance to all refiners
             for (let j = 0; j < planet.refiners.length; j++) {
                 let r = planet.refiners[j];
-                let refinerPos = polarToCartesian(r.radius, r.angle);
-                let refinerDistance = calculateDistance(satPos, refinerPos);
+                // let refinerPos = polarToCartesian(r.radius, r.angle);
+                let refinerDistance = calculateDistance(p, r);
 
                 if (refinerDistance <= MAX_DISTANCE_SQ) {
                     potentialTargets.push({
                         type: 'refiner',
                         distance: refinerDistance,
-                        pos: refinerPos,
+                        // pos: refinerPos,
                         ref: r // Save the reference so we can update its battery later
                     });
                 }
@@ -1478,14 +1487,14 @@ app.ticker.add((delta) => {
             // 3. Check distance to all laers
             for (let j = 0; j < planet.laserSatellites.length; j++) {
                 let ls = planet.laserSatellites[j];
-                let laserPos = polarToCartesian(ls.radius, ls.angle);
-                let laserDistance = calculateDistance(satPos, laserPos);
+                // let laserPos = polarToCartesian(ls.radius, ls.angle);
+                let laserDistance = calculateDistance(p, ls);
 
                 if (laserDistance <= MAX_DISTANCE_SQ) {
                     potentialTargets.push({
                         type: 'laser',
                         distance: laserDistance,
-                        pos: laserPos,
+                        // pos: laserPos,
                         ref: ls // Save the reference so we can update its battery later
                     });
                 }
@@ -1507,8 +1516,9 @@ app.ticker.add((delta) => {
                 if (drawThisPlanet) {
                     let randomWidth = Math.random() * 5;
                     powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
-                    powerLineGraphic.moveTo(satPos.x, satPos.y);
-                    powerLineGraphic.lineTo(target.pos.x, target.pos.y);
+                    powerLineGraphic.moveTo(p.x, p.y);
+
+                    powerLineGraphic.lineTo(target.ref.x, target.ref.y);
                 }
 
                 if (p.powerStored <= 0) continue;
@@ -1534,14 +1544,14 @@ app.ticker.add((delta) => {
             // 3. Check distance to all collectors
             for (let j = 0; j < planet.collectors.length; j++) {
                 let c = planet.collectors[j];
-                let collectorPos = polarToCartesian(c.radius, c.angle);
-                let collectorDistance = calculateDistance(shipPosition, collectorPos);
+                // let collectorPos = polarToCartesian(c.radius, c.angle);
+                let collectorDistance = calculateDistance(shipPosition, c);
 
                 if (collectorDistance <= SHIP_MAX_DISTANCE_SQ) {
                     potentialTargets.push({
                         type: 'collector',
                         distance: collectorDistance,
-                        pos: collectorPos,
+                        // pos: collectorPos,
                         ref: c // Save the reference so we can update its battery later
                     });
                 }
@@ -1550,14 +1560,14 @@ app.ticker.add((delta) => {
             // 3. Check distance to all refiners
             for (let j = 0; j < planet.refiners.length; j++) {
                 let r = planet.refiners[j];
-                let refinerPos = polarToCartesian(r.radius, r.angle);
-                let refinerDistance = calculateDistance(shipPosition, refinerPos);
+                // let refinerPos = polarToCartesian(r.radius, r.angle);
+                let refinerDistance = calculateDistance(shipPosition, r);
 
                 if (refinerDistance <= SHIP_MAX_DISTANCE_SQ) {
                     potentialTargets.push({
                         type: 'refiner',
                         distance: refinerDistance,
-                        pos: refinerPos,
+                        // pos: refinerPos,
                         ref: r // Save the reference so we can update its battery later
                     });
                 }
@@ -1566,14 +1576,14 @@ app.ticker.add((delta) => {
             // 3. Check distance to all laers
             for (let j = 0; j < planet.laserSatellites.length; j++) {
                 let ls = planet.laserSatellites[j];
-                let laserPos = polarToCartesian(ls.radius, ls.angle);
-                let laserDistance = calculateDistance(shipPosition, laserPos);
+                // let laserPos = polarToCartesian(ls.radius, ls.angle);
+                let laserDistance = calculateDistance(shipPosition, ls);
 
                 if (laserDistance <= SHIP_MAX_DISTANCE_SQ) {
                     potentialTargets.push({
                         type: 'laser',
                         distance: laserDistance,
-                        pos: laserPos,
+                        // pos: laserPos,
                         ref: ls // Save the reference so we can update its battery later
                     });
                 }
@@ -1595,7 +1605,7 @@ app.ticker.add((delta) => {
                 let randomWidth = Math.random() * 5;
                 powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
                 powerLineGraphic.moveTo(shipPosition.x, shipPosition.y);
-                powerLineGraphic.lineTo(target.pos.x, target.pos.y);
+                powerLineGraphic.lineTo(target.ref.x, target.ref.y);
 
                 energy -= 0.1
                 target.ref.battery += 0.1;
@@ -1881,7 +1891,8 @@ app.ticker.add((delta) => {
                     closestComet.material -= damagePerFrame;
                     laserSat.battery -= 0.025;
 
-                    drawLine = isLaserBlocked(laserSatPosition, closestCometPosition, planet);
+                    // drawLine = isLaserBlocked(laserSatPosition, closestCometPosition, planet);
+                    drawLine = false;
 
                     let dy = closestCometPosition.y - laserSatPosition.y;
                     let dx = closestCometPosition.x - laserSatPosition.x;
