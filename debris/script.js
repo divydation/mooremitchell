@@ -1871,11 +1871,6 @@ app.ticker.add((delta) => {
                 for (let j = 0; j < planet.comets.length; j++) {
                     let comet = planet.comets[j];
 
-                    cometPosition = {
-                        x: comet.currentX,
-                        y: comet.currentY
-                    }
-
                     // Skip if comets are outside the orbit radius
                     let dxFromCenter = comet.currentX - 500;
                     let dyFromCenter = comet.currentY - 500;
@@ -1886,9 +1881,9 @@ app.ticker.add((delta) => {
 
                     cometOnScreen = true;
 
-                    distanceToComet = calculateDistance(laserSat, cometPosition);
+                    distanceToComet = calculateDistance(laserSat, comet);
 
-                    if (distanceToComet < smallestDistance && !isLaserBlocked(laserSat, cometPosition, planet)) {
+                    if (distanceToComet < smallestDistance && !isLaserBlocked(laserSat, comet, planet)) {
                         smallestDistance = distanceToComet;
                         closestCometOrLens = comet;
                         shootingComet = true;
@@ -1899,27 +1894,18 @@ app.ticker.add((delta) => {
                     // Find closest lens
                     for (let l = 0; l < planet.lenses.length; l++) { 
                         let lens = planet.lenses[l];
-
-                        let canLensSeeAComet = false;
                         
-                        // Loop through comets to see if the lens has line of sight to ANY of them
+                        let canLensSeeAComet = false;
+
+                        // Loop through comets to see if the lens has line of sight to ANY valid one
                         for (let k = 0; k < planet.comets.length; k++) { 
                             let testComet = planet.comets[k];
-                            
-                            // Create a fresh coordinate object for THIS specific comet
-                            let testCometPos = { 
-                                x: testComet.currentX, 
-                                y: testComet.currentY 
-                            };
+        
 
-                            // Can the lens see THIS comet?
-                            if (!isLaserBlocked(lens, testCometPos, planet)) {
+                            // If it can see the comet AND the comet can still be split
+                            if (!isLaserBlocked(lens, testComet, planet) && testComet.timesSplit < 2) {
                                 canLensSeeAComet = true;
-                            }
-
-                            // But can the lens SPLIT this comet?
-                            if (testComet.timesSplit >= 4) {
-                                canLensSeeAComet = false;
+                                break; // We found a valid target, no need to check the rest!
                             }
                         }
 
@@ -1946,21 +1932,11 @@ app.ticker.add((delta) => {
 
                     // If the closest thing was a comet
                     if (shootingComet) {
-                        closestPosition = {
-                            x: closestCometOrLens.currentX,
-                            y: closestCometOrLens.currentY,
-                        }
-
                         damagePerFrame = 0.05
                         closestCometOrLens.material -= damagePerFrame;
                     }
 
                     if (shootingLens) {
-                        closestPosition = {
-                            x: closestCometOrLens.x,
-                            y: closestCometOrLens.y,
-                        }
-
                         laserSat.shootingAtLens = closestCometOrLens;
                     }
 
@@ -1968,8 +1944,8 @@ app.ticker.add((delta) => {
                     // drawLine = isLaserBlocked(laserSatPosition, closestCometPosition, planet);
                     drawLine = false;
 
-                    let dy = closestPosition.y - laserSat.y;
-                    let dx = closestPosition.x - laserSat.x;
+                    let dy = closestCometOrLens.y - laserSat.y;
+                    let dx = closestCometOrLens.x - laserSat.x;
                     
                     // 1. Calculate the angle we WANT to be at
                     let targetAngle = Math.atan2(dy, dx);
@@ -1994,7 +1970,7 @@ app.ticker.add((delta) => {
                     if (!drawLine && drawThisPlanet) {
                         laserLineGraphic.lineStyle(Math.random() * 0.05 + Math.random() * 5, 0x3083DC, Math.min(laserSat.battery+0.1, 1));
                         laserLineGraphic.moveTo(laserSat.x, laserSat.y);
-                        laserLineGraphic.lineTo(closestPosition.x, closestPosition.y);
+                        laserLineGraphic.lineTo(closestCometOrLens.x, closestCometOrLens.y);
                     }
                 }
             }
@@ -2044,10 +2020,6 @@ app.ticker.add((delta) => {
                 for (let j = 0; j < planet.comets.length; j++) {
                     let comet = planet.comets[j];
 
-                    cometPosition = {
-                        x: comet.currentX,
-                        y: comet.currentY
-                    }
 
                     // Skip if comets are outside the orbit radius
                     let dxFromCenter = comet.currentX - 500;
@@ -2056,11 +2028,11 @@ app.ticker.add((delta) => {
                     let maxRadius = 475 + collectionRadius / 2;
 
                     if (distFromCenterSq >= (maxRadius * maxRadius)) continue;
-                    if (comet.timesSplit >= 4) continue;
+                    if (comet.timesSplit >= 2) continue;
 
-                    distanceToComet = calculateDistance(lens, cometPosition);
+                    distanceToComet = calculateDistance(lens, comet);
 
-                    if (distanceToComet < smallestDistance && !isLaserBlocked(lens, cometPosition, planet)) {
+                    if (distanceToComet < smallestDistance && !isLaserBlocked(lens, comet, planet)) {
                         smallestDistance = distanceToComet;
                         closestComet = comet;
                     }
@@ -2069,18 +2041,14 @@ app.ticker.add((delta) => {
                 // Rotate and Beam the closest comet
                 if  (closestComet != null) {
 
-                    closestPosition = {
-                        x: closestComet.currentX,
-                        y: closestComet.currentY,
-                    }
 
                     damagePerFrame = 0.05 * 2 * numberOfLasers;
                     closestComet.splittingAmount -= damagePerFrame;
 
                     drawLine = false;
 
-                    let dy = closestPosition.y - lens.y;
-                    let dx = closestPosition.x - lens.x;
+                    let dy = closestComet.y - lens.y;
+                    let dx = closestComet.x - lens.x;
                     
                     // 1. Calculate the angle we WANT to be at
                     let targetAngle = Math.atan2(dy, dx);
@@ -2105,7 +2073,7 @@ app.ticker.add((delta) => {
                     if (!drawLine && drawThisPlanet) {
                         laserLineGraphic.lineStyle((numberOfLasers/2) + Math.random() * 5, 0x0CF574, 1);
                         laserLineGraphic.moveTo(lens.x, lens.y);
-                        laserLineGraphic.lineTo(closestPosition.x, closestPosition.y);
+                        laserLineGraphic.lineTo(closestComet.x, closestComet.y);
                     }
                 }
             }
@@ -2139,6 +2107,9 @@ app.ticker.add((delta) => {
 
             comet.currentX = comet.startX + (comet.finishX - comet.startX) * comet.progress;
             comet.currentY = comet.startY + (comet.finishY - comet.startY) * comet.progress;
+
+            comet.x = comet.currentX;
+            comet.y = comet.currentY;
 
             if (comet.progress >= 1.0) {
                 if (comet.graphic) comet.graphic.destroy();
@@ -2838,6 +2809,8 @@ function spawnComet(planet) {
         finishX, finishY,
         currentX: startX,
         currentY: startY,
+        x: startX,
+        y: startY,
         progress: 0, // This goes from 0 to 1
         speed: 0.001, // Adjust for how fast they cross (0.01 is very fast)
         rotation: 0,
@@ -2863,7 +2836,7 @@ function spawnSplitComet(planet, x, y, originalComet) {
     let startingMaterial = originalComet.material/1.2;
 
     // If the comet has been split 4 times already, it can't split anymore
-    if (originalComet.timesSplit >= 4) {
+    if (originalComet.timesSplit >= 2) {
         return;
     }
 
@@ -2883,6 +2856,8 @@ function spawnSplitComet(planet, x, y, originalComet) {
         finishX, finishY,
         currentX: startX,
         currentY: startY,
+        x: startX,
+        y: startY,
         progress: 0, // This goes from 0 to 1
         speed: 0.001, // Adjust for how fast they cross (0.01 is very fast)
         rotation: 0,
@@ -3211,63 +3186,6 @@ function isLaserBlocked(sat, comet, planet) {
 
 
 
-
-function canvasDrawSmartCollector(p) {
-    ctx.save();
-    ctx.translate(polarToCartesian(p.radius, p.angle).x, polarToCartesian(p.radius, p.angle).y);
-    // ctx.rotate(p.angle);
-
-    p.battery -= 0.005;
-    p.battery = Math.max(p.battery, 0);
-
-    // Only rotate or move if smart collector has battery
-    if (p.battery > 1) {
-        p.rotation += p.rotationSpeed;
-    } else if (p.battery > 0.1) {
-        p.rotation += p.rotationSpeed * (p.battery);
-    } else if (p.battery < 0.1) {
-        p.rotation += p.rotationSpeed * 0.1;
-    }
-    
-
-    
-    ctx.rotate(p.rotation);
-
-    const collectorsize = 13;
-    const wingSize = 7.5;
-    ctx.fillStyle = "rgb(255 255 255)";
-    ctx.strokeStyle = "rgb(255 255 255)";
-    ctx.setLineDash([]);
-    ctx.lineWidth = 5;
-    ctx.fillRect(-(collectorsize/2), -(collectorsize/2), collectorsize, collectorsize);
-
-    // Arm 1
-    ctx.beginPath();
-    ctx.moveTo(wingSize, -(wingSize));
-    ctx.lineTo(-wingSize,wingSize);
-    ctx.stroke();
-
-    // Arm 2
-    ctx.beginPath();
-    ctx.moveTo(-(wingSize), -(wingSize));
-    ctx.lineTo(wingSize,wingSize);
-    ctx.stroke();
-
-    ctx.restore();
-}
-
-function canvasDrawBundle(p) {
-    ctx.save();
-    ctx.translate(polarToCartesian(p.radius, p.angle).x, polarToCartesian(p.radius, p.angle).y);
-    ctx.rotate(p.rotation);
-    ctx.fillStyle = `rgba(46, 191, 165, 1)`;
-    ctx.fillRect(-8, -8, 16, 16);
-    ctx.restore();
-}
-
-
-
-
 let ringOffset = 0;
 
 function getProbePosition(planetA, planetB, t) {
@@ -3301,88 +3219,6 @@ function getProbePosition(planetA, planetB, t) {
         y: sunY + Math.sin(currentAngle) * currentRadius
     };
 }
-
-
-
-
-
-
-
-
-// Deploying
-
-function deploy() {
-    price = currentPlanet.drillCostMaterial;
-    if (material < price) return;
-    material -= price;
-    currentPlanet.drillCostMaterial = Math.floor(price * 1.2);
-
-    currentPlanet.drills.push({
-        radius: flightRadius + 12.5,
-        angle: shipRotation,
-        tangentVelocity: 0,
-        inwardsVelocity: currentPlanet.gravityFactor,
-        arrived: false,
-        materialStored: 0,
-        productionTimer: 0,
-        randomTimeOffset: Math.random() * 1000 - 500,
-    });
-}
-
-function deployRefinery() {
-    price = currentPlanet.refineryCostMaterial;
-    if (material < price) return;
-    material -= price;
-    currentPlanet.refineryCostMaterial = Math.floor(price * 1.2);
-
-    currentPlanet.refineries.push({
-        radius: flightRadius + 12.5,
-        angle: shipRotation,
-        tangentVelocity: 0,
-        inwardsVelocity: 0.2,
-        arrived: false,
-        materialStored: 0,
-        productionTimer: 0,
-    });
-}
-
-
-function deployBundler() {
-    price = currentPlanet.collectorCostMaterial;
-    if (material < price) return;
-    material -= price;
-    currentPlanet.collectorCostMaterial = Math.floor(price * 1.1);
-
-    currentPlanet.collectors.push({
-        radius: flightRadius + 10,
-        angle: shipRotation,
-        orbitSpeed: shipRotationSpeed,
-        rotation: 0,
-        rotationSpeed: 0.1,
-        mineralsStored: 0,
-        battery: 0,
-    });
-}
-
-function deploySmartCollector() {
-    price = currentPlanet.smartCollectorCostMaterial;
-    if (material < price) return;
-    material -= price;
-    currentPlanet.smartCollectorCostMaterial = Math.floor(price * 1.1);
-
-    currentPlanet.smartCollectors.push({
-        radius: flightRadius + 6,
-        angle: shipRotation,
-        orbitSpeed: shipRotationSpeed,
-        rotation: 0,
-        rotationSpeed: 0.1,
-        mineralsStored: 0,
-        battery: 0,
-    });
-}
-
-
-
 
 
 function upgradeDrillRate() {
@@ -3425,14 +3261,6 @@ function upgradeMaterialValueLevel() {
     materialValueLevel++;
 }
 
-function upgradeRefineChainLevel() {
-    if (crystal < refineChainUpgradeCost) return;
-    crystal -= refineChainUpgradeCost;
-    refineChainUpgradeCost = Math.floor(refineChainUpgradeCost * 1.5);
-
-    refineChainCount += 1;
-    refineChainLevel++;
-}
 
 
 function upgradeRefinerMultiplier() {
