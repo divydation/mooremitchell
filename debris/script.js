@@ -100,7 +100,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-if (userHasSeenUpdate == "3.0") {
+if (userHasSeenUpdate == "3.1") {
     document.getElementById("changelog").style.display = "none";
 } else {
     document.getElementById("changelog").style.display = "flex";
@@ -110,7 +110,7 @@ if (userHasSeenUpdate == "3.0") {
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
-        localStorage.setItem("updateVerified", "3.0");
+        localStorage.setItem("updateVerified", "3.1");
     }, 200);
 });
 
@@ -180,6 +180,7 @@ const baseCosts = {
     collectorCostMaterial: 50,
     laserSatelliteCostMaterial: 100,
     refinerCostMaterial: 5000,
+    lensCostMaterial: 5000,
 };
 
 const MAX_MATERIALS = 20000;
@@ -192,7 +193,8 @@ const getBaseDevices = () => ({
     crystals: [],
     comets: [],
     laserSatellites: [],
-    refiners: []
+    refiners: [],
+    lenses: [],
 });
 
 drillRateUpgradeCost = 10;
@@ -1153,6 +1155,10 @@ app.ticker.add((delta) => {
             polarToCartesianWrite(planet.laserSatellites[c].radius, planet.laserSatellites[c].angle, planet.laserSatellites[c]);
         }
 
+        for (let c = 0; c < planet.lenses.length; c++) {
+            polarToCartesianWrite(planet.lenses[c].radius, planet.lenses[c].angle, planet.lenses[c]);
+        }
+
         // Materials
         for (let m = 0; m < planet.materialsToCollect.length; m++) {
 
@@ -1515,6 +1521,7 @@ app.ticker.add((delta) => {
                 // Draw the power line to this specific target
                 if (drawThisPlanet) {
                     let randomWidth = Math.random() * 5;
+                    randomWidth = 1.5 + Math.random() * 2;
                     powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
                     powerLineGraphic.moveTo(p.x, p.y);
 
@@ -1602,7 +1609,7 @@ app.ticker.add((delta) => {
                 let target = finalTargets[t];
 
                 // Draw the power line to this specific target
-                let randomWidth = Math.random() * 5;
+                randomWidth = 1.5 + Math.random() * 2;
                 powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
                 powerLineGraphic.moveTo(shipPosition.x, shipPosition.y);
                 powerLineGraphic.lineTo(target.ref.x, target.ref.y);
@@ -1841,6 +1848,7 @@ app.ticker.add((delta) => {
             }
         }
 
+
         // Lasers
         for (let c = 0; c < planet.laserSatellites.length; c++) {
             let laserSat = planet.laserSatellites[c];
@@ -1848,10 +1856,15 @@ app.ticker.add((delta) => {
             laserSat.angle += laserSat.rotationSpeed; 
             laserSat.angle = laserSat.angle % toRadians(360);
 
-            laserSatPosition = polarToCartesian(laserSat.radius, laserSat.angle);
+            let shootingComet = false;
+            let shootingLens = false;
+
+            cometOnScreen = false;
+
+            laserSat.shootingAtLens = null;
 
             if (laserSat.battery && laserSat.battery > 0) {
-                closestComet = null;
+                closestCometOrLens = null;
                 smallestDistance = Infinity;
 
                 // Find closest comet
@@ -1863,8 +1876,7 @@ app.ticker.add((delta) => {
                         y: comet.currentY
                     }
 
-                    // if (cartesianToPolar(cometPosition.x, cometPosition.y).radius >= (475 + collectionRadius/2)) continue;
-
+                    // Skip if comets are outside the orbit radius
                     let dxFromCenter = comet.currentX - 500;
                     let dyFromCenter = comet.currentY - 500;
                     let distFromCenterSq = (dxFromCenter * dxFromCenter) + (dyFromCenter * dyFromCenter);
@@ -1872,30 +1884,92 @@ app.ticker.add((delta) => {
 
                     if (distFromCenterSq >= (maxRadius * maxRadius)) continue;
 
-                    distanceToComet = calculateDistance(laserSatPosition, cometPosition);
+                    cometOnScreen = true;
 
-                    if (distanceToComet < smallestDistance && !isLaserBlocked(laserSatPosition, cometPosition, planet)) {
+                    distanceToComet = calculateDistance(laserSat, cometPosition);
+
+                    if (distanceToComet < smallestDistance && !isLaserBlocked(laserSat, cometPosition, planet)) {
                         smallestDistance = distanceToComet;
-                        closestComet = comet;
+                        closestCometOrLens = comet;
+                        shootingComet = true;
                     }
                 }
 
-                // Rotate and Beam the closest comet
-                if  (closestComet != null) {
-                    closestCometPosition = {
-                        x: closestComet.currentX,
-                        y: closestComet.currentY,
-                    }
+                if (cometOnScreen) {
+                    // Find closest lens
+                    for (let l = 0; l < planet.lenses.length; l++) { 
+                        let lens = planet.lenses[l];
 
-                    damagePerFrame = 0.05
-                    closestComet.material -= damagePerFrame;
+                        let canLensSeeAComet = false;
+                        
+                        // Loop through comets to see if the lens has line of sight to ANY of them
+                        for (let k = 0; k < planet.comets.length; k++) { 
+                            let testComet = planet.comets[k];
+                            
+                            // Create a fresh coordinate object for THIS specific comet
+                            let testCometPos = { 
+                                x: testComet.currentX, 
+                                y: testComet.currentY 
+                            };
+
+                            // Can the lens see THIS comet?
+                            if (!isLaserBlocked(lens, testCometPos, planet)) {
+                                canLensSeeAComet = true;
+                            }
+
+                            // But can the lens SPLIT this comet?
+                            if (testComet.timesSplit >= 4) {
+                                canLensSeeAComet = false;
+                            }
+                        }
+
+                        // If it can't see any comets, skip this lens entirely
+                        if (!canLensSeeAComet) continue;
+
+                        let distanceToLens = calculateDistance(laserSat, lens);
+
+                        if (distanceToLens < smallestDistance && !isLaserBlocked(laserSat, lens, planet)) {
+                            smallestDistance = distanceToLens;
+                            closestCometOrLens = lens;
+                            
+                            shootingComet = false;
+                            shootingLens = true;
+                        }
+                    }
+                }
+                
+
+                // Rotate and Beam the closest comet
+                if  (closestCometOrLens != null) {
+
                     laserSat.battery -= 0.025;
 
+                    // If the closest thing was a comet
+                    if (shootingComet) {
+                        closestPosition = {
+                            x: closestCometOrLens.currentX,
+                            y: closestCometOrLens.currentY,
+                        }
+
+                        damagePerFrame = 0.05
+                        closestCometOrLens.material -= damagePerFrame;
+                    }
+
+                    if (shootingLens) {
+                        closestPosition = {
+                            x: closestCometOrLens.x,
+                            y: closestCometOrLens.y,
+                        }
+
+                        laserSat.shootingAtLens = closestCometOrLens;
+                    }
+
+                        
                     // drawLine = isLaserBlocked(laserSatPosition, closestCometPosition, planet);
                     drawLine = false;
 
-                    let dy = closestCometPosition.y - laserSatPosition.y;
-                    let dx = closestCometPosition.x - laserSatPosition.x;
+                    let dy = closestPosition.y - laserSat.y;
+                    let dx = closestPosition.x - laserSat.x;
                     
                     // 1. Calculate the angle we WANT to be at
                     let targetAngle = Math.atan2(dy, dx);
@@ -1918,9 +1992,9 @@ app.ticker.add((delta) => {
                     
                     // Draw the blue laser beam
                     if (!drawLine && drawThisPlanet) {
-                        laserLineGraphic.lineStyle(Math.random() * damagePerFrame + Math.random() * 5, 0x3083DC, Math.min(laserSat.battery+0.1, 1));
-                        laserLineGraphic.moveTo(laserSatPosition.x, laserSatPosition.y);
-                        laserLineGraphic.lineTo(closestCometPosition.x, closestCometPosition.y);
+                        laserLineGraphic.lineStyle(Math.random() * 0.05 + Math.random() * 5, 0x3083DC, Math.min(laserSat.battery+0.1, 1));
+                        laserLineGraphic.moveTo(laserSat.x, laserSat.y);
+                        laserLineGraphic.lineTo(closestPosition.x, closestPosition.y);
                     }
                 }
             }
@@ -1944,6 +2018,116 @@ app.ticker.add((delta) => {
             }
         }
 
+        // Lenses
+        for (let c = 0; c < planet.lenses.length; c++) {
+            let lens = planet.lenses[c];
+
+            lens.angle += lens.orbitSpeed; 
+            lens.angle = lens.angle % toRadians(360);
+
+            // lens.rotation += lens.rotationSpeed;
+
+            numberOfLasers = 0;
+            for (let c = 0; c < planet.laserSatellites.length; c++) {
+                let laserSat = planet.laserSatellites[c];
+
+                if (laserSat.shootingAtLens == lens) {
+                    numberOfLasers++;
+                }
+            }
+
+            // Receiving laser input
+            if (numberOfLasers > 0) {
+                closestComet = null;
+                smallestDistance = Infinity;
+
+                for (let j = 0; j < planet.comets.length; j++) {
+                    let comet = planet.comets[j];
+
+                    cometPosition = {
+                        x: comet.currentX,
+                        y: comet.currentY
+                    }
+
+                    // Skip if comets are outside the orbit radius
+                    let dxFromCenter = comet.currentX - 500;
+                    let dyFromCenter = comet.currentY - 500;
+                    let distFromCenterSq = (dxFromCenter * dxFromCenter) + (dyFromCenter * dyFromCenter);
+                    let maxRadius = 475 + collectionRadius / 2;
+
+                    if (distFromCenterSq >= (maxRadius * maxRadius)) continue;
+                    if (comet.timesSplit >= 4) continue;
+
+                    distanceToComet = calculateDistance(lens, cometPosition);
+
+                    if (distanceToComet < smallestDistance && !isLaserBlocked(lens, cometPosition, planet)) {
+                        smallestDistance = distanceToComet;
+                        closestComet = comet;
+                    }
+                }
+
+                // Rotate and Beam the closest comet
+                if  (closestComet != null) {
+
+                    closestPosition = {
+                        x: closestComet.currentX,
+                        y: closestComet.currentY,
+                    }
+
+                    damagePerFrame = 0.05 * 2 * numberOfLasers;
+                    closestComet.splittingAmount -= damagePerFrame;
+
+                    drawLine = false;
+
+                    let dy = closestPosition.y - lens.y;
+                    let dx = closestPosition.x - lens.x;
+                    
+                    // 1. Calculate the angle we WANT to be at
+                    let targetAngle = Math.atan2(dy, dx);
+
+                    // 2. Calculate the difference between current and target
+                    let angleDiff = targetAngle - lens.rotation;
+
+                    // 3. Normalize the angle to ensure the satellite takes the shortest path
+                    // This prevents the "360-degree spin" bug
+                    while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                    while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+
+                    // 4. Smoothly increment the rotation
+                    let rotationSpeed = 0.2; // Adjust this for "weight"
+                    if (Math.abs(angleDiff) > 0.01) {
+                        lens.rotation += angleDiff * rotationSpeed;
+                    } else {
+                        lens.rotation = targetAngle; // Snap to target if very close
+                    }
+                    
+                    // Draw the blue laser beam
+                    if (!drawLine && drawThisPlanet) {
+                        laserLineGraphic.lineStyle((numberOfLasers/2) + Math.random() * 5, 0x0CF574, 1);
+                        laserLineGraphic.moveTo(lens.x, lens.y);
+                        laserLineGraphic.lineTo(closestPosition.x, closestPosition.y);
+                    }
+                }
+            }
+
+            // Draw Lenses
+            if (drawThisPlanet) {
+                lens.pivot.visible = true;
+                
+                // 2. Sync the pivot to the math
+                lens.pivot.rotation = lens.angle; 
+                
+                // 3. Push the graphic out from the center to match the radius
+                lens.graphic.x = lens.radius; 
+                
+                // lens.graphic.rotation = lens.rotation; 
+                lens.graphic.rotation = lens.rotation - lens.angle - Math.PI / 2;
+                
+            } else {
+                lens.pivot.visible = false;
+            }
+        }
+
 
         // Comets Loop
         for (let i = 0; i < planet.comets.length; i++) {
@@ -1963,9 +2147,28 @@ app.ticker.add((delta) => {
                 continue;
             }
 
+            // Comet has been split!
+            if (comet.splittingAmount <= 0) {
+
+                // Spawn two new comets
+                spawnSplitComet(planet, comet.currentX, comet.currentY, comet);
+                spawnSplitComet(planet, comet.currentX, comet.currentY, comet);
+
+                // Delete the original comet
+                if (comet.graphic) {
+                    comet.graphic.destroy();
+                }
+                
+                planet.comets.splice(i, 1);
+                i--; 
+                continue; 
+            }
+
             // Check if the comet is destroyed
             if (comet.material <= 0) {
                 spawnCrystal(comet, planet);
+
+                // spawnSplitComet(planet, comet.currentX, comet.currentY, comet);
                 
                 // NEW: Destroy the PixiJS graphic to free up memory
                 if (comet.graphic) {
@@ -2201,6 +2404,7 @@ app.ticker.add((delta) => {
 
 
 
+
 // Deploy Devices
 
 function deployDrill() {
@@ -2427,6 +2631,7 @@ function deployLaser() {
     currentPlanet.laserSatellites.push({
         radius: flightRadius + 12.5,
         angle: shipRotation,
+        orbitSpeed: shipRotationSpeed,
         rotation: 0,
         rotationSpeed: shipRotationSpeed,
         damageStored: 0,
@@ -2439,7 +2644,59 @@ function deployLaser() {
     });
 }
 
+function deployLens() {
+    price = currentPlanet.lensCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.lensCostMaterial = Math.floor(price * 1.2);
 
+    // 1. Create the Pivot (Centered at 500,500)
+    const lensPivot = new PIXI.Container();
+    lensPivot.position.set(500, 500);
+
+    // 2. Create the Graphic (Drawn at local 0, offset by -5 to center it)
+    const lensGraphic = new PIXI.Graphics();
+    
+    lensGraphic.lineStyle(5, 0xFFFFFF, 1);
+    lensGraphic.beginFill(0xFFFFFF, 0.5);
+
+    size = 25;
+    
+    const halfSide = size / 2;
+    const height = (Math.sqrt(3) / 2) * size;
+
+    // Centroid calculation:
+    // The top vertex is at: - (2/3) * height
+    // The base vertices are at: + (1/3) * height
+    const topY = -(2 / 3) * height;
+    const baseY = (1 / 3) * height;
+
+    lensGraphic.moveTo(0, topY);
+    lensGraphic.lineTo(-halfSide, baseY);
+    lensGraphic.lineTo(halfSide, baseY);
+    lensGraphic.closePath();
+    
+    lensGraphic.endFill();
+
+    // 3. Nest them together and add to the solar system
+    lensPivot.addChild(lensGraphic);
+    planetScene.addChild(lensPivot);
+
+
+    currentPlanet.lenses.push({
+        radius: flightRadius + 12.5,
+        angle: shipRotation,
+        orbitSpeed: shipRotationSpeed,
+        rotation: 0,
+        rotationSpeed: 0.1,
+        mineralsStored: 0,
+        battery: 0,
+
+        // Save the Pixi references so the loop can update them
+        pivot: lensPivot,
+        graphic: lensGraphic 
+    });
+}
 
 
 
@@ -2587,7 +2844,54 @@ function spawnComet(planet) {
         rotationSpeed: (Math.random() - 0.5) * 0.05,
         material: startingMaterial,
         initialMaterial: startingMaterial,
+        splittingAmount: 50,
+        timesSplit: 0,
         graphic: cometGraphic
+    });
+}
+
+function spawnSplitComet(planet, x, y, originalComet) {
+    const margin = 100; // Spawn 100px off-screen
+
+
+    startX = x;
+    startY = y;
+
+    finishX = originalComet.finishX;
+    finishY = originalComet.finishY + (-350 + Math.random() * 700);
+
+    let startingMaterial = originalComet.material/1.2;
+
+    // If the comet has been split 4 times already, it can't split anymore
+    if (originalComet.timesSplit >= 4) {
+        return;
+    }
+
+
+    const cometGraphic = new PIXI.Sprite(cometTexture);
+    cometGraphic.anchor.set(0.5);
+    cometGraphic.position.set(startX, startY);
+
+    // Hide if not viewing the planet
+    cometGraphic.visible = false;
+
+    planetScene.addChild(cometGraphic);
+
+
+    planet.comets.push({
+        startX, startY,
+        finishX, finishY,
+        currentX: startX,
+        currentY: startY,
+        progress: 0, // This goes from 0 to 1
+        speed: 0.001, // Adjust for how fast they cross (0.01 is very fast)
+        rotation: 0,
+        rotationSpeed: originalComet.rotationSpeed*1.5,
+        material: startingMaterial,
+        initialMaterial: startingMaterial,
+        graphic: cometGraphic,
+        splittingAmount: 50,
+        timesSplit: originalComet.timesSplit+1,
     });
 }
 
@@ -3646,11 +3950,11 @@ function resetCurrentPlanet() {
     }
     currentPlanet.crystals = [];
 
-    for (let c = 0; c < currentPlanet.comets.length; c++) {
-        let p = currentPlanet.comets[c];
-        p.graphic.destroy();
-    }
-    currentPlanet.comets = [];
+    // for (let c = 0; c < currentPlanet.comets.length; c++) {
+    //     let p = currentPlanet.comets[c];
+    //     p.graphic.destroy();
+    // }
+    // currentPlanet.comets = [];
 
     for (let c = 0; c < currentPlanet.laserSatellites.length; c++) {
         let p = currentPlanet.laserSatellites[c];
@@ -3658,6 +3962,13 @@ function resetCurrentPlanet() {
         p.pivot.destroy();
     }
     currentPlanet.laserSatellites = [];
+
+    for (let c = 0; c < currentPlanet.lenses.length; c++) {
+        let p = currentPlanet.lenses[c];
+        p.graphic.destroy();
+        p.pivot.destroy();
+    }
+    currentPlanet.lenses = [];
 
     for (let c = 0; c < currentPlanet.refiners.length; c++) {
         let p = currentPlanet.refiners[c];
@@ -3672,6 +3983,7 @@ function resetCurrentPlanet() {
     currentPlanet.collectorCostMaterial = 50;
     currentPlanet.laserSatelliteCostMaterial = 50;
     currentPlanet.refinerCostMaterial = 5000;
+    currentPlanet.lensCostMaterial = 5000;
 }
 
 
@@ -3898,6 +4210,7 @@ function updateLabels() {
     document.getElementById("collectorCostMaterial").textContent = formatNumber(currentPlanet.collectorCostMaterial);
     document.getElementById("laserSatelliteCostMaterial").textContent = formatNumber(currentPlanet.laserSatelliteCostMaterial);
     document.getElementById("refinerCostMaterial").innerHTML = formatNumber(currentPlanet.refinerCostMaterial);
+    document.getElementById("lensCostMaterial").innerHTML = formatNumber(currentPlanet.lensCostMaterial);
     // document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(currentPlanet.smartCollectorCostMaterial);
     
 
@@ -3989,8 +4302,8 @@ holdButtons.forEach(button => {
                 deployLaser();
             } else if (button.id == "refiner") {
                 deployRefiner();
-            } else if (button.id == "smartCollector") {
-                deploySmartCollector();
+            } else if (button.id == "lens") {
+                deployLens();
             } else if (button.id == "drillRate") {
                 upgradeDrillRate();
             } else if (button.id == "collectionRadiusUpgrade") {
@@ -4148,25 +4461,11 @@ function saveGame() {
         let cleanDrills = (p.drills || []).map(d => { let clone = {...d}; delete clone.pivot; delete clone.graphic; return clone; });
         let cleanSatellites = (p.satellites || []).map(s => { let clone = {...s}; delete clone.pivot; delete clone.graphic; return clone; });
         let cleanCollectors = (p.collectors || []).map(c => { let clone = {...c}; delete clone.pivot; delete clone.graphic; return clone; });
+        let cleanLenses = (p.lenses || []).map(c => { let clone = {...c}; delete clone.pivot; delete clone.graphic; return clone; });
         let cleanRefiners = (p.refiners || []).map(c => { let clone = {...c}; delete clone.pivot; delete clone.graphic; delete clone.arms; return clone; });
-        let cleanLasers = (p.laserSatellites || []).map(ls => { let clone = {...ls}; delete clone.pivot; delete clone.graphic; return clone; });
+        let cleanLasers = (p.laserSatellites || []).map(ls => { let clone = {...ls}; delete clone.pivot; delete clone.graphic; delete clone.shootingAtLens; return clone; });
         let cleanCrystals = (p.crystals || []).map(c => { let clone = {...c}; delete clone.graphic; return clone; });
 
-        // --- OPTIMIZED SLICE FOR ACTIVE MATERIALS ---
-        // Slices the typed arrays perfectly up to the active count pointer
-        // const count = p.materials.count;
-        // const materialsSnapshot = {
-        //     count: count,
-        //     radius: Array.from(p.materials.radius.subarray(0, count)),
-        //     angle: Array.from(p.materials.angle.subarray(0, count)),
-        //     rotation: Array.from(p.materials.rotation.subarray(0, count)),
-        //     radiusChange: Array.from(p.materials.radiusChange.subarray(0, count)),
-        //     timeInTractorBeam: Array.from(p.materials.timeInTractorBeam.subarray(0, count)),
-        //     value: Array.from(p.materials.value.subarray(0, count)),
-        //     alpha: Array.from(p.materials.alpha.subarray(0, count)),
-        //     refined: Array.from(p.materials.refined.subarray(0, count)),
-        //     isTargeted: Array.from(p.materials.isTargeted.subarray(0, count))
-        // };
 
         return {
             name: p.name,
@@ -4185,6 +4484,7 @@ function saveGame() {
             laserSatelliteCostMaterial: p.laserSatelliteCostMaterial,
             refinerCostMaterial: p.refinerCostMaterial,
             smartCollectorCostMaterial: p.smartCollectorCostMaterial,
+            lensCostMaterial: p.lensCostMaterial,
 
             materialsToCollect: cleanMaterials,
             comets: cleanComets,
@@ -4196,6 +4496,7 @@ function saveGame() {
             laserSatellites: cleanLasers,
             crystals: cleanCrystals,
             bundles: p.bundles || [],
+            lenses: cleanLenses,
         };
     });
 
@@ -4296,6 +4597,7 @@ function loadGame() {
         if (savedPlanet.drillCostMaterial !== undefined) p.drillCostMaterial = savedPlanet.drillCostMaterial;
         if (savedPlanet.satelliteCostMaterial !== undefined) p.satelliteCostMaterial = savedPlanet.satelliteCostMaterial;
         if (savedPlanet.collectorCostMaterial !== undefined) p.collectorCostMaterial = savedPlanet.collectorCostMaterial;
+        if (savedPlanet.lensCostMaterial !== undefined) p.lensCostMaterial = savedPlanet.lensCostMaterial;
         if (savedPlanet.laserSatelliteCostMaterial !== undefined) p.laserSatelliteCostMaterial = savedPlanet.laserSatelliteCostMaterial;
         if (savedPlanet.refinerCostMaterial !== undefined) p.refinerCostMaterial = savedPlanet.refinerCostMaterial;
         if (savedPlanet.smartCollectorCostMaterial !== undefined) p.smartCollectorCostMaterial = savedPlanet.smartCollectorCostMaterial;
@@ -4449,6 +4751,39 @@ function loadGame() {
             ls.pivot = laserPivot;
             ls.graphic = laserGraphic;
             return ls;
+        });
+
+        // Lenses
+        p.lenses = (savedPlanet.lenses || []).map(c => {
+            const lensPivot = new PIXI.Container();
+            lensPivot.position.set(500, 500);
+
+            const lensGraphic = new PIXI.Graphics();
+            
+            lensGraphic.lineStyle(5, 0xFFFFFF, 1);
+            lensGraphic.beginFill(0xFFFFFF, 0.5);
+
+            size = 25;
+            
+            const halfSide = size / 2;
+            const height = (Math.sqrt(3) / 2) * size;
+
+            const topY = -(2 / 3) * height;
+            const baseY = (1 / 3) * height;
+
+            lensGraphic.moveTo(0, topY);
+            lensGraphic.lineTo(-halfSide, baseY);
+            lensGraphic.lineTo(halfSide, baseY);
+            lensGraphic.closePath();
+            
+            lensGraphic.endFill();
+
+            lensPivot.addChild(lensGraphic);
+            planetScene.addChild(lensPivot);
+
+            c.pivot = lensPivot;
+            c.graphic = lensGraphic;
+            return c;
         });
 
         // Comets

@@ -23,12 +23,12 @@
                     <div class="titleBlock">
                         <!-- <img src="icon.ico" class="updateIcon"> -->
                         <p class="subtitle">DEBRIS</p>
-                        <p class="title">Update 3.0</p>
+                        <p class="title">Update 3.1</p>
                     </div>
                 
                     <div class=changelist>
-                        <p class="new">+ Satellite Upgrades</p>
-                        <p class="new">+ Refiner Upgrades</p>
+                        <p class="new">+ Lens Device</p>
+                        <p class="new">+ Satellite & Refiner Upgrades</p>
                         <p class="new">+ Device Information</p>
                         <p class="new">+ Ship can provide energy to devices</p>
                         <p class="removed">- Lasers require power</p>
@@ -190,6 +190,30 @@
                             </button>  -->
 
                             <button class="redButton subButton menuButton" id="infoButton" data-info="laserInfo">
+                                <svg class="buttonSVG" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m12 16v-4m0-4h.01m9.99 4c0 5.5228-4.4772 10-10 10-5.52285 0-10-4.4772-10-10 0-5.52285 4.47715-10 10-10 5.5228 0 10 4.47715 10 10z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
+                            </button> 
+
+                            <div></div>
+                        </div>
+
+                        <div class="buttonContainer">
+                            <button class="wideButton growing holdButton" id="lens">
+                                <span>
+                                    <p>LENS</p>
+                                    <div class="costs">
+                                        <div class="material">
+                                            <svg height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m11.223 2.43177c.2836-.15756.4254-.23634.5755-.26723.133-.02733.27-.02733.403 0 .1501.03089.2919.10967.5755.26723l7.4 4.11111c.2996.1664.4493.2496.5584.36794.0964.10469.1695.22877.2141.36395.0505.15279.0505.32412.0505.66676v8.11707c0 .3427 0 .514-.0505.6668-.0446.1352-.1177.2593-.2141.3639-.1091.1184-.2588.2016-.5584.368l-7.4 4.1111c-.2836.1576-.4254.2363-.5755.2672-.133.0274-.27.0274-.403 0-.1501-.0309-.2919-.1096-.5755-.2672l-7.40003-4.1111c-.29952-.1664-.44928-.2496-.55834-.368-.09647-.1046-.16948-.2287-.21415-.3639-.05048-.1528-.05048-.3241-.05048-.6668v-8.11707c0-.34264 0-.51397.05048-.66676.04467-.13518.11768-.25926.21415-.36395.10906-.11834.25882-.20154.55834-.36794z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
+                                            <p id="lensCostMaterial">5000</p>
+                                        </div>
+                                    </div>
+                                </span>
+                            </button>
+
+                            <!-- <button class="redButton subButton">
+                                <svg class="buttonSVG" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m11.9995 12.0001h.01m3.5255 3.5356c-4.6862 4.6863-10.06815 6.9023-12.02077 4.9497s.26346-7.3345 4.94975-12.02079c4.68632-4.68629 10.06822-6.90237 12.02082-4.94975s-.2635 7.33454-4.9498 12.02084zm0-7.07127c4.6863 4.68627 6.9024 10.06817 4.9498 12.02077-1.9527 1.9527-7.3346-.2634-12.02086-4.9497-4.68629-4.6863-6.90237-10.0682-4.94975-12.02082s7.33451.26346 12.02081 4.94975zm-3.0355 3.53567c0 .2762-.2238.5-.5.5-.2761 0-.5-.2238-.5-.5 0-.2761.2239-.5.5-.5.2762 0 .5.2239.5.5z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
+                            </button>  -->
+
+                            <button class="redButton subButton menuButton" id="infoButton" data-info="lensInfo">
                                 <svg class="buttonSVG" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="m12 16v-4m0-4h.01m9.99 4c0 5.5228-4.4772 10-10 10-5.52285 0-10-4.4772-10-10 0-5.52285 4.47715-10 10-10 5.5228 0 10 4.47715 10 10z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
                             </button> 
 
@@ -383,6 +407,7 @@
                             <p class="uiText" id="collectorInfo">Collectors orbit the planet and automatically collect nearby <span class="material inlineSpan">material</span>. Requires <span class="energy inlineSpan">energy</span> to function.</p>
                             <p class="uiText" id="laserInfo">Lasers orbit the planet. They beam and destroy comets, yeilding a <span class="crystal inlineSpan">crystal</span>. Requires <span class="energy inlineSpan">energy</span> to function.</p>
                             <p class="uiText" id="refinerInfo">Refiners orbit, collect <span class="material inlineSpan">material</span>, multiply the value, and produce one high-value package. Low-orbit refiners send material up, while high-orbit refiners send material down. Requires <span class="energy inlineSpan">energy</span> to function.</p>
+                            <p class="uiText" id="lensInfo">Lenses orbit the planet, focusing laser beams to split comets into smaller chunks.</p>
                         </div>
                         
 
