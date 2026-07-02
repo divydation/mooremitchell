@@ -100,7 +100,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-if (userHasSeenUpdate == "3.1") {
+if (userHasSeenUpdate == "3.2") {
     document.getElementById("changelog").style.display = "none";
 } else {
     document.getElementById("changelog").style.display = "flex";
@@ -110,7 +110,7 @@ if (userHasSeenUpdate == "3.1") {
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
-        localStorage.setItem("updateVerified", "3.1");
+        localStorage.setItem("updateVerified", "3.2");
     }, 200);
 });
 
@@ -159,6 +159,10 @@ let smoothedMaterialsPerSecond = 0;
 let smoothedRatePerDrill = 0;
 
 let maxPerDrill = 0;
+
+stats = {
+    materialsPerSecondMax: 0,
+}
 
 
 
@@ -224,6 +228,8 @@ upgrades = {
     cost: 10,
     idLevel: "refinerMultiplierLevel",
     idCost: "refinerMultiplerUpgradeCost",
+    upgradeID: "refinerMultiplier",
+    menuID: "refinerUpgradeMenu",
   },
   satelliteBeamCount: {
     level: 1,
@@ -231,18 +237,39 @@ upgrades = {
     idLevel: "satelliteBeamCountLevel",
     idCost: "satelliteBeamCountUpgradeCost",
     upgradeID: "satelliteBeamCount",
+    menuID: "satelliteUpgradeMenu",
   },
   satelliteBeamDistance: {
     level: 1,
     cost: 10,
     idLevel: "satelliteBeamDistanceLevel",
-    idCost: "satelliteBeamDistanceUpgradeCost"
+    idCost: "satelliteBeamDistanceUpgradeCost",
+    upgradeID: "satelliteBeamDistance",
+    menuID: "satelliteUpgradeMenu",
   },
   satelliteEfficiency: {
     level: 1,
     cost: 10,
     idLevel: "satelliteEfficiencyLevel",
-    idCost: "satelliteEfficiencyUpgradeCost"
+    idCost: "satelliteEfficiencyUpgradeCost",
+    upgradeID: "satelliteEfficiency",
+    menuID: "satelliteUpgradeMenu",
+  },
+  laserPower: {
+    level: 1,
+    cost: 10,
+    idLevel: "laserPowerLevel",
+    idCost: "laserPowerUpgradeCost",
+    upgradeID: "laserPower",
+    menuID: "laserUpgradeMenu",
+  },
+  laserRange: {
+    level: 1,
+    cost: 10,
+    idLevel: "laserRangeLevel",
+    idCost: "laserRangeUpgradeCost",
+    upgradeID: "laserRange",
+    menuID: "laserUpgradeMenu",
   },
 };
 
@@ -917,10 +944,13 @@ app.ticker.add((delta) => {
         smoothedMaterialsPerSecond = (smoothedMaterialsPerSecond * 0.8) + (rawMaterialsPerSecond * 0.2);
         smoothedRatePerDrill = (smoothedRatePerDrill * 0.8) + (rawRatePerDrill * 0.2);
 
+        if (rawMaterialsPerSecond > stats.materialsPerSecondMax) stats.materialsPerSecondMax = rawMaterialsPerSecond;
+
         // 4. Update the UI using the SMOOTHED values
         document.getElementById("efficiency").innerHTML = `${formatNumber(smoothedMaterialsPerSecond)}`;
         document.getElementById("stats").innerHTML = `${formatNumber(smoothedRatePerDrill)}`;
         document.getElementById("maxPerDrill").innerHTML = `${formatNumber(maxPerDrill)}`;
+        document.getElementById("maxMaterialPerSecond").innerHTML = `${formatNumber(stats.materialsPerSecondMax)}`;
 
         // 5. Empty the bucket for the next second
         materialsCollectedRecently = 0;
@@ -1883,6 +1913,9 @@ app.ticker.add((delta) => {
 
                     distanceToComet = calculateDistance(laserSat, comet);
 
+                    // If out of range, go to next comet for checking
+                    if (distanceToComet > (100 * upgrades.laserRange.level/2) ** 2) continue;
+
                     if (distanceToComet < smallestDistance && !isLaserBlocked(laserSat, comet, planet)) {
                         smallestDistance = distanceToComet;
                         closestCometOrLens = comet;
@@ -1900,6 +1933,14 @@ app.ticker.add((delta) => {
                         // Loop through comets to see if the lens has line of sight to ANY valid one
                         for (let k = 0; k < planet.comets.length; k++) { 
                             let testComet = planet.comets[k];
+
+                            // Skip if comets are outside the orbit radius
+                            let dxFromCenter = testComet.currentX - 500;
+                            let dyFromCenter = testComet.currentY - 500;
+                            let distFromCenterSq = (dxFromCenter * dxFromCenter) + (dyFromCenter * dyFromCenter);
+                            let maxRadius = 475 + collectionRadius / 2;
+
+                            if (distFromCenterSq >= (maxRadius * maxRadius)) continue;
         
 
                             // If it can see the comet AND the comet can still be split
@@ -1932,7 +1973,7 @@ app.ticker.add((delta) => {
 
                     // If the closest thing was a comet
                     if (shootingComet) {
-                        damagePerFrame = 0.05
+                        damagePerFrame = 0.05 * upgrades.laserPower.level/2;
                         closestCometOrLens.material -= damagePerFrame;
                     }
 
@@ -2069,11 +2110,30 @@ app.ticker.add((delta) => {
                         lens.rotation = targetAngle; // Snap to target if very close
                     }
                     
-                    // Draw the blue laser beam
+                    // Draw the green laser beam
                     if (!drawLine && drawThisPlanet) {
-                        laserLineGraphic.lineStyle((numberOfLasers/2) + Math.random() * 5, 0x0CF574, 1);
+                        let lineWidth = (numberOfLasers/2) + Math.random() * 5
+                        lineWidth = Math.min(lineWidth, 30);
+                        laserLineGraphic.lineStyle(lineWidth, 0x0CF574, 1);
                         laserLineGraphic.moveTo(lens.x, lens.y);
                         laserLineGraphic.lineTo(closestComet.x, closestComet.y);
+
+                        
+                        const BASE_TINT = 0xFFFFFF;     // Default state (no tint on gray)
+                        const LASER_GREEN = 0xCCFFCC;   // Target state
+
+                        // 1. Calculate how "damaged" the comet is.
+                        // If splittingAmount is 100, damagePercent is 0.0
+                        // If splittingAmount is 25, damagePercent is 0.75
+                        // If splittingAmount is 0, damagePercent is 1.0
+                        const damagePercent = (50 - closestComet.splittingAmount) / 50;
+
+                        // 2. Calculate the new blended color
+                        const currentTint = lerpColor(BASE_TINT, LASER_GREEN, damagePercent);
+
+                        // 3. Apply it to your comet's graphic
+                        closestComet.graphic.tint = currentTint;
+                        // closestComet.graphic.tint = 0x0CF574;
                     }
                 }
             }
@@ -2373,6 +2433,29 @@ app.ticker.add((delta) => {
     }
 });
 
+function lerpColor(color1, color2, t) {
+    // Clamp 't' between 0 and 1 just to be safe
+    t = Math.max(0, Math.min(1, t));
+
+    // Extract RGB from color1
+    const r1 = (color1 >> 16) & 0xFF;
+    const g1 = (color1 >> 8) & 0xFF;
+    const b1 = color1 & 0xFF;
+
+    // Extract RGB from color2
+    const r2 = (color2 >> 16) & 0xFF;
+    const g2 = (color2 >> 8) & 0xFF;
+    const b2 = color2 & 0xFF;
+
+    // Interpolate each channel
+    const r = Math.round(r1 + (r2 - r1) * t);
+    const g = Math.round(g1 + (g2 - g1) * t);
+    const b = Math.round(b1 + (b2 - b1) * t);
+
+    // Recombine into a single hex code
+    return (r << 16) | (g << 8) | b;
+}
+
 
 
 
@@ -2631,21 +2714,24 @@ function deployLens() {
     lensGraphic.lineStyle(5, 0xFFFFFF, 1);
     lensGraphic.beginFill(0xFFFFFF, 0.5);
 
-    size = 25;
+    size = 10;
     
-    const halfSide = size / 2;
-    const height = (Math.sqrt(3) / 2) * size;
+    // const halfSide = size / 2;
+    // const height = (Math.sqrt(3) / 2) * size;
 
-    // Centroid calculation:
-    // The top vertex is at: - (2/3) * height
-    // The base vertices are at: + (1/3) * height
-    const topY = -(2 / 3) * height;
-    const baseY = (1 / 3) * height;
+    // // Centroid calculation:
+    // // The top vertex is at: - (2/3) * height
+    // // The base vertices are at: + (1/3) * height
+    // const topY = -(2 / 3) * height;
+    // const baseY = (1 / 3) * height;
 
-    lensGraphic.moveTo(0, topY);
-    lensGraphic.lineTo(-halfSide, baseY);
-    lensGraphic.lineTo(halfSide, baseY);
-    lensGraphic.closePath();
+    // lensGraphic.moveTo(0, topY);
+    // lensGraphic.lineTo(-halfSide, baseY);
+    // lensGraphic.lineTo(halfSide, baseY);
+    // lensGraphic.closePath();
+
+    lensGraphic.drawCircle(0, 0, size);
+
     
     lensGraphic.endFill();
 
@@ -3851,11 +3937,24 @@ document.getElementById("settingsMenu").style.display = "none";
 document.getElementById("statsMenu").style.display = "none";
 document.getElementById("gadgetMenu").style.display = "none";
 document.getElementById("infoMenu").style.display = "none";
+document.getElementById("creditsMenu").style.display = "none";
 
 // Upgrade Menus
 document.getElementById("drillUpgradeMenu").style.display = "none";
-document.getElementById("refinerUpgradeMenu").style.display = "none";
-document.getElementById("satelliteUpgradeMenu").style.display = "none";
+// document.getElementById("refinerUpgradeMenu").style.display = "none";
+// document.getElementById("satelliteUpgradeMenu").style.display = "none";
+
+Object.values(upgrades).forEach(upgrade => {
+    // .slice(0, -4) takes everything from the start up to the 4th character from the end
+    // let menuIdToHide = upgrade.idCost.slice(0, -4) + "Menu";
+
+    let menuIdToHide = upgrade.menuID;
+    
+    const element = document.getElementById(menuIdToHide);
+    if (element) {
+        element.style.display = "none";
+    }
+});
 
 
 allMenuLines = [];
@@ -4350,7 +4449,7 @@ function saveGame() {
         materialValue, materialValueLevel, materialValueUpgradeCost,
         planets: planetsToSave,
         probes: cleanProbes,
-        upgrades
+        upgrades, stats
     };
 
     // 4. Save with Error Catching
@@ -4376,6 +4475,21 @@ function loadGame() {
                 
                 // Merge the saved stats (like level and cost) into your base object
                 Object.assign(upgrades[upgradeKey], state.upgrades[upgradeKey]);
+            }
+        }
+    }
+
+    if (state.stats) {
+        // Loop through each upgrade key found in the player's save file
+        for (const statKey in state.stats) {
+            
+            // 1. Use '!== undefined' instead. If the stat is 0, 'if (stats[statKey])' 
+            // evaluates to false and skips the load entirely!
+            if (stats[statKey] !== undefined) {
+                
+                // 2. Assign the value directly with '='. Object.assign only works 
+                // on Objects, it fails when trying to merge primitive numbers.
+                stats[statKey] = state.stats[statKey];
             }
         }
     }
@@ -4591,19 +4705,23 @@ function loadGame() {
             lensGraphic.lineStyle(5, 0xFFFFFF, 1);
             lensGraphic.beginFill(0xFFFFFF, 0.5);
 
-            size = 25;
+            size = 10;
             
-            const halfSide = size / 2;
-            const height = (Math.sqrt(3) / 2) * size;
+            // const halfSide = size / 2;
+            // const height = (Math.sqrt(3) / 2) * size;
 
-            const topY = -(2 / 3) * height;
-            const baseY = (1 / 3) * height;
+            // const topY = -(2 / 3) * height;
+            // const baseY = (1 / 3) * height;
 
-            lensGraphic.moveTo(0, topY);
-            lensGraphic.lineTo(-halfSide, baseY);
-            lensGraphic.lineTo(halfSide, baseY);
-            lensGraphic.closePath();
+            // lensGraphic.moveTo(0, topY);
+            // lensGraphic.lineTo(-halfSide, baseY);
+            // lensGraphic.lineTo(halfSide, baseY);
+            // lensGraphic.closePath();
             
+            // lensGraphic.endFill();
+
+            lensGraphic.drawCircle(0, 0, size);
+
             lensGraphic.endFill();
 
             lensPivot.addChild(lensGraphic);
