@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Equation Scale</title>
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <style>
+        :root {
+            --bg-color: #ecf0f1;
+            --text-color: #2c3e50;
+            --beam-color: #7f8c8d;
+            --fulcrum-color: #34495e;
+            --x-block: #3498db;
+            --x-block-neg: #9b59b6;
+            --pos-block: #2ecc71;
+            --neg-block: #e74c3c;
+            --primary-btn: #3498db;
+            --secondary-btn: #95a5a6;
+            --math-font: 'Times New Roman', Times, serif;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+        }
+
+        h1 { margin-top: 10px; margin-bottom: 15px; text-align: center; }
+
+        /* Top Right Stats */
+        #stats-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        #counter-text { font-weight: bold; font-size: 16px; margin-bottom: 5px; }
+        #stars-container { font-size: 20px; color: #f1c40f; display: flex; flex-wrap: wrap; max-width: 150px; justify-content: flex-end; }
+
+        /* Hamburger Menu */
+        #menu-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            background-color: white;
+            color: var(--text-color);
+            border: 2px solid #bdc3c7;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transition: background 0.2s;
+        }
+        #menu-btn:hover { background-color: #ecf0f1; }
+
+        /* Sidebar */
+        #sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 300px;
+            height: 100%;
+            background: white;
+            box-shadow: 2px 0 15px rgba(0,0,0,0.1);
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            padding: 80px 20px 20px 20px;
+            box-sizing: border-box;
+        }
+        #sidebar.open { transform: translateX(0); }
+        #sidebar h2 { margin-top: 0; border-bottom: 2px solid var(--bg-color); padding-bottom: 10px; }
+        #history-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        .history-item {
+            padding: 12px;
+            border-radius: 6px;
+            background: var(--bg-color);
+            margin-bottom: 10px;
+            cursor: pointer;
+            font-family: var(--math-font);
+            font-size: 18px;
+            transition: background 0.2s;
+        }
+        .history-item:hover { background: #dcdde1; }
+        #clear-data-btn {
+            background-color: var(--neg-block);
+            width: 100%;
+            padding: 12px;
+        }
+        #clear-data-btn:hover { background-color: #c0392b; }
+
+        /* Controls */
+        .controls-header { display: flex; gap: 15px; margin-bottom: 15px; z-index: 10; }
+        button, select, input {
+            padding: 10px 15px;
+            font-size: 16px;
+            border: 1px solid #bdc3c7;
+            border-radius: 6px;
+            cursor: pointer;
+            outline: none;
+        }
+        button { background-color: var(--primary-btn); color: white; font-weight: bold; border: none; transition: background 0.2s; }
+        button:hover { background-color: #2980b9; }
+        input { width: 80px; text-align: center; }
+        select { background-color: white; }
+
+        /* Equation History Area */
+        #history-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+            min-width: 300px;
+            max-width: 600px;
+        }
+
+        .math-row {
+            display: grid;
+            grid-template-columns: 1fr 40px 1fr;
+            gap: 10px;
+            width: 100%;
+            align-items: center;
+            font-family: var(--math-font);
+            font-size: 24px;
+            margin: 5px 0;
+        }
+
+        .math-left { text-align: right; }
+        .math-center { text-align: center; font-weight: normal; }
+        .math-right { text-align: left; }
+
+        .operation-row { color: #e67e22; font-size: 18px; padding-bottom: 10px; border-bottom: 2px solid #bdc3c7; margin-bottom: 10px; }
+
+        /* Math Typography */
+        .math-x { font-style: italic; }
+        .fraction { display: inline-flex; flex-direction: column; align-items: center; vertical-align: middle; margin: 0 4px; font-size: 0.8em; line-height: 1.1; }
+        .fraction > span.num { border-bottom: 2px solid currentColor; padding: 0 4px; width: 100%; text-align: center; }
+        .fraction > span.den { padding: 0 4px; }
+
+        /* Scale Visuals */
+        .scale-wrapper { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 800px; margin-bottom: 40px; transition: transform 0.4s ease-in-out; }
+        .pans-container { display: flex; justify-content: space-between; width: 100%; margin-bottom: 10px; transform-origin: bottom center; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .pan { width: 45%; min-height: 120px; display: flex; flex-wrap: wrap-reverse; align-content: flex-start; justify-content: center; gap: 5px; padding-bottom: 10px; }
+        .beam { width: 100%; height: 12px; background-color: var(--beam-color); border-radius: 10px; transform-origin: center; transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); }
+        .fulcrum { width: 60px; height: 50px; background-color: var(--fulcrum-color); clip-path: polygon(50% 0%, 0% 100%, 100% 100%); display: flex; justify-content: center; align-items: flex-end; padding-bottom: 5px; color: white; font-family: var(--math-font); font-weight: bold; font-size: 24px; margin-top: -5px; z-index: 2; }
+        .block { width: 45px; height: 45px; border-radius: 8px; display: flex; justify-content: center; align-items: center; color: white; font-family: var(--math-font); font-size: 18px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); animation: popIn 0.3s ease-out; }
+        .block .fraction { font-size: 0.65em; margin: 0; }
+        @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        .b-x { background-color: var(--x-block); }
+        .b-neg-x { background-color: var(--x-block-neg); }
+        .b-1 { background-color: var(--pos-block); }
+        .b-neg-1 { background-color: var(--neg-block); }
+
+        /* Actions */
+        .action-panel { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; }
+        .message { font-size: 18px; font-weight: bold; height: 25px; margin-bottom: 15px; text-align: center;}
+        .error { color: var(--neg-block); }
+        .success { color: var(--pos-block); }
+        .history-msg { color: #8e44ad; }
+        
+        #btn-next, #btn-reset { font-size: 16px; padding: 10px 20px; }
+        #btn-next { background-color: var(--pos-block); display: none; margin-left: 10px; }
+        #btn-next:hover { background-color: #27ae60; }
+        #btn-reset { background-color: var(--secondary-btn); }
+        #btn-reset:hover { background-color: #7f8c8d; }
+
+        /* Modal Overlay */
+        #modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 2000;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 1; transition: opacity 0.3s;
+        }
+        #modal-overlay.hidden { display: none; opacity: 0; }
+        .modal {
+            background: white; padding: 30px; border-radius: 12px;
+            max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        .modal p { font-size: 18px; line-height: 1.5; margin-bottom: 25px; }
+        .modal button.primary { background-color: var(--primary-btn); width: 100%; margin-bottom: 10px; padding: 12px; font-size: 18px; }
+        .modal button.secondary { background-color: var(--secondary-btn); width: 100%; padding: 12px; }
+
+        /* Utilities */
+        .hide-controls .op-tool { display: none; }
+
+    </style>
+</head>
+<body>
+
+    <button id="menu-btn" onclick="toggleMenu()">☰</button>
+
+    <aside id="sidebar">
+        <h2>Solved Equations</h2>
+        <div id="history-list">
+            </div>
+        <button id="clear-data-btn" onclick="clearData()">Clear Data</button>
+    </aside>
+
+    <div id="stats-panel">
+        <div id="counter-text">Completed: 0</div>
+        <div id="stars-container"></div>
+    </div>
+
+    <h1>Interactive Equation Scale</h1>
+    
+    <div class="controls-header">
+        <select id="mode-select" onchange="generateEquation()">
+            <option value="1">1-Step Equations</option>
+            <option value="2">2-Step Equations</option>
+        </select>
+        <button onclick="generateEquation()">New Equation</button>
+    </div>
+
+    <div id="history-container">
+        </div>
+
+    <div class="scale-wrapper" id="scale-sys">
+        <div class="pans-container" id="pans">
+            <div class="pan" id="pan-left"></div>
+            <div class="pan" id="pan-right"></div>
+        </div>
+        <div class="beam" id="beam"></div>
+        <div class="fulcrum" id="fulcrum-sign">=</div>
+    </div>
+
+    <div class="message" id="msg-area"></div>
+
+    <div class="action-panel" id="action-panel">
+        <select id="target-select" class="op-tool">
+            <option value="both">Both Sides</option>
+            <option value="left">Left Side Only</option>
+            <option value="right">Right Side Only</option>
+        </select>
+        <select id="op-select" class="op-tool">
+            <option value="+">Add (+)</option>
+            <option value="-">Subtract (-)</option>
+            <option value="*">Multiply (×)</option>
+            <option value="/">Divide (÷)</option>
+        </select>
+        <input type="number" id="val-input" class="op-tool" placeholder="Number" value="1">
+        <button onclick="applyOperation()" class="op-tool">Apply</button>
+        <button id="btn-reset" class="op-tool" onclick="resetCurrentEquation()">Start Again</button>
+        
+        <button id="btn-next" onclick="generateEquation()">Next Question ➔</button>
+    </div>
+
+    <div id="modal-overlay" class="hidden">
+        <div class="modal">
+            <p>You've completed heaps of one-step equations! Well done! Why not start having a go at two-step equations?</p>
+            <button onclick="moveToTwoStep()" class="primary">Move to Two Step</button>
+            <button onclick="stayOneStep()" class="secondary">Practice more with One-Step</button>
+        </div>
+    </div>
+
+<script>
+    // System Data & Storage
+    let appData = { completed: 0, oneStepCount: 0, hasPromptedTwoStep: false, history: [] };
+    let currentSteps = []; 
+    let currentEqStartString = "";
+    let hasSolvedCurrent = false;
+
+    // Scale State
+    let state = { xL: 0, divL: 1, cNumL: 0, cDenL: 1, xR: 0, divR: 1, cNumR: 0, cDenR: 1 };
+    let initial = {};
+    let trueSolution = 0;
+    
+    // Core Math Helper
+    function gcd(a, b) {
+        a = Math.abs(a); b = Math.abs(b);
+        while (b) { let temp = b; b = a % b; a = temp; }
+        return a;
+    }
+
+    // --- DATA & UI MANAGEMENT ---
+    function loadData() {
+        let saved = localStorage.getItem('equationScaleData');
+        if (saved) appData = JSON.parse(saved);
+        updateStats();
+        renderHistoryList();
+    }
+
+    function saveData() {
+        localStorage.setItem('equationScaleData', JSON.stringify(appData));
+        updateStats();
+        renderHistoryList();
+    }
+
+    function clearData() {
+        if(confirm("Are you sure you want to delete all saved progress and history?")) {
+            localStorage.removeItem('equationScaleData');
+            appData = { completed: 0, oneStepCount: 0, hasPromptedTwoStep: false, history: [] };
+            updateStats();
+            renderHistoryList();
+            toggleMenu(); // close menu
+            generateEquation();
+        }
+    }
+
+    function updateStats() {
+        document.getElementById('counter-text').innerText = `Completed: ${appData.completed}`;
+        let stars = Math.floor(appData.completed / 10);
+        let starStr = "";
+        for(let i=0; i<stars; i++) starStr += "⭐";
+        document.getElementById('stars-container').innerText = starStr;
+    }
+
+    function toggleMenu() {
+        const sidebar = document.getElementById('sidebar');
+        sidebar.classList.toggle('open');
+    }
+
+    // --- MODAL LOGIC ---
+    function showModal() {
+        document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+    function moveToTwoStep() {
+        document.getElementById('modal-overlay').classList.add('hidden');
+        document.getElementById('mode-select').value = "2";
+        generateEquation();
+    }
+    function stayOneStep() {
+        document.getElementById('modal-overlay').classList.add('hidden');
+        generateEquation();
+    }
+
+    // --- SIDEBAR HISTORY LOGIC ---
+    function renderHistoryList() {
+        const list = document.getElementById('history-list');
+        list.innerHTML = "";
+        appData.history.forEach((item, index) => {
+            let div = document.createElement('div');
+            div.className = 'history-item';
+            div.innerHTML = `Eq ${index + 1}: <br> ${item.initialStr}`;
+            div.onclick = () => loadHistoryItem(index);
+            list.appendChild(div);
+        });
+    }
+
+    function loadHistoryItem(index) {
+        let item = appData.history[index];
+        
+        // Setup UI for viewing history
+        document.getElementById('action-panel').classList.add('hide-controls');
+        document.getElementById('btn-next').innerText = "Back to Practice ➔";
+        document.getElementById('btn-next').style.display = 'inline-block';
+        
+        const msgArea = document.getElementById('msg-area');
+        msgArea.innerText = "Viewing Past Solution";
+        msgArea.className = 'message history-msg';
+
+        // Load steps visually
+        const container = document.getElementById('history-container');
+        container.innerHTML = "";
+        item.steps.forEach(s => appendHistoryRowDOM(s.left, s.center, s.right, s.isOp));
+
+        // Setup scale balance to final state
+        state = item.finalState;
+        trueSolution = item.trueSolution; // required to calculate weight accurately
+        updateUI();
+        
+        toggleMenu(); // Auto close menu so they can see the screen
+    }
+
+    // --- EQUATION GENERATION ---
+    function generateEquation() {
+        // Reset states for new equation
+        hasSolvedCurrent = false;
+        currentSteps = [];
+        
+        document.getElementById('action-panel').classList.remove('hide-controls');
+        document.getElementById('btn-next').innerText = "Next Question ➔";
+        document.getElementById('btn-next').style.display = 'none';
+
+        const mode = parseInt(document.getElementById('mode-select').value);
+        let type = Math.floor(Math.random() * 4); 
+
+        state = { xL: 0, divL: 1, cNumL: 0, cDenL: 1, xR: 0, divR: 1, cNumR: 0, cDenR: 1 };
+
+        if (mode === 1) {
+            if (type === 0) { 
+                trueSolution = Math.floor(Math.random() * 8) + 2; 
+                let a = Math.floor(Math.random() * 10) + 1;
+                state.xL = 1; state.cNumL = a; state.cNumR = trueSolution + a;
+            } else if (type === 1) { 
+                trueSolution = Math.floor(Math.random() * 8) + 2; 
+                let a = Math.floor(Math.random() * 10) + 1;
+                state.xL = 1; state.cNumL = -a; state.cNumR = trueSolution - a;
+            } else if (type === 2) { 
+                trueSolution = Math.floor(Math.random() * 8) + 2; 
+                let a = Math.floor(Math.random() * 4) + 2;
+                state.xL = a; state.cNumR = a * trueSolution;
+            } else { 
+                let a = Math.floor(Math.random() * 3) + 2; 
+                let b = Math.floor(Math.random() * 8) + 2; 
+                trueSolution = a * b; 
+                state.xL = 1; state.divL = a; state.cNumR = b;
+            }
+        } else {
+            if (type === 0) { 
+                trueSolution = Math.floor(Math.random() * 8) + 2; 
+                let a = Math.floor(Math.random() * 4) + 2;
+                let b = Math.floor(Math.random() * 10) + 1;
+                state.xL = a; state.cNumL = b; state.cNumR = (a * trueSolution) + b;
+            } else if (type === 1) { 
+                trueSolution = Math.floor(Math.random() * 8) + 2; 
+                let a = Math.floor(Math.random() * 4) + 2;
+                let b = Math.floor(Math.random() * 10) + 1;
+                state.xL = a; state.cNumL = -b; state.cNumR = (a * trueSolution) - b;
+            } else if (type === 2) { 
+                let a = Math.floor(Math.random() * 3) + 2;
+                let bBase = Math.floor(Math.random() * 8) + 2; 
+                trueSolution = a * bBase; 
+                let b = Math.floor(Math.random() * 10) + 1;
+                state.xL = 1; state.divL = a; state.cNumL = b; state.cNumR = bBase + b;
+            } else { 
+                let a = Math.floor(Math.random() * 3) + 2;
+                let bBase = Math.floor(Math.random() * 8) + 2; 
+                trueSolution = a * bBase; 
+                let b = Math.floor(Math.random() * 10) + 1;
+                state.xL = 1; state.divL = a; state.cNumL = -b; state.cNumR = bBase - b;
+            }
+        }
+
+        initial = JSON.parse(JSON.stringify(state));
+
+        // Save starting string for history list
+        let strL = formatSide(state.xL, state.divL, state.cNumL, state.cDenL);
+        let strR = formatSide(state.xR, state.divR, state.cNumR, state.cDenR);
+        currentEqStartString = `${strL} = ${strR}`;
+
+        document.getElementById('val-input').value = '1';
+        document.getElementById('target-select').value = 'both';
+        document.getElementById('msg-area').innerText = '';
+        document.getElementById('msg-area').className = 'message';
+        
+        document.getElementById('history-container').innerHTML = '';
+        recordStep(strL, "=", strR, false);
+        
+        updateUI();
+    }
+
+    function resetCurrentEquation() {
+        state = JSON.parse(JSON.stringify(initial));
+        currentSteps = []; // restart step recording
+        
+        document.getElementById('msg-area').innerText = '';
+        document.getElementById('msg-area').className = 'message';
+        document.getElementById('btn-next').style.display = 'none';
+        document.getElementById('history-container').innerHTML = '';
+        
+        let strL = formatSide(state.xL, state.divL, state.cNumL, state.cDenL);
+        let strR = formatSide(state.xR, state.divR, state.cNumR, state.cDenR);
+        recordStep(strL, "=", strR, false);
+        
+        updateUI();
+    }
+
+    // --- STEP TRACKING & UI ---
+    // This logs to array AND screen
+    function recordStep(left, center, right, isOp) {
+        currentSteps.push({left, center, right, isOp});
+        appendHistoryRowDOM(left, center, right, isOp);
+    }
+
+    // This just renders to screen (used by view history too)
+    function appendHistoryRowDOM(left, center, right, isOp = false) {
+        const row = document.createElement('div');
+        row.className = 'math-row' + (isOp ? ' operation-row' : '');
+        row.innerHTML = `
+            <div class="math-left">${left}</div>
+            <div class="math-center">${center}</div>
+            <div class="math-right">${right}</div>
+        `;
+        document.getElementById('history-container').appendChild(row);
+    }
+
+    function showMessage(text, isError) {
+        const msgArea = document.getElementById('msg-area');
+        msgArea.innerText = text;
+        msgArea.className = 'message ' + (isError ? 'error' : 'success');
+    }
+
+    // --- MATH OPERATIONS ---
+    function applyOperation() {
+        const op = document.getElementById('op-select').value;
+        const val = parseInt(document.getElementById('val-input').value);
+        const target = document.getElementById('target-select').value;
+
+        if (isNaN(val)) return showMessage("Please enter a valid number.", true);
+        if (val === 0 && (op === '/' || op === '*')) return showMessage("Cannot multiply or divide by zero!", true);
+
+        let tempState = JSON.parse(JSON.stringify(state));
+
+        if (target === 'both' || target === 'left') processSide('L', op, val);
+        if (target === 'both' || target === 'right') processSide('R', op, val);
+
+        if (Math.abs(state.xL) > 100 || Math.abs(state.cNumL) > 100 || Math.abs(state.xR) > 100 || Math.abs(state.cNumR) > 100) {
+            state = tempState; 
+            return showMessage("Resulting blocks would be too many to show visually! Try a different operation.", true);
+        }
+
+        let opStrL = "", opStrR = "";
+        let dispOp = (op === '*') ? '×' : (op === '/') ? '÷' : op;
+        if (target === 'both' || target === 'left') opStrL = `${dispOp} ${val}`;
+        if (target === 'both' || target === 'right') opStrR = `${dispOp} ${val}`;
+        recordStep(opStrL, "↓", opStrR, true);
+
+        let difference = evaluateBalance();
+        let sign = Math.abs(difference) < 0.0001 ? "=" : "≠"; 
+        
+        let newStrL = formatSide(state.xL, state.divL, state.cNumL, state.cDenL);
+        let newStrR = formatSide(state.xR, state.divR, state.cNumR, state.cDenR);
+        recordStep(newStrL, sign, newStrR, false);
+
+        showMessage("", false);
+        updateUI();
+        checkWin();
+    }
+
+    function processSide(side, op, val) {
+        let x = side === 'L' ? state.xL : state.xR;
+        let xD = side === 'L' ? state.divL : state.divR;
+        let cN = side === 'L' ? state.cNumL : state.cNumR;
+        let cD = side === 'L' ? state.cDenL : state.cDenR;
+
+        if (op === '+') { cN += val * cD; } 
+        else if (op === '-') { cN -= val * cD; } 
+        else if (op === '*') { x *= val; cN *= val; } 
+        else if (op === '/') { xD *= val; cD *= val; }
+
+        let gx = gcd(x, xD);
+        x /= gx; xD /= gx;
+        if (xD < 0) { x = -x; xD = -xD; } 
+
+        let gc = gcd(cN, cD);
+        cN /= gc; cD /= gc;
+        if (cD < 0) { cN = -cN; cD = -cD; }
+
+        if (side === 'L') { state.xL = x; state.divL = xD; state.cNumL = cN; state.cDenL = cD; } 
+        else { state.xR = x; state.divR = xD; state.cNumR = cN; state.cDenR = cD; }
+    }
+
+    function formatSide(xC, xD, cN, cD) {
+        let termStr = "";
+        
+        if (xC !== 0) {
+            let sign = xC < 0 ? "-" : "";
+            let num = Math.abs(xC) === 1 ? "" : Math.abs(xC);
+            
+            if (xD === 1) {
+                termStr = `${sign}${num}<span class="math-x">x</span>`;
+            } else {
+                termStr = `${sign}<div class="fraction"><span class="num">${num}<span class="math-x">x</span></span><span class="den">${xD}</span></div>`;
+            }
+        }
+
+        let cStr = "";
+        if (cN !== 0) {
+            let num = Math.abs(cN);
+            if (cD === 1) {
+                cStr = num.toString();
+            } else {
+                cStr = `<div class="fraction"><span class="num">${num}</span><span class="den">${cD}</span></div>`;
+            }
+        }
+
+        if (xC === 0 && cN === 0) return "0";
+        if (termStr === "") return cN < 0 ? "-" + cStr : cStr;
+        if (cN === 0) return termStr;
+        return cN > 0 ? `${termStr} + ${cStr}` : `${termStr} - ${cStr}`;
+    }
+
+    function evaluateBalance() {
+        let valL = (state.xL / state.divL) * trueSolution + (state.cNumL / state.cDenL);
+        let valR = (state.xR / state.divR) * trueSolution + (state.cNumR / state.cDenR);
+        return valL - valR;
+    }
+
+    function updateUI() {
+        let difference = evaluateBalance();
+        let angle = 0;
+        
+        if (difference > 0.0001) angle = -5; 
+        else if (difference < -0.0001) angle = 5;  
+        
+        document.getElementById('pans').style.transform = `rotate(${angle}deg)`;
+        document.getElementById('beam').style.transform = `rotate(${angle}deg)`;
+        
+        document.getElementById('fulcrum-sign').innerText = Math.abs(difference) < 0.0001 ? '=' : '≠';
+
+        renderPan('pan-left', state.xL, state.divL, state.cNumL, state.cDenL);
+        renderPan('pan-right', state.xR, state.divR, state.cNumR, state.cDenR);
+    }
+
+    function renderPan(panId, xC, xD, cN, cD) {
+        const pan = document.getElementById(panId);
+        pan.innerHTML = "";
+        
+        let xLabel = xD === 1 ? `<span class="math-x">x</span>` : `<div class="fraction"><span class="num"><span class="math-x">x</span></span><span class="den">${xD}</span></div>`;
+        
+        for (let i = 0; i < Math.abs(xC); i++) {
+            let div = document.createElement('div');
+            div.className = 'block ' + (xC > 0 ? 'b-x' : 'b-neg-x');
+            div.innerHTML = xC > 0 ? xLabel : `-${xLabel}`;
+            pan.appendChild(div);
+        }
+
+        let cLabel = cD === 1 ? "1" : `<div class="fraction"><span class="num">1</span><span class="den">${cD}</span></div>`;
+
+        for (let i = 0; i < Math.abs(cN); i++) {
+            let div = document.createElement('div');
+            div.className = 'block ' + (cN > 0 ? 'b-1' : 'b-neg-1');
+            div.innerHTML = cN > 0 ? cLabel : `-${cLabel}`;
+            pan.appendChild(div);
+        }
+    }
+
+    function checkWin() {
+        if (Math.abs(evaluateBalance()) > 0.0001) return; 
+
+        let isXLeft = (state.xL === 1 && state.divL === 1 && state.cNumL === 0 && state.xR === 0 && state.divR === 1);
+        let isXRight = (state.xR === 1 && state.divR === 1 && state.cNumR === 0 && state.xL === 0 && state.divL === 1);
+
+        if (isXLeft || isXRight) {
+            let ans = isXLeft ? (state.cDenR === 1 ? state.cNumR : `${state.cNumR}/${state.cDenR}`) 
+                              : (state.cDenL === 1 ? state.cNumL : `${state.cNumL}/${state.cDenL}`);
+            
+            showMessage(`Success! The scale is balanced and x = ${ans}`, false);
+            document.getElementById('btn-next').style.display = 'inline-block';
+
+            // Only trigger saving logic once per solved equation
+            if (!hasSolvedCurrent) {
+                hasSolvedCurrent = true;
+                appData.completed++;
+                
+                const mode = parseInt(document.getElementById('mode-select').value);
+                if (mode === 1) appData.oneStepCount++;
+
+                appData.history.unshift({ // Add to top of history
+                    initialStr: currentEqStartString,
+                    steps: JSON.parse(JSON.stringify(currentSteps)),
+                    finalState: JSON.parse(JSON.stringify(state)),
+                    trueSolution: trueSolution
+                });
+
+                saveData(); // saves and updates stats/stars visually
+
+                // Scaffolding popup check
+                if (mode === 1 && appData.oneStepCount >= 15 && !appData.hasPromptedTwoStep) {
+                    appData.hasPromptedTwoStep = true;
+                    saveData();
+                    setTimeout(showModal, 1000); // Wait a second so they can read the success message
+                }
+            }
+        } else if (state.xL === 0 && state.xR === 0 && (state.cNumL/state.cDenL) === (state.cNumR/state.cDenR)) {
+            showMessage(`You eliminated 'x'! The statement is true, but 'x' is gone. Try starting again.`, true);
+        }
+    }
+
+    // Initialize App
+    window.onload = () => {
+        loadData();
+        generateEquation();
+    };
+</script>
+</body>
+</html>
