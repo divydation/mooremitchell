@@ -20,8 +20,12 @@ html, body {
 
 
 svg {
-    width: 30vw;
+    width: 90vw;
     height: auto;
+    position: absolute;
+    margin-left: 5vw;
+    z-index: -1;
+    mix-blend-mode: overlay;
 }
 
 .container {
@@ -68,6 +72,10 @@ svg {
 
     overflow: hidden;
     clip-path: inset(0);
+
+    /* border: 1vw solid white;
+    border-radius: 2vw;
+    box-sizing: border-box; */
 }
 
 .headers > h1 {
@@ -81,6 +89,7 @@ svg {
 
 .headers > .subheading {
     font-weight: 200;
+    font-size: 3vw;
 }
 
 .displayPhotoBlur {
