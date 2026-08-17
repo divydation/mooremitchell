@@ -1,13 +1,12 @@
 const canvas = document.getElementById("gameCanvas");
-// const ctx = canvas.getContext("2d");
 
 
 const app = new PIXI.Application({
     view: canvas,
     resizeTo: window, 
     autoDensity: true,
-    // resolution: Math.min(window.devicePixelRatio || 1, 2),
-    resolution: 2,
+    resolution: Math.min(window.devicePixelRatio || 1, 2),
+    // resolution: 2,
     backgroundColor: 0x141414,
     antialias: true,
 });
@@ -17,6 +16,11 @@ app.ticker.maxFPS = 60;
 // 2. The Master Container (This replaces ctx.translate(500, 500))
 const solarSystem = new PIXI.Container();
 app.stage.addChild(solarSystem);
+
+
+solarSystem.filterArea = app.screen;
+solarSystem.pixelSnap = true;
+
 
 
 
@@ -100,7 +104,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-if (userHasSeenUpdate == "3.2") {
+if (userHasSeenUpdate == "3.3") {
     document.getElementById("changelog").style.display = "none";
 } else {
     document.getElementById("changelog").style.display = "flex";
@@ -110,7 +114,7 @@ if (userHasSeenUpdate == "3.2") {
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
-        localStorage.setItem("updateVerified", "3.2");
+        localStorage.setItem("updateVerified", "3.3");
     }, 200);
 });
 
@@ -832,6 +836,7 @@ document.fonts.load('20px "Silkscreen"').then(() => {
 altitudeOn = false;
 snappingOn = false;
 collectionOn = false;
+shipPowerTransfer = false;
 
 
 
@@ -1574,7 +1579,7 @@ app.ticker.add((delta) => {
 
         SHIP_MAX_DISTANCE_SQ = 75 ** 2;
         // Ship can also transfer power if it has enough
-        if (energy > 1 && drawThisPlanet) {
+        if (energy > 1 && drawThisPlanet && shipPowerTransfer) {
 
             let potentialTargets = [];
 
@@ -3769,9 +3774,16 @@ function resetToggle(element) {
 }
 
 function setGreenGlow(element) {
-    element.target.style.backgroundColor = "rgb(20, 204, 146)";
-    element.target.style.boxShadow = "0 0 6vw 0.1vw rgb(20, 204, 146)";
-    element.target.style.textShadow = "0 0 3vw #fff";
+    try {
+        element.target.style.backgroundColor = "rgb(20, 204, 146)";
+        element.target.style.boxShadow = "0 0 6vw 0.1vw rgb(20, 204, 146)";
+        element.target.style.textShadow = "0 0 3vw #fff";
+    } catch {
+        element.style.backgroundColor = "rgb(20, 204, 146)";
+        element.style.boxShadow = "0 0 6vw 0.1vw rgb(20, 204, 146)";
+        element.style.textShadow = "0 0 3vw #fff";
+    }
+    
 }
 
 // Toggle buttons
@@ -3813,6 +3825,17 @@ toggleButtons.forEach(button => {
         } else {
             setGreenGlow(event);
             collectionOn = true;
+        }
+    }
+
+    // Collection
+    if (event.currentTarget.id == "powerTransfer") {
+        if (shipPowerTransfer) {
+            resetToggle(event);
+            shipPowerTransfer = false;
+        } else {
+            setGreenGlow(event);
+            shipPowerTransfer = true;
         }
     }
     
@@ -4449,7 +4472,8 @@ function saveGame() {
         materialValue, materialValueLevel, materialValueUpgradeCost,
         planets: planetsToSave,
         probes: cleanProbes,
-        upgrades, stats
+        upgrades, stats,
+        altitudeOn, snappingOn, collectionOn, shipPowerTransfer, currentShipColourIndex
     };
 
     // 4. Save with Error Catching
@@ -4459,6 +4483,8 @@ function saveGame() {
         console.error("DEBRIS SAVE ERROR: Failed to save game to localStorage.", error);
     }
 }
+
+
 
 function loadGame() {
     const savedData = localStorage.getItem("space_game_save");
@@ -4707,18 +4733,6 @@ function loadGame() {
 
             size = 10;
             
-            // const halfSide = size / 2;
-            // const height = (Math.sqrt(3) / 2) * size;
-
-            // const topY = -(2 / 3) * height;
-            // const baseY = (1 / 3) * height;
-
-            // lensGraphic.moveTo(0, topY);
-            // lensGraphic.lineTo(-halfSide, baseY);
-            // lensGraphic.lineTo(halfSide, baseY);
-            // lensGraphic.closePath();
-            
-            // lensGraphic.endFill();
 
             lensGraphic.drawCircle(0, 0, size);
 
@@ -4798,6 +4812,17 @@ function loadGame() {
         };
     });
 
+    shipGraphic.tint = shipColours[state.currentShipColourIndex];
+    altitudeOn = state.altitudeOn;
+    snappingOn = state.snappingOn;
+    collectionOn = state.collectionOn;
+    shipPowerTransfer = state.shipPowerTransfer;
+
+    if (altitudeOn) setGreenGlow(altitude);
+    if (snappingOn) setGreenGlow(snapping);
+    if (collectionOn) setGreenGlow(collection);
+    if (shipPowerTransfer) setGreenGlow(powerTransfer);
+
     currentPlanet = planets.find(p => p.hasShip) || planets[1];
 }
 
@@ -4806,7 +4831,7 @@ drawPlanetAndShadow();
 updateLabels();
 
 currentPlanet.graphics.addChild(systemShipPivot);
-shipGraphic.tint = shipColours[currentShipColourIndex];
+// shipGraphic.tint = shipColours[currentShipColourIndex];
 
 
 
