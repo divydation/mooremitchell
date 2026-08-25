@@ -435,7 +435,7 @@ planets.push({
     cometFactor: 0,
     gravityFactor: 0.5,
     ...getBaseDevices(),
-    ...baseCosts
+    ...baseCosts,
 });
 
 let currentPlanet = planets[1];
@@ -472,14 +472,14 @@ function drawPlanetAndShadow() {
 
     if (currentPlanet.name == "sun") {
         shadowGraphic.visible = false;
-        shipShadowGraphic.scale.set(0.5);
-        shipGraphic.scale.set(0.5);
-        fireContainer.visible = false;
+        // shipShadowGraphic.scale.set(0.5);
+        // shipGraphic.scale.set(0.5);
+        // fireContainer.visible = false;
     } else {
         shadowGraphic.visible = true;
-        shipShadowGraphic.scale.set(1);
-        shipGraphic.scale.set(1);
-        fireContainer.visible = true;
+        // shipShadowGraphic.scale.set(1);
+        // shipGraphic.scale.set(1);
+        // fireContainer.visible = true;
     }
 }
 
@@ -1676,6 +1676,7 @@ app.ticker.add((delta) => {
                 // p.radius = Math.max(p.radius, planet.radius);
                 p.angle = p.angle % toRadians(360);
             } else {
+                p.radius = planet.radius;
                 p.arrived = true;
                 p.angle = p.angle + planet.rotationSpeed;
                 p.angle = p.angle % toRadians(360);
