@@ -73,6 +73,7 @@ app.renderer.on('resize', resizeGameWorld);
 document.body.classList.add("stop-scrolling");
 
 let probeText = null;
+let tutorialText = null;
 let style;
 document.fonts.load('10px "Silkscreen"').then(() => {
     
@@ -92,6 +93,13 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 
     systemScene.addChild(probeText);
 
+
+    tutorialText = new PIXI.Text('Tutorial', style);
+
+    tutorialText.anchor.set(0, 0.6);
+
+    // planetScene.addChild(tutorialText);
+
 }).catch((err) => {
     console.error("Google Font failed to load: ", err);
 });
@@ -104,7 +112,9 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-if (userHasSeenUpdate == "3.3") {
+currentVersion = "3.4";
+
+if (userHasSeenUpdate == currentVersion) {
     document.getElementById("changelog").style.display = "none";
 } else {
     document.getElementById("changelog").style.display = "flex";
@@ -112,10 +122,11 @@ if (userHasSeenUpdate == "3.3") {
 
 // Play button
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
+    document.getElementById("playButton").innerHTML = "WAIT"
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
-        localStorage.setItem("updateVerified", "3.3");
-    }, 200);
+        localStorage.setItem("updateVerified", currentVersion);
+    }, 3000);
 });
 
 
@@ -204,6 +215,12 @@ const getBaseDevices = () => ({
     refiners: [],
     lenses: [],
 });
+
+// --- DEVICE CAMERA TRACKING ---
+let focusedDevice = null;
+let allDevicesOnPlanet = [];
+let currentDeviceIndex = -1;
+let isZoomedIn = false;
 
 drillRateUpgradeCost = 10;
 collectionRadiusUpgradeCost = 10;
@@ -427,7 +444,7 @@ planets.push({
     hasShip: false,
     selected: false,
     color: "#FFE347",
-    description: "THE SUN",
+    description: "The sun. Unlock every planet first.",
     unlocked: false,
     neededProbes: 0,
     landedProbes: 0,
@@ -494,7 +511,6 @@ shipGraphic.endFill();
 shipColours = [0xffffff, 0xffbe0b, 0xfb5607, 0xff006e, 0x8338ec, 0x3a86ff];
 currentShipColourIndex = 0;
 shipGraphic.tint = shipColours[currentShipColourIndex];
-
 
 
 
@@ -1075,7 +1091,44 @@ app.ticker.add((delta) => {
         if (probesLeft <= 0) probeText.text = "";
     }
 
+
+    // --- PLANET SCENE PANNING & ZOOMING LOGIC ---
+    let targetPivotX = 500;
+    let targetPivotY = 500;
+    let targetZoom = 1; 
+
+    if (focusedDevice && isZoomedIn) {
+        // 1. Target the device's absolute coordinates
+        targetPivotX = focusedDevice.x;
+        targetPivotY = focusedDevice.y;
+        
+        // 2. Set your target zoom level
+        targetZoom = 2; 
+    }
+
+    // Keep the container anchored to the center of your 1000x1000 game world
+    let targetPosX = 500;
+    let targetPosY = 500;
+
+    // 3. Smoothly interpolate the pivot (the camera moving to look at the target)
+    planetScene.pivot.x += (targetPivotX - planetScene.pivot.x) * 0.1;
+    planetScene.pivot.y += (targetPivotY - planetScene.pivot.y) * 0.1;
+
+    // 4. Smoothly interpolate the position (keeps the pivot exactly at the center of the screen)
+    planetScene.x += (targetPosX - planetScene.x) * 0.1;
+    planetScene.y += (targetPosY - planetScene.y) * 0.1;
+
+    // 5. Smoothly interpolate the scale (Zoom)
+    let currentZoom = planetScene.scale.x;
+    let newZoom = currentZoom + (targetZoom - currentZoom) * 0.1;
+    planetScene.scale.set(newZoom);
+
     
+
+    // Tutorial Control
+
+    // tutorialText.position.set(shipPosition.x + 25, shipPosition.y);
+    // tutorialText.text = "RISE TO SLOW ORBIT"
 
 
 
@@ -1093,9 +1146,29 @@ app.ticker.add((delta) => {
         p.pivot.rotation = p.currentOrbitRotation;
 
         // Unlock if needed
-        if (p.landedProbes == p.neededProbes) {
+        if (p.landedProbes == p.neededProbes && p.name != "sun") {
             p.unlocked = true;
         }
+
+        // If this planet is the sun, and it is locked, test to see if it should be unlocked
+        if (p.name == "sun" && !p.unlocked) {
+            sunShouldBeUnlocked = true;
+
+            for (let t = 0; t < planets.length; t++) {
+                let k = planets[t];
+                
+                if (k.name == "sun") continue;
+
+                // If even one planet is not unlocked, then the sun can't be either
+                if (!k.unlocked) {
+                    sunShouldBeUnlocked = false;
+                }
+            }
+
+            if (sunShouldBeUnlocked) p.unlocked = true;
+        }
+
+        
 
         // Set current updates to this planet
         planet = p;
@@ -1120,7 +1193,7 @@ app.ticker.add((delta) => {
             // shipRotationSpeed = changeShipSpeed(flightRadius);
 
             // Configuration
-            const snapIncrement = 25;
+            const snapIncrement = 10;
             const minRadius = planet.radius + 15;
             const maxRadius = 450;
 
@@ -1920,7 +1993,7 @@ app.ticker.add((delta) => {
                     distanceToComet = calculateDistance(laserSat, comet);
 
                     // If out of range, go to next comet for checking
-                    if (distanceToComet > (100 * upgrades.laserRange.level/2) ** 2) continue;
+                    if (distanceToComet > (100 * upgrades.laserRange.level * 2) ** 2) continue;
 
                     if (distanceToComet < smallestDistance && !isLaserBlocked(laserSat, comet, planet)) {
                         smallestDistance = distanceToComet;
@@ -3068,6 +3141,44 @@ function createProbeParticle(probe) {
     probeParticles.push({
         graphic: particle
     });
+}
+
+
+function cycleNextDevice() {
+    // Only cycle if we are on the planet view
+    if (view !== "planet" || !currentPlanet) return;
+
+    // Combine all device arrays into one flat array
+    allDevicesOnPlanet = [
+        ...currentPlanet.drills,
+        ...currentPlanet.satellites,
+        ...currentPlanet.collectors,
+        ...currentPlanet.refiners,
+        ...currentPlanet.laserSatellites,
+        ...currentPlanet.lenses
+    ];
+
+    // If there are no devices, reset and exit
+    if (allDevicesOnPlanet.length === 0) {
+        focusedDevice = null;
+        isZoomedIn = false;
+        return;
+    }
+
+    // Move to the next index, looping back to 0 if we hit the end
+    currentDeviceIndex++;
+    if (currentDeviceIndex >= allDevicesOnPlanet.length) {
+        currentDeviceIndex = 0;
+    }
+
+    focusedDevice = allDevicesOnPlanet[currentDeviceIndex];
+    isZoomedIn = true; // Trigger the zoom
+}
+
+// Optional: A function to snap back to the ship/planet
+function resetCameraFocus() {
+    focusedDevice = null;
+    isZoomedIn = false;
 }
 
 
@@ -4477,21 +4588,57 @@ function saveGame() {
         altitudeOn, snappingOn, collectionOn, shipPowerTransfer, currentShipColourIndex
     };
 
-    // 4. Save with Error Catching
+
+
+    // SAVE BOTH VERSIONS
+
+    const jsonString = JSON.stringify(gameState);
+
+    // Version 3.3 or earlier
+    // Saves RAW as "space_game_save"
+
     try {
-        localStorage.setItem("space_game_save", JSON.stringify(gameState));
+        localStorage.setItem("space_game_save", jsonString);
     } catch (error) {
         console.error("DEBRIS SAVE ERROR: Failed to save game to localStorage.", error);
     }
+
+
+    // Version 4.4+
+    // Saves COMPRESSED as "debrisSave"
+    const compressedData = LZString.compressToUTF16(jsonString);
+    localStorage.setItem("debrisSave", compressedData);
 }
 
 
 
 function loadGame() {
-    const savedData = localStorage.getItem("space_game_save");
-    if (!savedData) return;
+    let state;
 
-    const state = JSON.parse(savedData);
+    if (userHasSeenUpdate == "3.3") {
+        console.log("You are on version 3.3");
+
+        const savedData = localStorage.getItem("space_game_save");
+        if (!savedData) return;
+
+        state = JSON.parse(savedData);
+
+    } else {
+        console.log("You are on version 3.4");
+
+        const compressedData = localStorage.getItem("debrisSave");
+        if (!compressedData) return; 
+
+        try {
+            // Decompress back into standard JSON string
+            const decompressedString = LZString.decompressFromUTF16(compressedData);
+            state = JSON.parse(decompressedString);
+            
+        } catch (error) {
+            console.error("Failed to decompress or parse save.", error);
+        }
+    }
+
 
    if (state.upgrades) {
         // Loop through each upgrade key found in the player's save file
