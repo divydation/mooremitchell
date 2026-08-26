@@ -4513,6 +4513,43 @@ function updateLevel(parent) {
 }
 
 
+// --- Background save compression ---
+// Compressing the JSON save string with LZString is CPU-heavy, and running it
+// on the main thread every autosave tick is what causes the visible lag
+// spike. We move that work into a Web Worker: the main thread just hands the
+// worker a string (cheap) and the worker compresses it and reports back the
+// compressed string, which we then write to localStorage. If the worker can't
+// be created for any reason, saveGame() falls back to compressing inline.
+let saveWorker = null;
+let workerSaveInProgress = false;
+ 
+try {
+    saveWorker = new Worker("compressWorker.js");
+ 
+    saveWorker.onmessage = function (e) {
+        workerSaveInProgress = false;
+        if (e.data && e.data.success) {
+            try {
+                localStorage.setItem("debrisSave", e.data.data);
+            } catch (error) {
+                console.error("SAVE ERROR: Failed to write compressed save to localStorage.", error);
+            }
+        } else {
+            console.error("Save worker failed to compress save.", e.data && e.data.error);
+        }
+    };
+ 
+    saveWorker.onerror = function (err) {
+        console.error("Save worker crashed - falling back to main-thread compression.", err);
+        saveWorker = null;
+        workerSaveInProgress = false;
+    };
+} catch (err) {
+    console.error("Could not create save worker - falling back to main-thread compression.", err);
+    saveWorker = null;
+}
+
+
 
 function saveGame() {
     // 1. Explicitly map ONLY the primitive data to avoid the 5MB LocalStorage limit
@@ -4590,24 +4627,54 @@ function saveGame() {
 
 
 
-    // SAVE BOTH VERSIONS
+    // // SAVE BOTH VERSIONS
 
+    // const jsonString = JSON.stringify(gameState);
+
+    // // Version 3.3 or earlier
+    // // Saves RAW as "space_game_save"
+
+    // try {
+    //     localStorage.setItem("space_game_save", jsonString);
+    // } catch (error) {
+    //     console.error("DEBRIS SAVE ERROR: Failed to save game to localStorage.", error);
+    // }
+
+
+    // // Version 4.4+
+    // // Saves COMPRESSED as "debrisSave"
+    // const compressedData = LZString.compressToUTF16(jsonString);
+    // localStorage.setItem("debrisSave", compressedData);
+
+
+
+    // We ONLY write the compressed save from now on. Old (pre-3.4) saves are
+    // migrated once, on load, from "space_game_save" - see loadGame(). We used
+    // to also write that raw/uncompressed key here on every autosave "for
+    // compatibility", but that meant every 2-second autosave was doing TWO
+    // synchronous localStorage writes (one of them the full, huge, uncompressed
+    // JSON) plus a synchronous compression pass - that's what was causing the
+    // lag spike. Compression itself is also offloaded to a Web Worker below so
+    // it no longer blocks the main thread / rendering.
+ 
     const jsonString = JSON.stringify(gameState);
-
-    // Version 3.3 or earlier
-    // Saves RAW as "space_game_save"
-
-    try {
-        localStorage.setItem("space_game_save", jsonString);
-    } catch (error) {
-        console.error("DEBRIS SAVE ERROR: Failed to save game to localStorage.", error);
+ 
+    if (saveWorker && !workerSaveInProgress) {
+        workerSaveInProgress = true;
+        saveWorker.postMessage(jsonString);
+    } else if (!saveWorker) {
+        // Fallback for browsers/environments where the worker failed to start.
+        // This still blocks the main thread, but at least it's a single write.
+        try {
+            const compressedData = LZString.compressToUTF16(jsonString);
+            localStorage.setItem("debrisSave", compressedData);
+        } catch (error) {
+            console.error("SAVE ERROR: Failed to compress/save game.", error);
+        }
     }
-
-
-    // Version 4.4+
-    // Saves COMPRESSED as "debrisSave"
-    const compressedData = LZString.compressToUTF16(jsonString);
-    localStorage.setItem("debrisSave", compressedData);
+    // If a previous save is still being compressed in the worker, we just skip
+    // this cycle rather than piling up postMessage calls - the next autosave
+    // tick will catch it.
 }
 
 
@@ -4615,29 +4682,65 @@ function saveGame() {
 function loadGame() {
     let state;
 
-    if (userHasSeenUpdate == "3.3") {
-        console.log("You are on version 3.3");
-
-        const savedData = localStorage.getItem("space_game_save");
-        if (!savedData) return;
-
-        state = JSON.parse(savedData);
-
-    } else {
-        console.log("You are on version 3.4");
-
-        const compressedData = localStorage.getItem("debrisSave");
-        if (!compressedData) return; 
-
+    // AI METHOD
+    let migratingFromLegacySave = false;
+ 
+    // Prefer the new compressed save whenever it exists - this is presence
+    // based rather than keyed off the "updateVerified" flag, since that flag
+    // only updates once the player hits Play, but an autosave could already
+    // have happened before that this session.
+    const compressedData = localStorage.getItem("debrisSave");
+    if (compressedData) {
         try {
-            // Decompress back into standard JSON string
             const decompressedString = LZString.decompressFromUTF16(compressedData);
             state = JSON.parse(decompressedString);
-            
         } catch (error) {
             console.error("Failed to decompress or parse save.", error);
         }
     }
+ 
+    // Fall back to a pre-3.4, uncompressed save for players who haven't saved
+    // under the new system yet. This only ever runs ONCE per player - we
+    // migrate it below and delete the old key so this branch is never hit
+    // again for them.
+    if (!state) {
+        const legacySavedData = localStorage.getItem("space_game_save");
+        if (legacySavedData) {
+            try {
+                state = JSON.parse(legacySavedData);
+                migratingFromLegacySave = true;
+            } catch (error) {
+                console.error("Failed to parse legacy save.", error);
+            }
+        }
+    }
+ 
+    if (!state) return;
+
+    // MY METHOD
+    // if (userHasSeenUpdate == "3.3") {
+    //     console.log("You are on version 3.3");
+
+    //     const savedData = localStorage.getItem("space_game_save");
+    //     if (!savedData) return;
+
+    //     state = JSON.parse(savedData);
+
+    // } else {
+    //     console.log("You are on version 3.4");
+
+    //     const compressedData = localStorage.getItem("debrisSave");
+    //     if (!compressedData) return; 
+
+    //     try {
+    //         // Decompress back into standard JSON string
+    //         const decompressedString = LZString.decompressFromUTF16(compressedData);
+    //         state = JSON.parse(decompressedString);
+            
+    //     } catch (error) {
+    //         console.error("Failed to decompress or parse save.", error);
+    //     }
+    // }
 
 
    if (state.upgrades) {
@@ -4972,6 +5075,15 @@ function loadGame() {
     if (shipPowerTransfer) setGreenGlow(powerTransfer);
 
     currentPlanet = planets.find(p => p.hasShip) || planets[1];
+
+    // One-time migration: a legacy pre-3.4 player just had their save loaded
+    // from the old raw key. Write it straight back out through the new
+    // compressed system and remove the old key so future loads always take
+    // the fast "debrisSave" path above.
+    if (migratingFromLegacySave) {
+        saveGame();
+        localStorage.removeItem("space_game_save");
+    }
 }
 
 loadGame();
