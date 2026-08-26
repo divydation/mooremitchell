@@ -1,3 +1,7 @@
+(function () {
+
+
+
 const canvas = document.getElementById("gameCanvas");
 
 
@@ -112,7 +116,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-currentVersion = "3.4";
+currentVersion = "3.4.1";
 
 if (userHasSeenUpdate == currentVersion) {
     document.getElementById("changelog").style.display = "none";
@@ -126,7 +130,7 @@ document.getElementById("playButton").addEventListener('pointerdown', (event) =>
     setTimeout(() => {
         document.getElementById("changelog").style.display = "none";
         localStorage.setItem("updateVerified", currentVersion);
-    }, 3000);
+    }, 2000);
 });
 
 
@@ -5094,4 +5098,4 @@ currentPlanet.graphics.addChild(systemShipPivot);
 // shipGraphic.tint = shipColours[currentShipColourIndex];
 
 
-
+})();
