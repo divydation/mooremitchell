@@ -154,6 +154,25 @@ let energy = 0;
 let material = 10;
 let crystal = 0;
 
+function gm(amount) {
+    material = amount;
+}
+
+window.gm = gm;
+
+function gc(amount) {
+    crystal = amount;
+}
+
+window.gc = gc;
+
+function ge(amount) {
+    energy = amount;
+}
+
+window.ge = ge;
+
+
 offset = 0;
 maxOffset = 10;
 
@@ -1484,11 +1503,15 @@ app.ticker.add((delta) => {
 
             if (!c) continue;
 
-            crystalPosition = polarToCartesian(c.radius, c.angle);
+            
 
             // Don't need to calculate crystals if ship isn't on this planet
             if (drawThisPlanet) {
-                distance = calculateDistance(crystalPosition, shipPosition);
+
+                // crystalPosition = polarToCartesian(c.radius, c.angle);
+                polarToCartesianWrite(c.radius, c.angle, c);
+
+                distance = calculateDistance(c, shipPosition);
 
                 if (distance <= 15**2) {
                     if (c.graphic) {
@@ -1520,8 +1543,8 @@ app.ticker.add((delta) => {
                 c.graphic.visible = true;
 
                 c.graphic.rotation += c.rotationSpeed;
-                newCrystalPosition = polarToCartesian(c.radius, c.angle);
-                c.graphic.position.set(newCrystalPosition.x, newCrystalPosition.y)
+                // newCrystalPosition = polarToCartesian(c.radius, c.angle);
+                c.graphic.position.set(c.x, c.y)
                 
             } else {
                 c.graphic.visible = false;
@@ -1535,6 +1558,8 @@ app.ticker.add((delta) => {
         MAX_DISTANCE_SQ = (50 + upgrades.satelliteBeamDistance.level*10) ** 2; // Maximum range (10,000)
         MAX_TARGETS = upgrades.satelliteBeamCount.level;
 
+        const targetsBuffer = [];
+
         for (let i = 0; i < planet.satellites.length; i++) {
             let p = planet.satellites[i];
 
@@ -1546,7 +1571,7 @@ app.ticker.add((delta) => {
             // const satPos = polarToCartesian(p.radius, p.angle);
 
 
-            let potentialTargets = [];
+            targetsBuffer.length = 0;
 
             // let closestDistance = Infinity;
             // let targetPos = null;
@@ -1557,7 +1582,7 @@ app.ticker.add((delta) => {
             if (drawThisPlanet) {
                 let shipDistance = calculateDistance(p, shipPosition);
                 if (shipDistance < MAX_DISTANCE_SQ) {
-                    potentialTargets.push({
+                    targetsBuffer.push({
                         type: 'ship',
                         distance: shipDistance,
                         ref: { x: shipX, y: shipY }
@@ -1577,7 +1602,7 @@ app.ticker.add((delta) => {
                 let collectorDistance = calculateDistance(p, c);
 
                 if (collectorDistance <= MAX_DISTANCE_SQ) {
-                    potentialTargets.push({
+                    targetsBuffer.push({
                         type: 'collector',
                         distance: collectorDistance,
                         // pos: collectorPos,
@@ -1593,7 +1618,7 @@ app.ticker.add((delta) => {
                 let refinerDistance = calculateDistance(p, r);
 
                 if (refinerDistance <= MAX_DISTANCE_SQ) {
-                    potentialTargets.push({
+                    targetsBuffer.push({
                         type: 'refiner',
                         distance: refinerDistance,
                         // pos: refinerPos,
@@ -1609,7 +1634,7 @@ app.ticker.add((delta) => {
                 let laserDistance = calculateDistance(p, ls);
 
                 if (laserDistance <= MAX_DISTANCE_SQ) {
-                    potentialTargets.push({
+                    targetsBuffer.push({
                         type: 'laser',
                         distance: laserDistance,
                         // pos: laserPos,
@@ -1619,20 +1644,22 @@ app.ticker.add((delta) => {
             }
 
             // Sort array from closest to furthest
-            potentialTargets.sort((a, b) => a.distance - b.distance);
+             // Only sort if we have more candidates than we actually need
+            if (targetsBuffer.length > MAX_TARGETS) {
+                targetsBuffer.sort((a, b) => a.distance - b.distance);
+            }
 
-            // Choose closest targets
-            let finalTargets = potentialTargets.slice(0, MAX_TARGETS);
+            const targetCount = Math.min(targetsBuffer.length, MAX_TARGETS);
+
 
             // if (finalTargets.length > 0 && p.powerStored > 0) p.powerStored -= 0.1;
 
             // 7. Loop through the winners, draw lines, and transfer power
-            for (let t = 0; t < finalTargets.length; t++) {
-                let target = finalTargets[t];
+            for (let t = 0; t < targetCount; t++) {
+                let target = targetsBuffer[t];
 
                 // Draw the power line to this specific target
                 if (drawThisPlanet) {
-                    let randomWidth = Math.random() * 5;
                     randomWidth = 1.5 + Math.random() * 2;
                     powerLineGraphic.lineStyle(randomWidth, 0xF5D752, 1);
                     powerLineGraphic.moveTo(p.x, p.y);
@@ -3148,6 +3175,8 @@ function createProbeParticle(probe) {
 }
 
 
+// Camera Settings
+
 function cycleNextDevice() {
     // Only cycle if we are on the planet view
     if (view !== "planet" || !currentPlanet) return;
@@ -4096,56 +4125,11 @@ Object.values(upgrades).forEach(upgrade => {
 });
 
 
-allMenuLines = [];
-
 function switchMenu(oldActiveMenuID, newActiveMenuID) {
     document.getElementById(oldActiveMenuID).style.display = "none";
     document.getElementById(newActiveMenuID).style.display = "flex";
-
-    // // 1. Hide every single line globally so they don't float over other menus
-    // // allMenuLines.forEach(item => item.line.hide());
-
-    // // 2. Find all elements inside the newly opened menu that want to connect to something
-    // const nodesWithLines = document.querySelectorAll(`#${newActiveMenuID} [data-connect-to]`);
-
-    // nodesWithLines.forEach(startNode => {
-    //     // Get the target ID(s). The .split(',') allows you to branch to multiple skills!
-    //     const targetIds = startNode.getAttribute('data-connect-to').split(',');
-
-    //     targetIds.forEach(targetId => {
-    //         const targetNode = document.getElementById(targetId.trim());
-    //         if (!targetNode) return; // Skip if target doesn't exist
-
-    //         // Check if we've already generated this specific line before
-    //         let existingLine = allMenuLines.find(item => item.start === startNode && item.end === targetNode);
-
-    //         if (!existingLine) {
-    //             // If it doesn't exist, create it for the first time
-    //             const newLine = new LeaderLine(startNode, targetNode, {
-    //                 color: '#3f3f3f',
-    //                 size: 10,
-    //                 path: 'straight',
-    //                 startPlug: 'behind',
-    //                 endPlug: 'behind',
-    //                 dropShadow: false
-    //             });
-                
-    //             // Save it to our master array so we can hide/show it later
-    //             allMenuLines.push({ start: startNode, end: targetNode, line: newLine });
-
-    //             newLine.show('fade', { duration: 200 }); 
-    //         } else {
-    //             // Force it to recalculate its position, then fade in
-    //             existingLine.line.position();
-    //             existingLine.line.show('fade', { duration: 200 });
-    //         }
-    //     });
-    // });
 }
 
-function infoMenuSelect(infoId) {
-
-}
 
 // Info text paragraphs
 const container = document.getElementById('infoTexts');
@@ -4190,8 +4174,6 @@ function menuFade() {
         // buttons.forEach(currentbutton => {
         // currentbutton.style.opacity = "0";
         document.getElementById("disapearingDiv").style.opacity = "0";
-
-        // allMenuLines.forEach(item => item.line.hide('fade', { duration: 200 }));
     // });
     }, 100);
     
@@ -4379,7 +4361,8 @@ holdButtons.forEach(button => {
             } else if (button.id == "materialValue") {
                 upgradeMaterialValueLevel();
             } else if (button.id == "resetButton") {
-                localStorage.removeItem("space_game_save");
+                // localStorage.removeItem("space_game_save");
+                localStorage.removeItem("debrisSave");
                 window.location.reload();
                 return;
             } else if (button.id == "resetPlanetButton") {
