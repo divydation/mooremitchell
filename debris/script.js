@@ -4616,28 +4616,6 @@ function saveGame() {
     };
 
 
-
-    // // SAVE BOTH VERSIONS
-
-    // const jsonString = JSON.stringify(gameState);
-
-    // // Version 3.3 or earlier
-    // // Saves RAW as "space_game_save"
-
-    // try {
-    //     localStorage.setItem("space_game_save", jsonString);
-    // } catch (error) {
-    //     console.error("DEBRIS SAVE ERROR: Failed to save game to localStorage.", error);
-    // }
-
-
-    // // Version 4.4+
-    // // Saves COMPRESSED as "debrisSave"
-    // const compressedData = LZString.compressToUTF16(jsonString);
-    // localStorage.setItem("debrisSave", compressedData);
-
-
-
     // We ONLY write the compressed save from now on. Old (pre-3.4) saves are
     // migrated once, on load, from "space_game_save" - see loadGame(). We used
     // to also write that raw/uncompressed key here on every autosave "for
@@ -4784,7 +4762,7 @@ function loadGame() {
     materialValueLevel = state.materialValueLevel !== undefined ? state.materialValueLevel : 1;
     materialValueUpgradeCost = state.materialValueUpgradeCost !== undefined ? state.materialValueUpgradeCost : 10;
 
-    currentShipColourIndex = state.currentShipColourIndex;
+    currentShipColourIndex = state.currentShipColourIndex !== undefined ? state.currentShipColourIndex : 0;
 
     probeParticles = []; // Clear visual trails on load
 
@@ -5053,7 +5031,7 @@ function loadGame() {
         };
     });
 
-    shipGraphic.tint = shipColours[state.currentShipColourIndex];
+    shipGraphic.tint = shipColours[currentShipColourIndex] ?? shipColours[0];
     altitudeOn = state.altitudeOn;
     snappingOn = state.snappingOn;
     collectionOn = state.collectionOn;
