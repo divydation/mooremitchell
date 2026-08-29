@@ -116,7 +116,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-currentVersion = "3.4.1";
+currentVersion = "3.5";
 
 if (userHasSeenUpdate == currentVersion) {
     document.getElementById("changelog").style.display = "none";
@@ -186,7 +186,7 @@ let shipPosition = {
 
 
 // Particles
-let fire = [];
+let fireParticles = [];
 
 
 // Stats
@@ -227,23 +227,47 @@ const baseCosts = {
 
 const MAX_MATERIALS = 20000;
 
+let deviceDeployCounter = 0; // increases every time any device is deployed
+
+function trackArrayForDeployment(arr, deviceType) {
+    const originalPush = arr.push.bind(arr);
+    arr.push = function(item) {
+        item.deployedAt = deviceDeployCounter++;
+        item.deviceType = deviceType; // remember which planet array this device lives in
+        return originalPush(item);
+    };
+    return arr;
+}
+
+function createTrackedDeviceArray(deviceType) {
+    return trackArrayForDeployment([], deviceType);
+}
+
 const getBaseDevices = () => ({
     drills: [],
     materialsToCollect: [],
-    satellites: [],
-    collectors: [],
+    satellites: createTrackedDeviceArray('satellites'),
+    collectors: createTrackedDeviceArray('collectors'),
     crystals: [],
     comets: [],
-    laserSatellites: [],
-    refiners: [],
-    lenses: [],
+    laserSatellites: createTrackedDeviceArray('laserSatellites'),
+    refiners: createTrackedDeviceArray('refiners'),
+    lenses: createTrackedDeviceArray('lenses'),
 });
 
-// --- DEVICE CAMERA TRACKING ---
-let focusedDevice = null;
-let allDevicesOnPlanet = [];
-let currentDeviceIndex = -1;
-let isZoomedIn = false;
+// const getBaseDevices = () => ({
+//     drills: [],
+//     materialsToCollect: [],
+//     satellites: [],
+//     collectors: [],
+//     crystals: [],
+//     comets: [],
+//     laserSatellites: [],
+//     refiners: [],
+//     lenses: [],
+// });
+
+
 
 drillRateUpgradeCost = 10;
 collectionRadiusUpgradeCost = 10;
@@ -1121,13 +1145,23 @@ app.ticker.add((delta) => {
     let targetZoom = 1; 
 
     if (focusedDevice && isZoomedIn) {
-        // 1. Target the device's absolute coordinates
         targetPivotX = focusedDevice.x;
         targetPivotY = focusedDevice.y;
-        
-        // 2. Set your target zoom level
-        targetZoom = 2; 
+        targetZoom = 2.5;
+
+        // Pulse the selected device's alpha between 0.5 and 1
+        focusedDevice.graphic.alpha = 0.75 + Math.sin(performance.now() / 200) * 0.25;
+
+        if (focusedDevice.isBeingDestroyed) {
+            pushNewFireParticleTo(focusedDevice.x, focusedDevice.y, currentPlanet, 20);
+        }
+    } 
+
+    // Reset alpha on the previously focused device if selection changed
+    if (lastFocusedDevice && lastFocusedDevice !== focusedDevice) {
+        lastFocusedDevice.graphic.alpha = 1;
     }
+    lastFocusedDevice = focusedDevice;
 
     // Keep the container anchored to the center of your 1000x1000 game world
     let targetPosX = 500;
@@ -1766,6 +1800,8 @@ app.ticker.add((delta) => {
         for (let i = 0; i < planet.drills.length; i++) {
             let p = planet.drills[i];
 
+            polarToCartesianWrite(p.radius + 6, p.angle, p);
+
             if (p.radius < 30) {
                 p.graphic.destroy();
                 p.pivot.destroy();
@@ -1779,6 +1815,10 @@ app.ticker.add((delta) => {
                 p.radius -= (planet.gravityFactor * 2 * (300 / p.radius) ** 2);
                 // p.radius = Math.max(p.radius, planet.radius);
                 p.angle = p.angle % toRadians(360);
+
+                // if (frameCounter % 10 !== i % 10) {
+                //     pushNewFireParticleTo(p.x, p.y, planet, p.graphic.width);
+                // }
             } else {
                 p.radius = planet.radius;
                 p.arrived = true;
@@ -2272,7 +2312,7 @@ app.ticker.add((delta) => {
         for (let i = 0; i < planet.comets.length; i++) {
             let comet = planet.comets[i];
 
-            // spawnFireParticle(flightRadius, shipRotation);
+            
 
             // Comets don't orbit the planet, they pass by
             comet.progress += comet.speed;
@@ -2283,6 +2323,11 @@ app.ticker.add((delta) => {
 
             comet.x = comet.currentX;
             comet.y = comet.currentY;
+
+            // if (frameCounter % 2 !== i % 2) {
+            //     pushNewFireParticleTo(comet.x, comet.y, planet, comet.graphic.width);
+            // }
+            
 
             if (comet.progress >= 1.0) {
                 if (comet.graphic) comet.graphic.destroy();
@@ -2379,6 +2424,30 @@ app.ticker.add((delta) => {
                 sprite.life = 0; 
                 sprite.alpha = 0; 
             }
+        }
+    }
+
+    for (let i = 0; i < fireParticles.length; i++) {
+        fireParticle = fireParticles[i];
+
+        if (currentPlanet != fireParticle.onPlanet) {
+            fireParticle.graphic.visible = false;
+            continue;
+        };
+
+        fireParticle.graphic.visible = true;
+
+        fireParticle.life -= 0.05;
+
+        fireParticle.graphic.scale.x -= 0.02;
+        fireParticle.graphic.scale.y -= 0.02;
+        fireParticle.graphic.alpha -= 0.01;
+
+        if (fireParticle.graphic.alpha <= 0 || fireParticle.graphic.scale.x <= 0 || fireParticle.life <= 0) {
+            fireParticle.graphic.destroy(); 
+            fireParticles.splice(i, 1);
+            i--;
+            continue;
         }
     }
 
@@ -2893,6 +2962,41 @@ function spawnFireParticle(radius, angle) {
     }
 }
 
+function pushNewFireParticleTo(posX, posY, planet, spread) {
+
+    spread = spread/3;
+
+    randomisedSpreadX = Math.random() * 2 * spread - spread;
+    randomisedSpreadY = Math.random() * 2 * spread - spread;
+
+    randomisedPosX = posX + randomisedSpreadX;
+    randomisedPosY = posY + randomisedSpreadY;
+
+    const fireGraphic = new PIXI.Sprite(fireTexture);
+    fireGraphic.anchor.set(0.5);
+    fireGraphic.position.set(randomisedPosX, randomisedPosY);
+
+    fireGraphic.scale.set(1);
+    fireGraphic.alpha = 1; 
+    fireGraphic.tint = fireColors[Math.floor(Math.random() * fireColors.length)];
+
+    // Hide if not viewing the planet
+    fireGraphic.visible = true;
+
+    fireContainer.addChild(fireGraphic);
+
+    
+
+
+    fireParticles.push({
+        x: randomisedPosX,
+        y: randomisedPosY,
+        life: Math.random() * 40,
+        graphic: fireGraphic,
+        onPlanet: planet
+    });
+}
+
 
 
 function deleteMaterial(planet, index) {
@@ -2911,32 +3015,8 @@ function deleteMaterial(planet, index) {
     materials.pop();
 }
 
-// function olddeleteMaterial(planet, index) {
-//     let last = planet.materials.count - 1;
 
-//     // If we aren't deleting the very last rock, copy the last rock's data into this hole
-//     if (index !== last) {
-//         planet.materials.radius[index] = planet.materials.radius[last];
-//         planet.materials.angle[index] = planet.materials.angle[last];
-//         planet.materials.rotation[index] = planet.materials.rotation[last];
-//         planet.materials.radiusChange[index] = planet.materials.radiusChange[last];
-//         planet.materials.timeInTractorBeam[index] = planet.materials.timeInTractorBeam[last];
-//         planet.materials.value[index] = planet.materials.value[last];
-//         planet.materials.alpha[index] = planet.materials.alpha[last];
-//         planet.materials.x[index] = planet.materials.x[last];
-//         planet.materials.y[index] = planet.materials.y[last];
-//         planet.materials.refined[index] = planet.materials.refined[last];
-//         planet.materials.isTargeted[index] = planet.materials.isTargeted[last];
-//     }
 
-//     // THE FIX: Hide the sprite at the 'last' index before it gets abandoned!
-//     if (materialSprites[last]) {
-//         materialSprites[last].alpha = 0;
-//     }
-
-//     // Shrink the pool by 1
-//     planet.materials.count--;
-// }
 
 
 function spawnComet(planet) {
@@ -3179,43 +3259,103 @@ function createProbeParticle(probe) {
 
 
 // Camera Settings
+let focusedDevice = null;
+let lastFocusedDevice = null;
+let allDevicesOnPlanet = [];
+let currentDeviceIndex = 0;
+let isZoomedIn = false;
 
-function cycleNextDevice() {
-    // Only cycle if we are on the planet view
-    if (view !== "planet" || !currentPlanet) return;
-
-    // Combine all device arrays into one flat array
+function refreshDeviceList() {
     allDevicesOnPlanet = [
-        ...currentPlanet.drills,
         ...currentPlanet.satellites,
         ...currentPlanet.collectors,
         ...currentPlanet.refiners,
         ...currentPlanet.laserSatellites,
         ...currentPlanet.lenses
-    ];
+    ].sort((a, b) => (b.deployedAt ?? -1) - (a.deployedAt ?? -1)); // newest first
+}
 
-    // If there are no devices, reset and exit
+function focusDeviceAtIndex(index) {
     if (allDevicesOnPlanet.length === 0) {
         focusedDevice = null;
         isZoomedIn = false;
         return;
     }
-
-    // Move to the next index, looping back to 0 if we hit the end
-    currentDeviceIndex++;
-    if (currentDeviceIndex >= allDevicesOnPlanet.length) {
-        currentDeviceIndex = 0;
-    }
-
+    // Wrap in both directions (works for negative index too)
+    currentDeviceIndex = ((index % allDevicesOnPlanet.length) + allDevicesOnPlanet.length) % allDevicesOnPlanet.length;
     focusedDevice = allDevicesOnPlanet[currentDeviceIndex];
-    isZoomedIn = true; // Trigger the zoom
+    isZoomedIn = true;
 }
 
-// Optional: A function to snap back to the ship/planet
+// Called when camera mode is first opened - always lands on the newest device
+function enterCameraMode() {
+    if (view !== "planet" || !currentPlanet) return;
+    refreshDeviceList();
+    focusDeviceAtIndex(0);
+}
+
+function cycleNextDevice() {
+    if (view !== "planet" || !currentPlanet) return;
+    refreshDeviceList();
+    focusDeviceAtIndex(currentDeviceIndex + 1);
+}
+
+function cyclePreviousDevice() {
+    if (view !== "planet" || !currentPlanet) return;
+    refreshDeviceList();
+    focusDeviceAtIndex(currentDeviceIndex - 1);
+}
+
 function resetCameraFocus() {
     focusedDevice = null;
     isZoomedIn = false;
 }
+
+document.getElementById("nextDeviceButton").addEventListener('pointerdown', (event) => {
+    if (focusedDevice.isBeingDestroyed) return;
+    setTimeout(() => { cycleNextDevice(); }, 100);
+});
+
+document.getElementById("previousDeviceButton").addEventListener('pointerdown', (event) => {
+    if (focusedDevice.isBeingDestroyed) return;
+    setTimeout(() => { cyclePreviousDevice(); }, 100);
+});
+
+function destroyDevice(device = focusedDevice) {
+    if (!device) return;
+
+    device.isBeingDestroyed = true;
+
+    // Allow time for goodbye
+    setTimeout(() => { 
+
+        // Clean up PIXI display objects
+        if (device.graphic) device.graphic.destroy();
+        if (device.pivot) device.pivot.destroy();
+        if (device.arms) device.arms.destroy();
+
+        // Find the array this device lives in
+        const arr = device.deviceType
+            ? currentPlanet[device.deviceType]
+            : [currentPlanet.satellites, currentPlanet.collectors, currentPlanet.refiners, currentPlanet.laserSatellites, currentPlanet.lenses]
+                .find(a => a.includes(device)); // fallback for devices saved before deviceType existed
+
+        if (arr) {
+            const index = arr.indexOf(device);
+            if (index !== -1) {
+                const lastIndex = arr.length - 1;
+                if (index !== lastIndex) arr[index] = arr[lastIndex];
+                arr.pop();
+            }
+        }
+
+        // Keep the camera in a sane state if we just destroyed what we were looking at
+        if (lastFocusedDevice === device) lastFocusedDevice = null;
+        if (focusedDevice === device) cycleNextDevice(); // refreshes the list and re-focuses cleanly
+
+    }, 1000);
+}
+
 
 
 
@@ -4095,7 +4235,21 @@ function changeResolution() {
 }
 
 
+// STATS MENU BY CLICKING MATERIALS
+const materialButton = document.getElementById("materialLabel");
 
+materialButton.addEventListener('pointerdown', (event) => {
+
+    oldActiveMenuID = activeMenu;
+    activeMenu = "statsMenu";
+
+    menuFade();
+
+    setTimeout(() => {
+        switchMenu(oldActiveMenuID, activeMenu);
+    }, 200);
+
+});
 
 
 // Menu switching
@@ -4109,6 +4263,7 @@ document.getElementById("statsMenu").style.display = "none";
 document.getElementById("gadgetMenu").style.display = "none";
 document.getElementById("infoMenu").style.display = "none";
 document.getElementById("creditsMenu").style.display = "none";
+document.getElementById("cameraEditMenu").style.display = "none";
 
 // Upgrade Menus
 document.getElementById("drillUpgradeMenu").style.display = "none";
@@ -4150,6 +4305,10 @@ menuButtons.forEach(button => {
     oldActiveMenuID = activeMenu;
     activeMenu = extractedId;
 
+    if (activeMenu == "cameraEditMenu") {
+        enterCameraMode();
+    }
+
     menuFade();
 
     setTimeout(() => {
@@ -4163,11 +4322,7 @@ menuButtons.forEach(button => {
 
         if (button.dataset.info) document.getElementById(button.dataset.info).style.display = "";
 
-
     }, 200);
-
-    
-    
   });
 });
 
@@ -4199,6 +4354,10 @@ returnButtons.forEach(button => {
     
     oldActiveMenuID = activeMenu;
     activeMenu = "mainMenu";
+
+
+    resetCameraFocus();
+
 
     menuFade();
     
@@ -4279,8 +4438,8 @@ function updateLabels() {
     document.getElementById("materialValueLevel").textContent = "LVL " + formatNumber(materialValueLevel).toString();
 
     Object.values(upgrades).forEach(upgrade => {
-        document.getElementById(upgrade.idCost).textContent = formatNumber(upgrade.cost);
-        document.getElementById(upgrade.idLevel).textContent = "LVL " + formatNumber(upgrade.level).toString();
+        // document.getElementById(upgrade.idCost).textContent = formatNumber(upgrade.cost);
+        // document.getElementById(upgrade.idLevel).textContent = "LVL " + formatNumber(upgrade.level).toString();
     });
 }
 
@@ -4381,6 +4540,8 @@ holdButtons.forEach(button => {
                 travelToSelectedPlanet();
             } else if (button.id == "unlockButton") {
                 deployProbe();
+            } else if (button.id == "destroyDeviceButton") {
+                destroyDevice();
             }
 
             resetBar();
@@ -4685,30 +4846,6 @@ function loadGame() {
  
     if (!state) return;
 
-    // MY METHOD
-    // if (userHasSeenUpdate == "3.3") {
-    //     console.log("You are on version 3.3");
-
-    //     const savedData = localStorage.getItem("space_game_save");
-    //     if (!savedData) return;
-
-    //     state = JSON.parse(savedData);
-
-    // } else {
-    //     console.log("You are on version 3.4");
-
-    //     const compressedData = localStorage.getItem("debrisSave");
-    //     if (!compressedData) return; 
-
-    //     try {
-    //         // Decompress back into standard JSON string
-    //         const decompressedString = LZString.decompressFromUTF16(compressedData);
-    //         state = JSON.parse(decompressedString);
-            
-    //     } catch (error) {
-    //         console.error("Failed to decompress or parse save.", error);
-    //     }
-    // }
 
 
    if (state.upgrades) {
@@ -4752,7 +4889,7 @@ function loadGame() {
 
     drillProductionRate = state.drillProductionRate;
     drillLevel = state.drillLevel;
-    collectionRadius = state.collectionRadius;
+    // collectionRadius = state.collectionRadius;
     collectionRadiusLevel = state.collectionRadiusLevel;
     boostSpeedLevel = state.boostSpeedLevel !== undefined ? state.boostSpeedLevel : 1;
     boostSpeedAdd = state.boostSpeedAdd !== undefined ? state.boostSpeedAdd : 5;
@@ -4965,6 +5102,12 @@ function loadGame() {
             return c;
         });
 
+        p.satellites = trackArrayForDeployment(p.satellites, 'satellites');
+        p.collectors = trackArrayForDeployment(p.collectors, 'collectors');
+        p.refiners = trackArrayForDeployment(p.refiners, 'refiners');
+        p.laserSatellites = trackArrayForDeployment(p.laserSatellites, 'laserSatellites');
+        p.lenses = trackArrayForDeployment(p.lenses, 'lenses');
+
         // Comets
         p.comets = (savedPlanet.comets || []).map(c => {
             // 1. Create a Sprite matching the spawnComet logic
@@ -5043,6 +5186,18 @@ function loadGame() {
     if (shipPowerTransfer) setGreenGlow(powerTransfer);
 
     currentPlanet = planets.find(p => p.hasShip) || planets[1];
+
+    let maxDeployedAt = -1;
+    state.planets.forEach(sp => {
+        ['satellites', 'collectors', 'refiners', 'laserSatellites', 'lenses'].forEach(key => {
+            (sp[key] || []).forEach(d => {
+                if (typeof d.deployedAt === 'number' && d.deployedAt > maxDeployedAt) {
+                    maxDeployedAt = d.deployedAt;
+                }
+            });
+        });
+    });
+    deviceDeployCounter = maxDeployedAt + 1;
 
     // One-time migration: a legacy pre-3.4 player just had their save loaded
     // from the old raw key. Write it straight back out through the new

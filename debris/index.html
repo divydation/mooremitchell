@@ -27,12 +27,12 @@
                         <p class="subtitle">DEBRIS</p>
                         </div>
                         
-                        <p class="title">Update 3.4.1</p>
+                        <p class="title">Update 3.5</p>
                     </div>
                 
                     <div class=changelist>
-                        <p class="new">* Fixed saving system for large saves</p>
-                        <p class="removed">* Stopped silly hacking</p>
+                        <p class="new">NEW: Destroy devices that were "accidentally" placed... No Refunds.</p>
+                        <!-- <p class="removed">* Stopped silly hacking</p> -->
                     </div>
                 </div>
                 <div class="rightSide">
@@ -76,11 +76,15 @@
                     <div class="mainMenu menu" id="mainMenu">
                         <button id="deviceButton" class="wideButton redButton menuButton">DEPLOY</button>
                         <button id="planetSelectButton" class="wideButton redButton menuButton">SYSTEM</button>
-                        <!-- <button id="gadgetButton" class="wideButton redButton menuButton">GADGETS</button> -->
-
-                        <button id="statsButton" class="redButton menuButton">
-                            <svg class="buttonSVG" height="24" viewBox="0 0 24 24" width="24"><path d="m21 21h-16.4c-.56005 0-.84008 0-1.05399-.109-.18816-.0959-.34114-.2488-.43702-.437-.10899-.2139-.10899-.4939-.10899-1.054v-16.4m18 4-5.4343 5.4343c-.198.198-.297.297-.4112.3341-.1004.0327-.2086.0327-.309 0-.1142-.0371-.2132-.1361-.4112-.3341l-1.8686-1.8686c-.198-.198-.297-.297-.4112-.3341-.1004-.0327-.2086-.0327-.309 0-.1142.0371-.2132.1361-.4112.3341l-4.4343 4.4343m14-8h-4m4 0v4" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
+                        
+                        <button id="cameraEditButton" class="redButton menuButton">
+                            <svg class="buttonSVG" height="24" viewBox="0 0 24 24" width="24"><path d="m17 9-6 6m0-6 6 6m-14.28-2.04 4.32 5.76c.352.4693.528.704.75105.8732.19755.15.42127.2618.65972.3299.26923.0769.56257.0769 1.14923.0769h7.6c1.6802 0 2.5202 0 3.162-.327.5645-.2876 1.0234-.7465 1.311-1.311.327-.6418.327-1.4818.327-3.162v-6.4c0-1.68016 0-2.52024-.327-3.16197-.2876-.56449-.7465-1.02343-1.311-1.31105-.6418-.32698-1.4818-.32698-3.162-.32698h-7.6c-.58666 0-.88 0-1.14923.07689-.23845.0681-.46217.17996-.65972.32986-.22305.16925-.39905.40392-.75105.87325l-4.32 5.76c-.25819.3443-.38729.5164-.43706.7054-.04392.1669-.04392.3423 0 .5092.04977.189.17887.3611.43706.7054z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
                         </button>
+
+                        <!-- <button id="statsButton" class="redButton menuButton">
+                            <svg class="buttonSVG" height="24" viewBox="0 0 24 24" width="24"><path d="m21 21h-16.4c-.56005 0-.84008 0-1.05399-.109-.18816-.0959-.34114-.2488-.43702-.437-.10899-.2139-.10899-.4939-.10899-1.054v-16.4m18 4-5.4343 5.4343c-.198.198-.297.297-.4112.3341-.1004.0327-.2086.0327-.309 0-.1142-.0371-.2132-.1361-.4112-.3341l-1.8686-1.8686c-.198-.198-.297-.297-.4112-.3341-.1004-.0327-.2086-.0327-.309 0-.1142.0371-.2132.1361-.4112.3341l-4.4343 4.4343m14-8h-4m4 0v4" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
+                        </button> -->
+
                         <button id="gadgetButton" class="redButton menuButton">
                             <svg class="buttonSVG" height="24" viewBox="0 0 24 24" width="24"><path d="m3 8h12m0 0c0 1.65686 1.3431 3 3 3s3-1.34315 3-3-1.3431-3-3-3-3 1.34315-3 3zm-6 8h12m-12 0c0 1.6569-1.34315 3-3 3s-3-1.3431-3-3 1.34315-3 3-3 3 1.3431 3 3z" stroke-linecap="round" stroke-linejoin="round"/></svg>                        
                         </button>
@@ -489,6 +493,22 @@
                         <button id="cancelPeekButton" class="navigationButton returnButton"><p>HOME</p></button>
 
                     </div>
+
+
+                    <!-- Camera Edit Menu -->
+                    <div class="cameraEdit menu" id="cameraEditMenu">
+
+                        <div class="leftMenu menu">
+                            <button id="previousDeviceButton" class="redButton">PREV</button>
+                            <button id="nextDeviceButton" class="redButton">NEXT</button>
+                        </div>
+
+                        <button id="destroyDeviceButton" class="holdButton wideButton"><span>DESTROY</span></button>
+                            
+                        <button class="navigationButton returnButton"><p>HOME</p></button>
+
+                    </div>
+
 
                     <!-- Gadget Menu -->
                     <div class="gadgetMenu menu" id="gadgetMenu">
