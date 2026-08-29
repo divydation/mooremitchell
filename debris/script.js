@@ -339,7 +339,7 @@ function purchaseUpgrade(upgradeKey) {
 let lastTime = Date.now();
 const TARGET_FPS = 60;
 const MS_PER_FRAME = 1000 / TARGET_FPS; // ~16.66ms
-setInterval(saveGame, 2000);
+setInterval(saveGame, 3000);
 
 updating = true;
 
@@ -629,7 +629,7 @@ fireGlowWrapper.addChild(fireContainer); // Make sure it's added below the shado
 
 
 // 3. The Object Pool: Pre-allocate 500 sprites
-const MAX_FIRE = 500;
+const MAX_FIRE = 1000;
 const fireSprites = [];
 
 for (let i = 0; i < MAX_FIRE; i++) {
@@ -2024,7 +2024,8 @@ app.ticker.add((delta) => {
                     distanceToComet = calculateDistance(laserSat, comet);
 
                     // If out of range, go to next comet for checking
-                    if (distanceToComet > (100 * upgrades.laserRange.level * 2) ** 2) continue;
+                    // LASER RANGE
+                    // if (distanceToComet > (100 * upgrades.laserRange.level * 2) ** 2) continue;
 
                     if (distanceToComet < smallestDistance && !isLaserBlocked(laserSat, comet, planet)) {
                         smallestDistance = distanceToComet;
@@ -2270,6 +2271,8 @@ app.ticker.add((delta) => {
         // Comets Loop
         for (let i = 0; i < planet.comets.length; i++) {
             let comet = planet.comets[i];
+
+            // spawnFireParticle(flightRadius, shipRotation);
 
             // Comets don't orbit the planet, they pass by
             comet.progress += comet.speed;
