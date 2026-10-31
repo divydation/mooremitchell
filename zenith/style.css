@@ -1,0 +1,71 @@
+html, body {
+    background-color: rgba(20,20,20);
+    overflow: hidden;
+    font-family: "Silkscreen";
+    -webkit-user-select: none;
+    user-select: none;
+    margin: 0;
+    height: 100dvh;
+
+    touch-action: none;
+
+
+    -webkit-touch-callout: none;
+    -webkit-user-callout: none;
+    -webkit-user-select: none;
+    -webkit-user-drag: none;
+    -webkit-user-modify: none;
+    -webkit-highlight: none;
+}
+
+
+
+.silkscreen-regular {
+  font-family: "Silkscreen", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.silkscreen-bold {
+  font-family: "Silkscreen", sans-serif;
+  font-weight: 700;
+  font-style: normal;
+}
+
+.canvasContainer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100vw;
+    height: 100vh;
+}
+
+#gameCanvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block; /* Removes weird inline margins */
+    overflow: hidden;
+}
+
+
+
+.container {
+    width: 100vw;
+    height: 100vh;
+    position: absolute;
+}
+
+.topLeftUI {
+    position: absolute;
+    top: 2vw;
+    left: 2vw;
+}
+
+.healthBar {
+    width: 30vw;
+    height: 3vw;
+    background-color: red;
+}

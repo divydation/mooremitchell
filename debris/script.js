@@ -116,22 +116,34 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-currentVersion = "3.5";
+currentVersion = "3.5.1";
 
 if (userHasSeenUpdate == currentVersion) {
-    document.getElementById("changelog").style.display = "none";
+    // document.getElementById("changelog").style.display = "none";
+    returnStylesToNormal();
 } else {
     document.getElementById("changelog").style.display = "flex";
+    document.getElementById("gameCanvas").style.opacity = "0.2";
+    document.getElementById("lowerHUD").style.opacity = "0.2";
+    document.body.style.backgroundColor = "rgba(5,5,5)";
 }
 
 // Play button
 document.getElementById("playButton").addEventListener('pointerdown', (event) => {
     document.getElementById("playButton").innerHTML = "WAIT"
     setTimeout(() => {
-        document.getElementById("changelog").style.display = "none";
+        // document.getElementById("changelog").style.display = "none";
+        returnStylesToNormal();
         localStorage.setItem("updateVerified", currentVersion);
-    }, 2000);
+    }, 1000);
 });
+
+function returnStylesToNormal() {
+    document.getElementById("changelog").style.display = "none";
+    document.getElementById("gameCanvas").style.opacity = "1";
+    document.getElementById("lowerHUD").style.opacity = "1";
+    document.body.style.backgroundColor = "rgba(20,20,20)";
+}
 
 
 
@@ -4438,8 +4450,8 @@ function updateLabels() {
     document.getElementById("materialValueLevel").textContent = "LVL " + formatNumber(materialValueLevel).toString();
 
     Object.values(upgrades).forEach(upgrade => {
-        // document.getElementById(upgrade.idCost).textContent = formatNumber(upgrade.cost);
-        // document.getElementById(upgrade.idLevel).textContent = "LVL " + formatNumber(upgrade.level).toString();
+        document.getElementById(upgrade.idCost).textContent = formatNumber(upgrade.cost);
+        document.getElementById(upgrade.idLevel).textContent = "LVL " + formatNumber(upgrade.level).toString();
     });
 }
 
