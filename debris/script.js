@@ -12,7 +12,7 @@ const app = new PIXI.Application({
     resolution: Math.min(window.devicePixelRatio || 1, 2),
     // resolution: 2,
     backgroundColor: 0x141414,
-    antialias: true,
+    // antialias: true,
 });
 
 app.ticker.maxFPS = 60;
@@ -116,7 +116,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-currentVersion = "3.5.1";
+currentVersion = "3.6";
 
 if (userHasSeenUpdate == currentVersion) {
     // document.getElementById("changelog").style.display = "none";
@@ -235,6 +235,7 @@ const baseCosts = {
     laserSatelliteCostMaterial: 100,
     refinerCostMaterial: 5000,
     lensCostMaterial: 5000,
+    compactorCostMaterial: 10000,
 };
 
 const MAX_MATERIALS = 20000;
@@ -265,6 +266,7 @@ const getBaseDevices = () => ({
     laserSatellites: createTrackedDeviceArray('laserSatellites'),
     refiners: createTrackedDeviceArray('refiners'),
     lenses: createTrackedDeviceArray('lenses'),
+    compactors: createTrackedDeviceArray('compactors')
 });
 
 // const getBaseDevices = () => ({
@@ -343,14 +345,14 @@ upgrades = {
     upgradeID: "laserPower",
     menuID: "laserUpgradeMenu",
   },
-  laserRange: {
-    level: 1,
-    cost: 10,
-    idLevel: "laserRangeLevel",
-    idCost: "laserRangeUpgradeCost",
-    upgradeID: "laserRange",
-    menuID: "laserUpgradeMenu",
-  },
+//   laserRange: {
+//     level: 1,
+//     cost: 10,
+//     idLevel: "laserRangeLevel",
+//     idCost: "laserRangeUpgradeCost",
+//     upgradeID: "laserRange",
+//     menuID: "laserUpgradeMenu",
+//   },
 };
 
 function purchaseUpgrade(upgradeKey) {
@@ -1336,6 +1338,10 @@ app.ticker.add((delta) => {
             polarToCartesianWrite(planet.lenses[c].radius, planet.lenses[c].angle, planet.lenses[c]);
         }
 
+        for (let c = 0; c < planet.compactors.length; c++) {
+            polarToCartesianWrite(planet.compactors[c].radius, planet.compactors[c].angle, planet.compactors[c]);
+        }
+
         // Materials
         for (let m = 0; m < planet.materialsToCollect.length; m++) {
 
@@ -1417,7 +1423,7 @@ app.ticker.add((delta) => {
                 let dy = Math.abs(mat.y - collector.y);
 
                 // Only do the expensive circle math if it's within a broad square area
-                if (dx < 300 && dy < 300) { 
+                if (dx < 300 || dy < 300) { 
                     let distanceSq = (dx * dx) + (dy * dy); 
 
                     // Instant Collection (ALWAYS runs, even in background)
@@ -1469,7 +1475,7 @@ app.ticker.add((delta) => {
                     let dx = Math.abs(mat.x - refiner.x);
                     let dy = Math.abs(mat.y - refiner.y);
 
-                    if (dx > 300 && dy > 300) continue;
+                    if (dx > 300 || dy > 300) continue;
 
                     let distanceSq = (dx * dx) + (dy * dy); 
 
@@ -1510,6 +1516,50 @@ app.ticker.add((delta) => {
             }
             
             
+            for (let c = 0; c < planet.compactors.length; c++) {
+
+
+                let compactor = planet.compactors[c];
+
+                if (compactor.battery < 0.5) continue;
+
+                let dx = Math.abs(mat.x - compactor.x);
+                let dy = Math.abs(mat.y - compactor.y);
+
+                if (dx > 300 || dy > 300) continue;
+
+                let distanceSq = (dx * dx) + (dy * dy); 
+
+                // Instant Collection (ALWAYS runs, even in background)
+                if (distanceSq <= 225) {
+                    compactor.mineralsStored += Math.floor(mat.value);
+                    deleteMaterial(planet, m); 
+                    m--; 
+                    materialCollected = true;
+                    break; 
+                }
+
+                // Instant Collection (ONLY runs in background planets)
+                if (!drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
+                    compactor.mineralsStored += Math.floor(mat.value);
+                    deleteMaterial(planet, m); 
+                    m--; 
+                    materialCollected = true;
+                    break; 
+                }
+
+                // Tractor Beam Pull (ONLY runs on active planet!)
+                if (drawThisPlanet && distanceSq <= planetCollectionRadius**2) {
+                    mat.timeInTractorBeam += 0.05;
+                    let beamTime = Math.min(mat.timeInTractorBeam, 1);
+                    
+                    mat.radius += (compactor.radius + 7.5 - mat.radius) * beamTime;
+
+                    let angleDiff = Math.atan2(Math.sin(compactor.angle - mat.angle), Math.cos(compactor.angle - mat.angle));
+                    mat.angle += (angleDiff * beamTime) + toRadians(0.5);
+                }
+            }
+
             if (materialCollected) continue;
 
             // -----------------------------------------
@@ -1689,6 +1739,21 @@ app.ticker.add((delta) => {
                 }
             }
 
+            // 3. Check distance to all compactors
+            for (let j = 0; j < planet.compactors.length; j++) {
+                let ls = planet.compactors[j];
+                let compactorDistance = calculateDistance(p, ls);
+
+                if (compactorDistance <= MAX_DISTANCE_SQ) {
+                    targetsBuffer.push({
+                        type: 'compactor',
+                        distance: compactorDistance,
+                        // pos: laserPos,
+                        ref: ls // Save the reference so we can update its battery later
+                    });
+                }
+            }
+
             // Sort array from closest to furthest
              // Only sort if we have more candidates than we actually need
             if (targetsBuffer.length > MAX_TARGETS) {
@@ -1765,7 +1830,7 @@ app.ticker.add((delta) => {
                 }
             }
 
-            // 3. Check distance to all laers
+            // 3. Check distance to all lasers
             for (let j = 0; j < planet.laserSatellites.length; j++) {
                 let ls = planet.laserSatellites[j];
                 // let laserPos = polarToCartesian(ls.radius, ls.angle);
@@ -1775,6 +1840,21 @@ app.ticker.add((delta) => {
                     potentialTargets.push({
                         type: 'laser',
                         distance: laserDistance,
+                        // pos: laserPos,
+                        ref: ls // Save the reference so we can update its battery later
+                    });
+                }
+            }
+
+            // 4. Check distance to all compactors
+            for (let j = 0; j < planet.compactors.length; j++) {
+                let ls = planet.compactors[j];
+                let compactorDistance = calculateDistance(shipPosition, ls);
+
+                if (compactorDistance <= SHIP_MAX_DISTANCE_SQ) {
+                    potentialTargets.push({
+                        type: 'compactor',
+                        distance: compactorDistance,
                         // pos: laserPos,
                         ref: ls // Save the reference so we can update its battery later
                     });
@@ -2021,6 +2101,68 @@ app.ticker.add((delta) => {
             }
 
             p.battery -= 0.005;
+
+            // Draw Collectors
+            if (drawThisPlanet) {
+                p.pivot.visible = true;
+                
+                // 2. Sync the pivot to the math
+                p.pivot.rotation = p.angle; 
+                
+                // 3. Push the graphic out from the center to match the radius
+                p.graphic.x = p.radius; 
+                
+                // 4. THE FIX: Target Rotation MINUS Parent Rotation
+                p.graphic.rotation = p.rotation; 
+                
+            } else {
+                p.pivot.visible = false;
+            }
+        }
+
+        // Compactors
+        for (let c = 0; c < planet.compactors.length; c++) {
+            let p = planet.compactors[c];
+
+            p.battery = Math.max(p.battery, 0);
+
+            p.angle += p.orbitSpeed; 
+            p.angle = p.angle % toRadians(360);
+
+            // Only rotate if compactor has battery
+            if (p.battery > 1) {
+                p.rotation += p.rotationSpeed;
+            } else if (p.battery > 0) {
+                p.rotation += p.rotationSpeed * (p.battery);
+            }
+
+            p.battery -= 0.005;
+
+            // Comet Compacting
+
+            p.displayStored ??= p.mineralsStored;
+
+            const CAP = 500;
+            const targetStored = Math.min(p.mineralsStored, CAP); 
+            p.displayStored += (targetStored - p.displayStored) * 0.05;
+            if (Math.abs(targetStored - p.displayStored) < 0.05) p.displayStored = targetStored;
+
+            p.cometGraphic.scale.set(p.displayStored/20);
+
+            const baseSize = 12.5;
+            currentSize = Math.max(baseSize, (p.displayStored/20));
+
+            p.corners.topLeft.position.set(-currentSize, currentSize);
+            p.corners.topRight.position.set(currentSize, currentSize);
+            p.corners.bottomRight.position.set(currentSize, -currentSize);
+            p.corners.bottomLeft.position.set(-currentSize, -currentSize);
+
+            // Only launch once the visual has actually grown to full size
+            if (p.mineralsStored >= CAP && p.displayStored >= CAP - 5) {
+                p.mineralsStored = 0;
+                spawnCometAt(planet, p.x, p.y, 150);
+                // p.displayStored = 0;   // uncomment to snap empty instead of shrinking back smoothly
+            }
 
             // Draw Collectors
             if (drawThisPlanet) {
@@ -2950,6 +3092,83 @@ function deployLens() {
 }
 
 
+function deployCompactor() {
+    price = currentPlanet.compactorCostMaterial;
+    if (material < price) return;
+    material -= price;
+    currentPlanet.compactorCostMaterial = Math.floor(price * 1.3);
+
+    const compactorPivot = new PIXI.Container();
+    compactorPivot.position.set(500, 500);
+
+    const compactorGraphic = new PIXI.Graphics();
+    const compactorCometGraphic = new PIXI.Graphics();
+
+    const wingSize = 10;
+
+    // Center circle
+    compactorGraphic.lineStyle(5, 0xffffff);
+    compactorGraphic.drawCircle(0, 0, 1);
+
+    // 1. Create the 4 individual corner graphics (drawn relative to local vertex 0,0)
+    const topLeft = new PIXI.Graphics();
+    topLeft.lineStyle(5, 0xffffff);
+    topLeft.moveTo(0, -wingSize);
+    topLeft.lineTo(0, 0);
+    topLeft.lineTo(wingSize, 0);
+
+    const topRight = new PIXI.Graphics();
+    topRight.lineStyle(5, 0xffffff);
+    topRight.moveTo(0, -wingSize);
+    topRight.lineTo(0, 0);
+    topRight.lineTo(-wingSize, 0);
+
+    const bottomRight = new PIXI.Graphics();
+    bottomRight.lineStyle(5, 0xffffff);
+    bottomRight.moveTo(0, wingSize);
+    bottomRight.lineTo(0, 0);
+    bottomRight.lineTo(-wingSize, 0);
+
+    const bottomLeft = new PIXI.Graphics();
+    bottomLeft.lineStyle(5, 0xffffff);
+    bottomLeft.moveTo(0, wingSize);
+    bottomLeft.lineTo(0, 0);
+    bottomLeft.lineTo(wingSize, 0);
+
+    // Comet Square
+    compactorCometGraphic.beginFill(0x646464);
+    compactorCometGraphic.drawRect(-1, -1, 2, 2);
+    compactorCometGraphic.endFill();
+
+    // Assemble hierarchy
+    compactorGraphic.addChild(compactorCometGraphic);
+    compactorGraphic.addChild(topLeft);
+    compactorGraphic.addChild(topRight);
+    compactorGraphic.addChild(bottomRight);
+    compactorGraphic.addChild(bottomLeft);
+
+    compactorPivot.addChild(compactorGraphic);
+    planetScene.addChild(compactorPivot);
+
+
+    currentPlanet.compactors.push({
+        radius: flightRadius + 12.5,
+        angle: shipRotation,
+        orbitSpeed: shipRotationSpeed,
+        rotation: 0,
+        rotationSpeed: 0.025,
+        mineralsStored: 0,
+        battery: 0,
+
+        // Save the Pixi references so the loop can update them
+        pivot: compactorPivot,
+        graphic: compactorGraphic,
+        cometGraphic: compactorCometGraphic,
+        corners: { topLeft, topRight, bottomRight, bottomLeft },
+    });
+}
+
+
 
 
 
@@ -3158,6 +3377,80 @@ function spawnSplitComet(planet, x, y, originalComet) {
         graphic: cometGraphic,
         splittingAmount: 50,
         timesSplit: originalComet.timesSplit+1,
+    });
+}
+
+function spawnCometAt(planet, x, y, startingMaterial) {
+    const margin = 100; // Spawn 100px off-screen
+    
+    // Calculate the true world-space bounds by dividing the physical screen
+    // by the scale factor you apply in resizeGameWorld()
+    width = app.screen.width / solarSystem.scale.x;
+    height = app.screen.height / solarSystem.scale.y;
+
+    if (height > width) height = 1000;
+
+    // Define our valid sides (excluding bottom)
+    const validSides = ['left', 'right'];
+    
+    // 1. Pick a random starting side
+    const startSide = validSides[Math.floor(Math.random() * validSides.length)];
+    
+    // 2. Filter out the start side so it doesn't try to exit the same way it entered
+    const availableFinishSides = validSides.filter(side => side !== startSide);
+    
+    // 3. Pick a random finish side from the remaining options
+    const finishSide = availableFinishSides[Math.floor(Math.random() * availableFinishSides.length)];
+
+    let startX, startY, finishX, finishY;
+
+    startX = x;
+    startY = y;
+
+    // 5. Set finishing coordinates based on finishSide
+    if (finishSide === 'top') {
+        finishX = Math.random() * width;
+        finishY = -margin;
+    } else if (finishSide === 'left') {
+        finishX = -margin;
+        finishY = Math.random() * height;
+    } else if (finishSide === 'right') {
+        finishX = width + margin;
+        finishY = Math.random() * height;
+    }
+
+    // let startingMaterial = 50 + (Math.random() * 100);
+
+    // const cometGraphic = new PIXI.Graphics();
+    // cometGraphic.position.set(startX, startY);
+
+    const cometGraphic = new PIXI.Sprite(cometTexture);
+    cometGraphic.anchor.set(0.5);
+    cometGraphic.position.set(startX, startY);
+
+    // Hide if not viewing the planet
+    cometGraphic.visible = false;
+
+    planetScene.addChild(cometGraphic);
+
+    
+
+    planet.comets.push({
+        startX, startY,
+        finishX, finishY,
+        currentX: startX,
+        currentY: startY,
+        x: startX,
+        y: startY,
+        progress: 0, // This goes from 0 to 1
+        speed: 0.001, // Adjust for how fast they cross (0.01 is very fast)
+        rotation: 0,
+        rotationSpeed: (Math.random() - 0.5) * 0.05,
+        material: startingMaterial,
+        initialMaterial: startingMaterial,
+        splittingAmount: 50,
+        timesSplit: 0,
+        graphic: cometGraphic
     });
 }
 
@@ -4433,6 +4726,7 @@ function updateLabels() {
     document.getElementById("laserSatelliteCostMaterial").textContent = formatNumber(currentPlanet.laserSatelliteCostMaterial);
     document.getElementById("refinerCostMaterial").innerHTML = formatNumber(currentPlanet.refinerCostMaterial);
     document.getElementById("lensCostMaterial").innerHTML = formatNumber(currentPlanet.lensCostMaterial);
+    document.getElementById("compactorCostMaterial").innerHTML = formatNumber(currentPlanet.compactorCostMaterial);
     // document.getElementById("smartCollectorCostMaterial").innerHTML = formatNumber(currentPlanet.smartCollectorCostMaterial);
     
 
@@ -4526,6 +4820,8 @@ holdButtons.forEach(button => {
                 deployRefiner();
             } else if (button.id == "lens") {
                 deployLens();
+            } else if (button.id == "compactor") {
+                deployCompactor();
             } else if (button.id == "drillRate") {
                 upgradeDrillRate();
             } else if (button.id == "collectionRadiusUpgrade") {
@@ -4726,6 +5022,7 @@ function saveGame() {
         let cleanLenses = (p.lenses || []).map(c => { let clone = {...c}; delete clone.pivot; delete clone.graphic; return clone; });
         let cleanRefiners = (p.refiners || []).map(c => { let clone = {...c}; delete clone.pivot; delete clone.graphic; delete clone.arms; return clone; });
         let cleanLasers = (p.laserSatellites || []).map(ls => { let clone = {...ls}; delete clone.pivot; delete clone.graphic; delete clone.shootingAtLens; return clone; });
+        let cleanCompactors = (p.compactors || []).map(ls => { let clone = {...ls}; delete clone.pivot; delete clone.graphic; delete clone.cometGraphic; clone; delete clone.corners; return clone; });
         let cleanCrystals = (p.crystals || []).map(c => { let clone = {...c}; delete clone.graphic; return clone; });
 
 
@@ -4747,6 +5044,7 @@ function saveGame() {
             refinerCostMaterial: p.refinerCostMaterial,
             smartCollectorCostMaterial: p.smartCollectorCostMaterial,
             lensCostMaterial: p.lensCostMaterial,
+            compactorCostMaterial: p.compactorCostMaterial,
 
             materialsToCollect: cleanMaterials,
             comets: cleanComets,
@@ -4757,6 +5055,7 @@ function saveGame() {
             smartCollectors: p.smartCollectors || [], 
             laserSatellites: cleanLasers,
             crystals: cleanCrystals,
+            compactors: cleanCompactors,
             bundles: p.bundles || [],
             lenses: cleanLenses,
         };
@@ -4937,6 +5236,7 @@ function loadGame() {
         if (savedPlanet.laserSatelliteCostMaterial !== undefined) p.laserSatelliteCostMaterial = savedPlanet.laserSatelliteCostMaterial;
         if (savedPlanet.refinerCostMaterial !== undefined) p.refinerCostMaterial = savedPlanet.refinerCostMaterial;
         if (savedPlanet.smartCollectorCostMaterial !== undefined) p.smartCollectorCostMaterial = savedPlanet.smartCollectorCostMaterial;
+        if (savedPlanet.compactorCostMaterial !== undefined) p.compactorCostMaterial = savedPlanet.compactorCostMaterial;
 
         // Materials
         p.materialsToCollect = (savedPlanet.materialsToCollect || []).map(d => {
@@ -5006,6 +5306,67 @@ function loadGame() {
 
             c.pivot = collectorPivot;
             c.graphic = collectorGraphic;
+            return c;
+        });
+
+        // Compactors
+        p.compactors = (savedPlanet.compactors || []).map(c => {
+            const compactorPivot = new PIXI.Container();
+            compactorPivot.position.set(500, 500);
+
+            const compactorGraphic = new PIXI.Graphics();
+            const compactorCometGraphic = new PIXI.Graphics();
+
+            const wingSize = 10;
+
+            // Center circle
+            compactorGraphic.lineStyle(5, 0xffffff);
+            compactorGraphic.drawCircle(0, 0, 1);
+
+            // 1. Create the 4 individual corner graphics (drawn relative to local vertex 0,0)
+            const topLeft = new PIXI.Graphics();
+            topLeft.lineStyle(5, 0xffffff);
+            topLeft.moveTo(0, -wingSize);
+            topLeft.lineTo(0, 0);
+            topLeft.lineTo(wingSize, 0);
+
+            const topRight = new PIXI.Graphics();
+            topRight.lineStyle(5, 0xffffff);
+            topRight.moveTo(0, -wingSize);
+            topRight.lineTo(0, 0);
+            topRight.lineTo(-wingSize, 0);
+
+            const bottomRight = new PIXI.Graphics();
+            bottomRight.lineStyle(5, 0xffffff);
+            bottomRight.moveTo(0, wingSize);
+            bottomRight.lineTo(0, 0);
+            bottomRight.lineTo(-wingSize, 0);
+
+            const bottomLeft = new PIXI.Graphics();
+            bottomLeft.lineStyle(5, 0xffffff);
+            bottomLeft.moveTo(0, wingSize);
+            bottomLeft.lineTo(0, 0);
+            bottomLeft.lineTo(wingSize, 0);
+
+            // Comet Square
+            compactorCometGraphic.beginFill(0x646464);
+            compactorCometGraphic.drawRect(-1, -1, 2, 2);
+            compactorCometGraphic.endFill();
+
+            // Assemble hierarchy
+            compactorGraphic.addChild(compactorCometGraphic);
+            compactorGraphic.addChild(topLeft);
+            compactorGraphic.addChild(topRight);
+            compactorGraphic.addChild(bottomRight);
+            compactorGraphic.addChild(bottomLeft);
+
+            compactorPivot.addChild(compactorGraphic);
+            planetScene.addChild(compactorPivot);
+
+            c.pivot = compactorPivot;
+            c.graphic = compactorGraphic;
+            c.cometGraphic = compactorCometGraphic;
+            c.corners = { topLeft, topRight, bottomRight, bottomLeft };
             return c;
         });
 
@@ -5116,6 +5477,7 @@ function loadGame() {
 
         p.satellites = trackArrayForDeployment(p.satellites, 'satellites');
         p.collectors = trackArrayForDeployment(p.collectors, 'collectors');
+        p.compactors = trackArrayForDeployment(p.compactors, 'compactors');
         p.refiners = trackArrayForDeployment(p.refiners, 'refiners');
         p.laserSatellites = trackArrayForDeployment(p.laserSatellites, 'laserSatellites');
         p.lenses = trackArrayForDeployment(p.lenses, 'lenses');
