@@ -2142,15 +2142,19 @@ app.ticker.add((delta) => {
 
             p.displayStored ??= p.mineralsStored;
 
-            const CAP = 500;
+            const CAP = 500000;
             const targetStored = Math.min(p.mineralsStored, CAP); 
             p.displayStored += (targetStored - p.displayStored) * 0.05;
+
+            // Snap if close enough
             if (Math.abs(targetStored - p.displayStored) < 0.05) p.displayStored = targetStored;
 
-            p.cometGraphic.scale.set(p.displayStored/20);
+            let scaling = 25000;
+
+            p.cometGraphic.scale.set(p.displayStored/scaling);
 
             const baseSize = 12.5;
-            currentSize = Math.max(baseSize, (p.displayStored/20));
+            currentSize = Math.max(baseSize, (p.displayStored/scaling));
 
             p.corners.topLeft.position.set(-currentSize, currentSize);
             p.corners.topRight.position.set(currentSize, currentSize);
@@ -2160,7 +2164,7 @@ app.ticker.add((delta) => {
             // Only launch once the visual has actually grown to full size
             if (p.mineralsStored >= CAP && p.displayStored >= CAP - 5) {
                 p.mineralsStored = 0;
-                spawnCometAt(planet, p.x, p.y, 150);
+                spawnCometAt(planet, p.x, p.y, 100);
                 // p.displayStored = 0;   // uncomment to snap empty instead of shrinking back smoothly
             }
 
