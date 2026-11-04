@@ -116,7 +116,7 @@ document.fonts.load('10px "Silkscreen"').then(() => {
 const userHasSeenUpdate = localStorage.getItem("updateVerified");
 // console.log(userHasSeenUpdate);
 
-currentVersion = "3.6";
+currentVersion = "3.6.1";
 
 if (userHasSeenUpdate == currentVersion) {
     // document.getElementById("changelog").style.display = "none";
@@ -3580,7 +3580,8 @@ function refreshDeviceList() {
         ...currentPlanet.collectors,
         ...currentPlanet.refiners,
         ...currentPlanet.laserSatellites,
-        ...currentPlanet.lenses
+        ...currentPlanet.lenses,
+        ...currentPlanet.compactors,
     ].sort((a, b) => (b.deployedAt ?? -1) - (a.deployedAt ?? -1)); // newest first
 }
 
@@ -4512,12 +4513,21 @@ function resetCurrentPlanet() {
     }
     currentPlanet.refiners = [];
 
+    for (let c = 0; c < currentPlanet.compactors.length; c++) {
+        let p = currentPlanet.compactors[c];
+        p.graphic.destroy();
+        p.pivot.destroy();
+        p.cometGraphic.destroy();
+    }
+    currentPlanet.compactors = [];
+
     currentPlanet.drillCostMaterial = 5;
     currentPlanet.satelliteCostMaterial = 25;
     currentPlanet.collectorCostMaterial = 50;
     currentPlanet.laserSatelliteCostMaterial = 50;
     currentPlanet.refinerCostMaterial = 5000;
     currentPlanet.lensCostMaterial = 5000;
+    currentPlanet.compactorCostMaterial = 10000;
 }
 
 
