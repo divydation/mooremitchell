@@ -16,3 +16,18 @@
   width: 10vw;
   height: 10vw;
 }
+
+/* FOR MOBILE LAYOUT */
+
+@media (orientation: portrait) {
+
+  .footer {
+    flex-direction: column;
+  }
+
+  .footer > img {
+  width: 20vw;
+  height: 20vw;
+}
+
+}

@@ -1,0 +1,19 @@
+.gallery > img {
+    width: 29vw;
+    height: auto;
+    border-radius: 0.5vw;
+    transition: 0.2s;
+    /* aspect-ratio: inherit !important; */
+    aspect-ratio: 2 / 3;
+    /* object-fit: cover; */
+}
+
+@media (orientation: portrait) {
+
+  .gallery > img {
+    width: 90vw;
+    aspect-ratio: inherit;
+    border-radius: 4vw;
+  }
+
+}

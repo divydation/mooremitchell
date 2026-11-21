@@ -134,6 +134,15 @@ body {
       font-size: 5vw;
 }
 
+.bigbig {
+  font-variation-settings:
+        "wght" 700,
+        "ROND" 0,
+        "opsz" 32;
+      font-size: 6vw;
+      text-align: center;
+}
+
 
 .subheading {
   font-variation-settings:
@@ -154,4 +163,64 @@ body {
   width: 40%;
   height: auto;
   border-radius: 1vw;
+}
+
+
+.my-svg {
+  width: 30vw;
+  align-self: center;
+  fill: none;
+  stroke: black;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+
+/* FOR MOBILE LAYOUT */
+
+@media (orientation: portrait) {
+
+  .horizontalStackWords {
+    flex-direction: column !important;
+    text-align: left !important;
+    align-items: center;
+  }
+
+  .horizontalStack {
+    flex-direction: column !important;
+  }
+
+  .bigbig {
+    font-size: 10vw;
+  }
+
+  .container {
+    margin-top: 30vw;
+    gap: 1vh;
+  }
+
+  .subheading {
+    font-size: 10vw;
+  }
+
+  .mainHeading {
+    font-size: 12vw;
+  }
+
+  .mediumImage {
+    width: 90vw;
+    height: auto;
+    border-radius: 5vw;
+  }
+  .mediumLargeImage {
+    width: 90vw;
+    height: auto;
+    border-radius: 5vw;
+  }
+
+  .my-svg {
+    width: 70vw;
+  }
+
 }

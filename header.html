@@ -4,6 +4,7 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+        
     </head>
 
     <body>
@@ -11,33 +12,50 @@
             <a href="/index.html" rel="noopener noreferrer" class="logoWrap">
                 <img src="/m.png" class="logo">
             </a>
+
+            <button class="menuToggle" aria-label="Menu" aria-expanded="false"
+                    onclick="const nav = this.closest('.navbar'); this.setAttribute('aria-expanded', nav.classList.toggle('open'));">
+                <img class="iconOpen" src="/menuOpen.svg" alt="">
+                <span class="iconClose">✕</span>
+            </button>
+
+            <nav class="menu">
+
             
-
-            <div class="dropdown">
-                <p class="menuOptionText">Blog</p>
-                <div class="dropdown_content">
-                    <p><a href="/blog/index.html">iPhones</a></p>
-                </div>
-            </div>
-
-            <div class="dropdown">
-                <p class="menuOptionText">Photography</p>
-                <div class="dropdown_content">
-                    <p><a href="/photography/gear/index.html">My Gear</a></p>
-                    <p><a href="/photography/index.html">Gallery</a></p>
-                    <p>Dan</p>
-                </div>
-            </div>
-
-
-            <div class="dropdown">
-                <p class="menuOptionText">Games</p>
-                <div class="dropdown_content">
-                    <p class="debris"><a href="https://www.mooremitchell.com/debris" target="_blank" rel="noopener noreferrer">Debris</a></p>
-                    <p>Islands</p>
-                </div>
-            </div>
             
+                <div class="dropdownByItself">
+                    <p class="menuOptionText"><a href="/">Home</a></p>
+                    
+                </div>
+
+                <div class="dropdown">
+                    <p class="menuOptionText">Blog</p>
+                    <div class="dropdown_content">
+                        <p><a href="/blog">iPhones</a></p>
+                    </div>
+                </div>
+
+                <div class="dropdown">
+                    <p class="menuOptionText">Photography</p>
+                    <div class="dropdown_content">
+                        <p><a href="/photography/gear">My Gear</a></p>
+                        <p><a href="/photography">Gallery</a></p>
+                        <p><a href="/photography/dan">Dan</a></p>
+                    </div>
+                </div>
+
+
+                <div class="dropdown">
+                    <p class="menuOptionText">Games</p>
+                    <div class="dropdown_content">
+                        <p class="debris"><a href="https://www.mooremitchell.com/debris" target="_blank" rel="noopener noreferrer">Debris</a></p>
+                        <p>Islands</p>
+                        <p><a href="https://www.mooremitchell.com/zenith" target="_blank" rel="noopener noreferrer">Zenith WIP</a></p>
+                    </div>
+                </div>
+                
+            </nav>
         </div>
+
     </body>
 </html>

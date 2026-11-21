@@ -21,6 +21,25 @@ body {
     font-size: 1.5vw;
 }
 
+@keyframes shrink {
+    from {
+        height: 10vw;
+    }
+    to {
+        height: 6vw;
+    }
+}
+
+
+@keyframes boxShadow {
+    from {
+        box-shadow: 0 0 20px 10px rgba(0,0,0,0);
+    }
+    to {
+        box-shadow: 0 0 20px 10px rgba(0,0,0,0.1);
+    }
+}
+
 .navbar {
   width: 100vw;
   background-color: white;
@@ -30,10 +49,19 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: center;
+  justify-content: start;
   gap: 4vw;
 
+  padding-left: 5vw;
+
   z-index: 100;
+
+  animation: shrink linear both, boxShadow linear both;
+    animation-timeline: scroll();
+    animation-range: 0vh 20vh;
+
+    
+
 }
 
 .logo {
@@ -66,15 +94,36 @@ body {
   position: relative;
 }
 
+.dropdown::after {
+  content: "";
+  position: absolute;
+  /* Expands the clickable area by 12px in all directions */
+  inset: -12px; 
+}
+
 .menuOptionText {
   cursor: pointer;
   position: relative;
   z-index: 10;
   /* padding: 0.4vw; */
   transition: 0.2s;
+  cursor: default;
 }
 
 .dropdown:hover .menuOptionText {
+  color: #0071e3;
+  /* font-weight: bold; */
+  /* font-weight: 900; */
+  /* background-color: #EBF5FF; */
+  /* border-radius: 0.5vw; */
+  transition: 0.2s;
+  font-variation-settings:
+        "wght" 600,
+        "ROND" 0,
+        "opsz" 32;
+}
+
+.dropdownByItself:hover .menuOptionText {
   color: #0071e3;
   /* font-weight: bold; */
   /* font-weight: 900; */
@@ -155,11 +204,194 @@ body:has(.navbar:hover) .container {
   transform: translateX(0.25vw);
 }
 
+.dropdown_content > .debris:hover {
+  color: #ef233c !important;
+}
+
 .debris {
     font-family: "Silkscreen";
+    
 }
 
 a {
   text-decoration: none;
   color: inherit;
+}
+
+.menu {
+  display: contents;
+}
+
+.menuToggle {
+  display: none;
+}
+
+/* FOR MOBILE LAYOUT */
+
+@media (orientation: portrait) {
+
+    @keyframes shrinkMobile {
+        from {
+            height: 30vw;
+        }
+        to {
+            height: 20vw;
+        }
+    }
+
+    @keyframes logoShrinkMobile {
+        from {
+            height: 15vw;
+            width: 15vw;
+        }
+        to {
+            height: 12vw;
+            width: 12vw;
+        }
+    }
+
+  body {
+    font-size: 4.5vw;
+  }
+
+  body:has(.navbar.open) {
+    overflow: hidden; /* stop page scrolling behind the open menu */
+  }
+
+  /* Don't blur page content on "hover" (touch screens fake it) */
+  body:has(.navbar:hover) .container {
+    opacity: 1;
+    filter: none;
+  }
+
+  /* ----- Bar: logo centred, hamburger on the right ----- */
+  .navbar {
+    height: 30vw;
+    justify-content: center;
+    /* padding: 0 4vw; */
+    gap: 0;
+    animation: shrinkMobile linear both, boxShadow linear both;
+    animation-timeline: scroll();
+    animation-range: 0vh 10vh;
+    box-shadow: 0 0 5vw 2.5vw rgba(0, 0, 0, 0.06);
+  }
+
+  .logo {
+    width: 15vw;
+    height: 15vw;
+
+    animation: logoShrinkMobile linear both;
+    animation-timeline: scroll();
+    animation-range: 0vh 10vh;
+  }
+
+  .logoWrap {
+    display: flex;
+  }
+
+  /* ----- Hamburger / close button ----- */
+  .menuToggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    left: 4vw;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 11vw;
+    height: 11vw;
+    padding: 0;
+    background: none;
+    border: 0;
+    cursor: pointer;
+    z-index: 110;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .menuToggle img {
+    width: 7vw;
+    height: 7vw;
+  }
+
+  .menuToggle .iconClose {
+    display: none;
+    font-size: 7vw;
+    line-height: 1;
+    color: #000;
+  }
+
+  .navbar.open .menuToggle .iconOpen  { display: none; }
+  .navbar.open .menuToggle .iconClose { display: block; }
+
+  /* ----- Full-screen menu panel ----- */
+  .menu {
+    display: flex;
+    flex-direction: column;
+    gap: 7vw;
+    position: fixed;
+    top: 20vw;
+    left: 0;
+    width: 100%;
+    height: calc(100dvh - 16vw);
+    overflow-y: auto;
+    padding: 6vw 7vw 12vw;
+    box-sizing: border-box;
+    background: white;
+
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-2.5vw);
+    transition: opacity 0.25s, transform 0.25s, visibility 0.25s;
+  }
+
+  .navbar.open .menu {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  /* ----- Categories ----- */
+  .dropdown,
+  .dropdownByItself {
+    display: block;
+    position: static;
+  }
+
+  .dropdown::after {
+    display: none;            /* desktop hover-padding trick not needed */
+  }
+
+  .dropdown > p,
+  .menuOptionText {
+    font-size: 10vw;
+    margin: 0;
+    font-variation-settings: "wght" 600, "ROND" 0, "opsz" 32;
+  }
+
+  .dropdown:hover .menuOptionText,
+  .dropdownByItself:hover .menuOptionText {
+    color: inherit;           /* avoid "stuck" blue after tapping */
+  }
+
+  /* ----- Links under each category: always visible, stacked ----- */
+  .dropdown_content {
+    position: static;
+    transform: none;
+    opacity: 1;
+    visibility: visible;
+    min-width: 0;
+    background: none;
+    border-radius: 0;
+    padding-top: 1vw;
+    gap: 3.5vw;
+    font-size: 8vw;
+  }
+
+  .dropdown_content::before {
+    display: none;            /* remove the giant white desktop backdrop */
+  }
+
+  .dropdown_content > p:hover {
+    transform: none;
+  }
 }
