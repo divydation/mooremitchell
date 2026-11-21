@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>iPhones</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" type="image/x-icon" href="/m.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="header"></div>
+
+    <script>
+        fetch('../header.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('header').innerHTML = data;
+            });
+    </script>
+
+    <div class="container">
+
+        <div class="spacer"></div>
+
+        <div class="horizontalStackWords"> 
+            <h1 class="subheading">Blog</h1>
+            <h1 class="mainHeading">iPhones</h1>
+        </div>
+
+        <div class="spacer"></div>
+        <div class="line"></div>
+        <div class="spacer"></div>
+
+        <h1 class="bold">iPhone 3GS</h1>
+
+        <div class="horizontalStack">
+                
+            <img src="3gs-home.jpg" class="mediumImage">
+
+            <div class="verticalStack">
+                
+                <p>I purchased this legacy device on Facebook Marketplace while in Brisbane, for $25.</p>
+                <p>It was unable to hold charge at first. It would show the Apple Logo, and then turn off. Sometimes it could get to the setup screen, but even then, when it was unplugged it immediately died.</p>
+                <p>I purchased a replacement battery on Ebay for $50, and was able to swap it over. Unfortunately, the battery was only at 89% health, and so I was refunded $25.</p>
+                <p style="color: rgb(178, 178, 178)">Released in 2009. iOS 6.0. Jailbroken.</p>
+            </div>
+            
+            
+        </div>
+
+        
+        
+        
+
+    </div>
+
+   
+    <div id="footer"></div>
+
+    <script>
+        fetch('../footer.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('footer').innerHTML = data;
+            });
+    </script>
+    
+
+    <script src="script.js"></script>
+</body>
+</html>

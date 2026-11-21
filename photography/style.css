@@ -9,7 +9,7 @@
 
 
 html, body {
-    font-family: 'Inter', sans-serif;
+    /* font-family: 'Inter', sans-serif; */
     margin: 0;
     /* overflow: none; */
     overscroll-behavior-y: none;
@@ -29,11 +29,11 @@ svg {
 }
 
 .container {
-    width: 100vw;
-    min-height: 100vh;
+    /* width: 100vw;
+    min-height: 100vh; */
     
-    display: flex;
-    align-items: center;
+    /* display: flex; */
+    /* align-items: center; */
     flex-direction: column;
 }
 
@@ -54,43 +54,6 @@ svg {
     clip-path: inset(0);
 } */
 
-.headers {
-    width: 100%; /* Changed from 100vw to prevent scrollbar width issues */
-    height: 60vh;
-
-    position: relative; /* THIS IS THE KEY FIX */
-
-    display: flex;
-    align-items: start;
-    justify-content: center;
-    flex-direction: column;
-
-    gap: 0;
-
-
-    color: white;
-
-    overflow: hidden;
-    clip-path: inset(0);
-
-    /* border: 1vw solid white;
-    border-radius: 2vw;
-    box-sizing: border-box; */
-}
-
-.headers > h1 {
-    font-weight: 700;
-    font-size: 5vw;
-    margin: 0;
-    padding: 0;
-
-    margin-left: 5vw;
-}
-
-.headers > .subheading {
-    font-weight: 200;
-    font-size: 3vw;
-}
 
 .displayPhotoBlur {
     width: 100%;
@@ -111,8 +74,8 @@ svg {
 
 .gallery {
     width: 100%;
-    margin-left: 5vw;
-    margin-right: 5vw;
+    /* margin-left: 5vw;
+    margin-right: 5vw; */
 
     display: flex;
     align-items: center;
@@ -125,9 +88,9 @@ svg {
 }
 
 .gallery > img {
-    width: 30vw;
+    width: 29vw;
     height: auto;
-    border-radius: 1.5vw;
+    border-radius: 0.5vw;
     transition: 0.2s;
     aspect-ratio: 3 / 2;
     object-fit: cover;

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moore Mitchell</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/x-icon" href="m.ico">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
@@ -12,12 +13,48 @@
 </head>
 <body>
 
+    <div id="header"></div>
+
+    <script>
+        fetch('/header.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('header').innerHTML = data;
+            });
+    </script>
+
     <div class="container">
-        <h1>mooremitchell.com</h1>
-        <!-- <div class="card">
-            <p>PLAY <br> DEBRIS</p>
-        </div> -->
+        
+        <div class="centeredOnPage">
+            <p>Lorem ipsum dolor sit amet consectetur adipiscing elit. Est ipsum ex in qui quibusdam quidem excepturi est reprehenderit quod dolorem. Aliquip in minus animi maxime in nulla harum omnis voluptate similique. Nobis pariatur temporibus quibusdam culpa nihil quis quas soluta. Dolorem id omnis placeat omnis tempore nam. Exercitation in id pariatur animi labore dolor aute dolore. Tempor pariatur cupidatat ut ut rerum. Officia officia excepturi accusamus dolor exercitation incididunt quo eos ducimus. Imperdiet culpa sunt fugiat deserunt tempore consectetur officia eligendi repellendus ullamco id omnis.</p>
+        </div>
+
+        <div class="spacer"></div>
+
+        <div class="line"></div>
+
+        <h1 class="bold">More Mitchell Moore</h1>
+
+        <div class="halfAndHalf">
+            <p>Lorem ipsum dolor sit amet consectetur adipiscing elit. Est ipsum ex in qui quibusdam quidem excepturi est reprehenderit quod dolorem. Aliquip in minus animi maxime in nulla harum omnis voluptate similique. Nobis pariatur temporibus quibusdam culpa nihil quis quas soluta. Dolorem id omnis placeat omnis tempore nam. Exercitation in id pariatur animi labore dolor aute dolore. Tempor pariatur cupidatat ut ut rerum. Officia officia excepturi accusamus dolor exercitation incididunt quo eos ducimus. Imperdiet culpa sunt fugiat deserunt tempore consectetur officia eligendi repellendus ullamco id omnis.</p>
+            <p>Lorem ipsum dolor sit amet consectetur adipiscing elit. Est ipsum ex in qui quibusdam quidem excepturi est reprehenderit quod dolorem. Aliquip in minus animi maxime in nulla harum omnis voluptate similique. Nobis pariatur temporibus quibusdam culpa nihil quis quas soluta. Dolorem id omnis placeat omnis tempore nam. Exercitation in id pariatur animi labore dolor aute dolore. Tempor pariatur cupidatat ut ut rerum. Officia officia excepturi accusamus dolor exercitation incididunt quo eos ducimus. Imperdiet culpa sunt fugiat deserunt tempore consectetur officia eligendi repellendus ullamco id omnis.</p>
+        </div>
+        
+        <div class="spacer"></div>
+
     </div>
+
+   
+    <div id="footer"></div>
+
+    <script>
+        fetch('/footer.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('footer').innerHTML = data;
+            });
+    </script>
+    
 
     <script src="script.js"></script>
 </body>

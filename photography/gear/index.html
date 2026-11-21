@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Gear</title>
+    <link rel="stylesheet" href="/style.css">
+    <link rel="icon" type="image/x-icon" href="/m.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div id="header"></div>
+
+    <script>
+        fetch('/header.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('header').innerHTML = data;
+            });
+    </script>
+
+    <div class="container">
+
+        <div class="spacer"></div>
+
+        <div class="horizontalStackWords"> 
+            <h1 class="subheading">Photography</h1>
+            <h1 class="mainHeading">My Gear</h1>
+        </div>
+        
+        <div class="spacer"></div>
+        <div class="line"></div>
+        <div class="spacer"></div>
+
+        <h1 class="bold">Sony A7R</h1>
+
+        <div class="horizontalStack">
+                
+            <img src="https://www.cnet.com/wp-content/uploads/sites/2/c53111c0-8bb6-11e3-a24e-d4ae52e62bcc.jpg" class="mediumLargeImage">
+        
+            
+        </div>
+
+        <div class="spacer"></div>
+        <div class="line"></div>
+        <div class="spacer"></div>
+
+        <h1 class="bold">Tamron 70-300mm F/4.5-6.3 Di III RXD</h1>
+
+        <div class="horizontalStack">
+                
+            <img src="https://photographylife.com/wp-content/uploads/2023/06/tamron-70-300-f4.5-6.3-product-image.jpg" class="mediumLargeImage">
+        
+            
+        </div>
+
+        <div class="spacer"></div>
+        <div class="line"></div>
+        <div class="spacer"></div>
+
+        <h1 class="bold">Sony 28-70mm 3.5-5.6 OSS</h1>
+
+        <div class="horizontalStack">
+                
+            <img src="https://i0.wp.com/ricksreviews.org/wp-content/uploads/2015/03/SONYILCE-7-DSC01116.jpg?fit=2048%2C1365&ssl=1" class="mediumLargeImage">
+        
+            
+        </div>
+        
+        <div class="spacer"></div>
+
+    </div>
+
+   
+    <div id="footer"></div>
+
+    <script>
+        fetch('/footer.html')
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('footer').innerHTML = data;
+            });
+    </script>
+    
+
+    <script src="script.js"></script>
+</body>
+</html>
