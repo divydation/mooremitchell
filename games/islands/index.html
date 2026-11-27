@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Islands</title>
+<link rel="icon" type="image/x-icon" href="/m.ico">
 <style>
 :root{--text:#111827;--mute:#6b7280;--line:#e5e7eb;--soft:#f3f4f6;--tc:#1c7ed6;--pos:#15803d;--neg:#dc2626}
 *{box-sizing:border-box}
@@ -75,7 +76,7 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:24rem minmax(0,1fr) 
 
 /* map */
 #mapwrap{min-width:0;min-height:0;background:#bfe3f6;display:flex;position:relative}
-#map{width:100%;height:100%;display:block}
+#map,#sea{width:100%;height:100%;display:block}#sea{position:absolute;inset:0;pointer-events:none;will-change:transform}#map{position:relative;z-index:1}
 .terr{transition:fill .4s}
 .flash{animation:fl 1.2s ease 2}
 @keyframes ra{50%{transform:translateY(-8px)}}
@@ -85,7 +86,7 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:24rem minmax(0,1fr) 
 .nkfire{animation:nkf 2.6s ease-out both}@keyframes nkf{0%{transform:scale(.1);opacity:1}25%{transform:scale(1.7);opacity:1}100%{transform:scale(2.1);opacity:0}}
 .nkcloud{animation:nkc 4.2s ease-out both}@keyframes nkc{0%{transform:scale(.15);opacity:0}15%{opacity:1}35%{transform:scale(1.15);opacity:1}100%{transform:scale(1.6);opacity:0}}
 .nksink{animation:nks 3.2s ease-in-out both}@keyframes nks{0%{opacity:1;filter:none}100%{opacity:0;filter:blur(3px)}}
-#map.shake{animation:nkshake 1.1s linear}@keyframes nkshake{0%,100%{transform:none}8%{transform:translate(-14px,9px)}16%{transform:translate(12px,-10px)}24%{transform:translate(-11px,-8px)}32%{transform:translate(10px,9px)}42%{transform:translate(-7px,6px)}54%{transform:translate(6px,-5px)}68%{transform:translate(-4px,3px)}82%{transform:translate(2px,-2px)}}
+#map.shake,#sea.shake{animation:nkshake 1.1s linear}@keyframes nkshake{0%,100%{transform:none}8%{transform:translate(-14px,9px)}16%{transform:translate(12px,-10px)}24%{transform:translate(-11px,-8px)}32%{transform:translate(10px,9px)}42%{transform:translate(-7px,6px)}54%{transform:translate(6px,-5px)}68%{transform:translate(-4px,3px)}82%{transform:translate(2px,-2px)}}
 .recarrow{animation:ra 1s ease-in-out infinite}
 @keyframes mfl{0%{opacity:0;transform:translateY(10px)}15%{opacity:1}70%{opacity:1}100%{opacity:0;transform:translateY(-52px)}}
 .mfl{font:900 26px system-ui,sans-serif;fill:#16a34a;stroke:#fff;stroke-width:5px;paint-order:stroke;animation:mfl 1.9s ease-out both}
@@ -94,7 +95,7 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:24rem minmax(0,1fr) 
 @keyframes rp{50%{transform:scale(1.18)}}
 @keyframes rf{50%{opacity:.25}}
 .radglint{animation:rg 1.2s linear infinite,rf 1.6s ease-in-out infinite}
-.radpulse{animation:rp 1.4s ease-in-out infinite;transform-box:fill-box;transform-origin:center}
+.radpulse circle:first-child{animation:rpw 1.4s ease-in-out infinite}@keyframes rpw{50%{r:29px;stroke-width:6px}}
 @keyframes fl{50%{opacity:.35}}
 .cand{cursor:pointer;animation:dash 1s linear infinite}
 @keyframes dash{to{stroke-dashoffset:-17}}
@@ -162,8 +163,17 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:24rem minmax(0,1fr) 
 #modal.on{display:grid}
 .mcard{background:#fff;border-radius:1rem;padding:1.4rem;width:min(26rem,92vw);display:grid;gap:.6rem}
 .mcard h2{margin:0}
-.mcard.menucard{width:min(54rem,95vw);grid-template-columns:1fr 1fr;align-items:start;max-height:94vh;overflow:auto}.menucard>h2,.menucard>p{grid-column:1/-1}.menucard>div,.menucard>button,.menucard>label{margin:0!important}
-@media (max-width:640px){.mcard.menucard{grid-template-columns:1fr}}
+.mcard.menucard{width:min(40rem,95vw);display:flex;flex-direction:column;gap:.6rem;max-height:96vh;overflow:auto;padding:1rem 1.2rem}
+.mhead{display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}.mhead h2{margin:0 0 .2rem;font-size:1.6rem;font-weight:900}
+.mx{width:2.4rem!important;height:2.4rem;padding:0!important;border-radius:50%!important;flex:none}
+.msec{background:var(--soft,#f3f4f6);border-radius:1rem;padding:.55rem .7rem;display:flex;flex-direction:column;gap:.4rem}
+.msec h3{margin:0;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.mrow{display:flex;justify-content:space-between;align-items:center;gap:1rem;background:#fff;border-radius:.8rem;padding:.35rem .6rem}
+.mrt{display:flex;flex-direction:column;min-width:0}.mrt span{font-size:.82rem;color:var(--mute);line-height:1.25}
+.mtg{flex:none;margin:0!important}.mgrid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}.msec .ghost{margin:0!important;background:#fff}
+.mbig{text-align:left;font-weight:700}
+.mfoot{display:grid;grid-template-columns:1fr 1fr;gap:.6rem}.mfoot button{margin:0!important;padding:.7rem;font-size:1.05rem}.mgrid .ghost,.mbig{padding:.5rem!important}.mtg button{padding:.35rem .8rem!important}
+
 .bigcard{width:min(46rem,94vw);padding:2.4rem;gap:1rem}.bigcard h2{font-size:2.8rem}.bigcard p{font-size:1.6rem;margin:0}.bigcard button{font-size:1.4rem;padding:1rem}
 #setup{position:fixed;inset:0;background:#fff;z-index:60;overflow:auto;display:grid;place-items:start center;padding:2.5rem 1rem}
 #setup.hide{display:none}
@@ -229,9 +239,9 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:24rem minmax(0,1fr) 
 .hero{position:relative;width:100%;height:min(52vh,30rem);flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(circle at 50% 50%,#fff,#d9f0ff)}
 .htitle{position:relative;z-index:2;font-size:min(14vw,10rem);font-weight:900;letter-spacing:-.04em;line-height:1;color:#111827;text-shadow:0 .4rem 0 #fff}
 .hsub{position:relative;z-index:2;font-size:1.3rem;color:var(--mute);font-weight:600;margin-top:.4rem}
-.isl{position:absolute;z-index:1;animation:fl 6s ease-in-out infinite alternate;opacity:.95}
+.isl{position:absolute;z-index:1;animation:hfl 6s ease-in-out infinite alternate;opacity:.95}
 .isl svg{width:100%;height:auto;display:block}
-@keyframes fl{to{transform:translateY(-.8rem) rotate(2deg)}}
+@keyframes hfl{to{transform:translateY(-.8rem) rotate(2deg)}}
 .hcard{padding:1.5rem 1rem 2rem}
 .vibe{margin-top:2.5rem;text-align:center;font-size:.8rem;color:var(--mute)}
 .sw{display:flex;gap:.35rem;margin-left:auto}
@@ -373,7 +383,7 @@ main{flex:1;min-height:0;display:grid;grid-template-columns:24rem minmax(0,1fr) 
 </header>
 <main>
   <aside id="side"></aside>
-  <div id="mapwrap"><div id="editbar"></div><svg id="map" viewBox="0 0 1000 950" preserveAspectRatio="xMidYMid meet"></svg></div>
+  <div id="mapwrap"><div id="editbar"></div><svg id="sea" viewBox="0 0 1000 950" preserveAspectRatio="xMidYMid meet"></svg><svg id="map" viewBox="0 0 1000 950" preserveAspectRatio="xMidYMid meet"></svg></div>
   <section id="panel"></section>
 </main>
 <div id="modal"></div>
@@ -1974,6 +1984,14 @@ function recTargets(t,list){
 }
 /* ===== camera: smoothly zoom to the remaining islands ===== */
 let CAMDELAY=0,CAM={map:null,cur:[0,0,1000,950],from:null,to:null,t0:0,dur:1800,raf:0};
+const OFFC={};
+function offPath(d,r){const k=d+'|'+r;if(OFFC[k])return OFFC[k];
+  const pe=document.createElementNS('http://www.w3.org/2000/svg','path');pe.setAttribute('d',d);const L=pe.getTotalLength(),N=Math.max(40,Math.min(240,Math.ceil(L/5))),P=[];
+  for(let i=0;i<N;i++){const q=pe.getPointAtLength(L*i/N);P.push([q.x,q.y])}
+  const mk=sg=>P.map((p,i)=>{const a=P[(i+N-1)%N],b=P[(i+1)%N],tx=b[0]-a[0],ty=b[1]-a[1],l=Math.hypot(tx,ty)||1;return[p[0]+sg*ty/l*r,p[1]-sg*tx/l*r]});
+  const ar=Q=>Math.abs(Q.reduce((s,p,i)=>{const n=Q[(i+1)%Q.length];return s+p[0]*n[1]-n[0]*p[1]},0));
+  const A=mk(1),B=mk(-1),Q=ar(A)>ar(B)?A:B;
+  return OFFC[k]='M'+Q.map(p=>p[0].toFixed(1)+','+p[1].toFixed(1)).join('L')+'Z'}
 const islBox=is=>{if(is.box)return is.box;const n=is.d.match(/-?\d+\.?\d*/g).map(Number);let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;for(let i=0;i+1<n.length;i+=2){x0=Math.min(x0,n[i]);x1=Math.max(x1,n[i]);y0=Math.min(y0,n[i+1]);y1=Math.max(y1,n[i+1])}return [x0,y0,x1,y1]};
 function camTarget(){
   const m=G.map,live=m.islands.filter((_,i)=>m.terrs.some(x=>x.isl===i&&!x.sunk));
@@ -2019,7 +2037,7 @@ function renderMap(){
     
     const part=!!is.box||m.terrs.some(x=>x.isl===i&&x.sunk);
     if(!part)sea+=`<path d="${is.d}" fill="#e9f6fd" stroke="#e9f6fd" stroke-width="28" stroke-linejoin="round"/><path d="${is.d}" fill="#d6eefb" stroke="#d6eefb" stroke-width="21" stroke-linejoin="round"/><path d="${is.d}" fill="#f3e3b3" stroke="#f3e3b3" stroke-width="14" stroke-linejoin="round"/><path d="${is.d}" fill="#f3e3b3" stroke="#dcc27c" stroke-width="3" stroke-linejoin="round"/>`;
-    else[[28,'#e9f6fd'],[21,'#d6eefb'],[14,'#f3e3b3'],[3,'#dcc27c']].forEach(([w,c],q)=>{defs+=`<mask id="mk${i}_${q}" maskUnits="userSpaceOnUse" x="-500" y="-500" width="3000" height="3000"><path d="${is.d}" fill="#fff" stroke="#fff" stroke-width="${w}" stroke-linejoin="round"/></mask>`;sea+=`<g mask="url(#mk${i}_${q})" fill="${q===3?'#f3e3b3':c}" stroke="${c}" stroke-width="${w}" stroke-linejoin="round">${live.map(x=>`<path d="${x.d}"/>`).join('')}</g>`});
+    else[[28,'#e9f6fd'],[21,'#d6eefb'],[14,'#f3e3b3'],[3,'#dcc27c']].forEach(([w,c],q)=>{sdefs+=`<clipPath id="mk${i}_${q}"><path d="${offPath(is.d,w/2)}"/></clipPath>`;sea+=`<g clip-path="url(#mk${i}_${q})" fill="${q===3?'#f3e3b3':c}" stroke="${c}" stroke-width="${w}" stroke-linejoin="round">${live.map(x=>`<path d="${x.d}"/>`).join('')}</g>`});
     land+=`<g clip-path="url(#ci${i})">`+live.map(x=>`<path d="${x.d}" fill="${x.owner==null?'#cdd1d6':G.teams[x.owner].color}" stroke="#fff" stroke-width="3" class="terr${fl.includes(x.id)?' flash':''}" data-t="${x.id}" opacity="${dim&&!clk.has(x.id)&&!(x.owner!=null&&mem.has(x.owner))?.45:1}"/>`).join('')+`</g>`;
   });
   m.terrs.forEach(x=>{
@@ -2048,7 +2066,8 @@ function renderMap(){
     badges+=`<g pointer-events="none" transform="translate(${X},${Y})"><g class="xs"><g fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round">${xs}</g><g fill="none" stroke="#e5383b" stroke-width="5" stroke-linecap="round">${xs}</g></g></g>`;
     tg.adj.forEach(i=>{const n=m.terrs[i];if(n.sunk||n.rad||n.id===tg.id)return;badges+=`<g pointer-events="none" transform="translate(${n.x.toFixed(1)},${n.y.toFixed(1)})"><circle r="15" fill="#facc15" stroke="#111" stroke-width="3"/><text y="7" text-anchor="middle" font-size="22" font-weight="900" fill="#111" font-family="system-ui,sans-serif">!</text></g>`});
   }
-  hvId=null;$('#map').innerHTML=`<defs>${defs}</defs>${sea}${sea2}${land}${icons}${over}${badges}${animSvg()}${nukeSvg()}${confSvg()}`;
+  {const sv=$('#sea'),h=`<defs>${sdefs}</defs>${sea}`;if(sv&&sv._h!==h){sv.innerHTML=h;sv._h=h}}
+  hvId=null;$('#map').innerHTML=`<defs>${defs}</defs>${land}${icons}${over}${badges}${animSvg()}${nukeSvg()}${confSvg()}`;
   const np=!!(picking&&kind==='nuke'&&act.mode==='pick');$('#map').classList.toggle('nukepick',np);if(!np)$('#xhair').style.display='none';camUpdate();
   renderEditBar();
 }
@@ -2082,11 +2101,11 @@ function mapPic(cols,over){
     cells.push({d:`M${f(P1)}L${f(P2)}A${r2},${r2*.85} 0 0 1 ${f(P3)}L${f(P4)}A${r1},${r1*.85} 0 0 0 ${f(P1)}Z`,c:pt(R*.78,(a1+a2)/2)});
   }
   const body=cells.map((c,i)=>`<path d="${c.d}" fill="${cols[i]}" stroke="#fff" stroke-width="2"/>`).join('');
-  return `<svg viewBox="0 0 200 144" class="mpic"><defs><clipPath id="${id}"><path d="${d}"/></clipPath></defs><rect width="200" height="144" rx="10" fill="#bde3f5"/><path d="${d}" fill="#e5f4fb" stroke="#e5f4fb" stroke-width="9" stroke-linejoin="round"/><g clip-path="url(#${id})">${body}</g><path d="${d}" fill="none" stroke="#9aa5b1" stroke-width="1.2"/>${over?over(cells):''}</svg>`;
+  return `<svg viewBox="0 0 200 144" class="mpic"><defs><clipPath id="${id}"><path d="${d}"/></clipPath></defs><rect width="200" height="144" rx="10" fill="#bde3f5"/><path d="${d}" fill="#e9f6fd" stroke="#e9f6fd" stroke-width="16" stroke-linejoin="round"/><path d="${d}" fill="#d6eefb" stroke="#d6eefb" stroke-width="12" stroke-linejoin="round"/><path d="${d}" fill="#f3e3b3" stroke="#f3e3b3" stroke-width="8" stroke-linejoin="round"/><path d="${d}" fill="#f3e3b3" stroke="#dcc27c" stroke-width="2" stroke-linejoin="round"/><g clip-path="url(#${id})">${body}</g>${over?over(cells):''}</svg>`;
 }
 const PC={r:'#7c3aed',b:'#1e7fd6',g:'#10a37f',n:'#d1d5db'};
 const ptxt=(c,t,sz,fill)=>`<text x="${c[0].toFixed(1)}" y="${(c[1]+sz*.35).toFixed(1)}" text-anchor="middle" font-size="${sz}" font-weight="900" fill="${fill||'#fff'}" stroke="${fill?'#fff':'#111'}" stroke-width="${sz>20?3:2.5}" paint-order="stroke" style="font-family:system-ui,sans-serif">${t}</text>`;
-const hz=c=>`<g clip-path="url(#${CL})"><path d="${c.d}" fill="none" stroke="#111" stroke-width="4.6" stroke-linejoin="round"/><path d="${c.d}" fill="none" stroke="#facc15" stroke-width="4.6" stroke-dasharray="6 6" class="radglint"/></g>`;
+const hz=c=>'';
 const PICS={
   money:()=>mapPic([PC.r,PC.r,PC.r,PC.n,PC.r,PC.n,PC.r],cs=>[1,2,4,6].map(i=>ptxt(cs[i].c,'+$12M',12,'#16a34a')).join('')),
   island:()=>mapPic(Array(7).fill(PC.r),cs=>shield(100,72,1.5,'#fff','#111827','×1.5',17)),
@@ -2105,7 +2124,7 @@ const ifact=(pic,title,text,big)=>`<div class="ifact2"><div class="ipic">${PICS[
 const INFO=[
   {t:'How a turn works',h:()=>`<div class="isteps">${[['🧭','Make a decision','Keep your approval ⭐ and money 💰 as high as you can'],['🛒','Buy upgrades','Spend money on new abilities when they are offered'],['📊','Invest points','Put points in departments to unlock upgrades'],['⚔️','Take action','Attack, use your abilities, or buy land']].map((x,i)=>`${i?'<div class="iarrow">➜</div>':''}<div class="istep"><div class="inum">${i+1}</div><div class="iem">${x[0]}</div><b>${x[1]}</b><span>${x[2]}</span></div>`).join('')}</div>`},
   {t:'Good to know',h:()=>`<div class="ifacts2">${ifact('money','Every country pays you','About $12M each turn. More countries = more money. Economy makes it even more.')}${ifact('island','Own a whole island','Own every country on an island for a bonus. Needs 2 or more countries.','×1.5 defence<br>+1 point every turn')}${ifact('revolt','Approval under 1 star','Your countries revolt and turn neutral: 1 the first turn, 2 the next, and so on. You also get no points.')}${ifact('nomoney','No money?','When you cannot pay for something, your approval drops a lot.')}</div>`},
-  {t:'Nuclear bombs',h:()=>`<div class="ifacts2">${ifact('strike','One strike, guaranteed','The country you pick is always captured, nothing else is. Every 2 turns. Technology does not make it bigger.')}${ifact('radiation','Radiation','The target and every country next to it get radiation: half defence. This includes your own countries.')}${ifact('sink','Islands can sink','If every country on an island is radiated, the whole island sinks.')}${ifact('cost','It costs you','You lose money and 1.5 stars. Nukes give no loot.')}</div>`},
+  {t:'Nuclear bombs',h:()=>`<div class="ifacts2">${ifact('strike','One strike, guaranteed','The country you pick is always captured, nothing else is. Every 2 turns. ')}${ifact('radiation','Radiation','The target and every country next to it get radiation: half defence. This includes your own countries. Nuke a country that is already radioactive and it is destroyed and removed from the map.')}${ifact('sink','Islands can sink','If every country on an island is radiated, the whole island sinks. If a destroyed country cuts an island in two, you get two smaller islands.')}${ifact('cost','It costs you','You lose money and 1.5 stars. Nukes give no loot.')}</div>`},
   {t:'How to win',h:()=>`<div class="ifacts2">${ifact('win','Be the last team standing','Capture or buy every other team\'s countries.')}${ifact('allies','Allies cannot win together','If only allies are left, their alliance ends. One must beat the other.')}${ifact('peace','Early peace','No attacks on other teams and no alliances until round 10.')}${ifact('wipe','Everyone wiped out?','Then nobody wins.')}</div>`}
 ];
 let infoPg=0;
@@ -2123,19 +2142,27 @@ function showClasses(){
 function closeGuide(){$('#guide').className='hide'}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeGuide()});
 function toggleFS(){document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen()}
+function menuRow(title,desc,body){return `<div class="mrow"><div class="mrt"><b>${title}</b><span>${desc}</span></div>${body}</div>`}
+function menuToggle(on,fn){return `<div class="ncount mtg">${[['Off',false],['On',true]].map(([l,v])=>`<button class="${v===!!on?'on':''}" onclick="${v===!!on?'':fn+'()'}">${l}</button>`).join('')}</div>`}
 function showMenu(){
   const m=$('#modal');
-  m.innerHTML=`<div class="mcard menucard"><h2>Menu</h2><p class="mute" style="margin:0">Current save: <b>${G&&G.saveName?esc(G.saveName):'none'}</b>. It autosaves after every step.</p>
-  ${G&&G.phase!=='place'?'<button class="ghost" onclick="closeModal();showEditor()">Edit, add or remove teams</button>':''}
-  ${G?speedPicker():''}
-  ${G?`<div style="margin:.6rem 0"><div style="font-weight:800;margin-bottom:.3rem">Clear radiation <small class="mute" style="font-weight:500">Optional add-on: pay to clean up your radioactive countries</small></div><div class="ncount">${[['Off',false],['On',true]].map(([l,v])=>`<button class="${v===!!G.clearOn?'on':''}" onclick="${v===!!G.clearOn?'':'toggleClr()'}">${l}</button>`).join('')}</div></div>`:''}
-  ${G?`<div style="margin:.6rem 0"><div style="font-weight:800;margin-bottom:.3rem">Classes <small class="mute" style="font-weight:500">Optional add-on: each team picks a class with a small bonus</small></div><div class="ncount">${[['Off',false],['On',true]].map(([l,v])=>`<button class="${v===!!G.classOn?'on':''}" onclick="${v===!!G.classOn?'':'toggleCls()'}">${l}</button>`).join('')}</div></div>`:''}
-  ${G?`<div style="margin:.6rem 0"><div style="font-weight:800;margin-bottom:.3rem">Specialties <small class="mute" style="font-weight:500">Optional add-on: the first team to reach level ${specLvl()} in a department AND buy all its upgrades unlocks a special power</small></div><div class="ncount">${[['Off',false],['On',true]].map(([l,v])=>`<button class="${v===!!G.specOn?'on':''}" onclick="${v===!!G.specOn?'':'toggleSpec()'}">${l}</button>`).join('')}</div></div>`:''}
-  ${G?'<button class="ghost" onclick="saveSnapshot()">Save a snapshot (keep playing here)</button><button class="ghost" onclick="renameSave()">Rename this save</button><button class="ghost" onclick="downloadSave()">Download a backup file</button>':''}
-  <label class="ghost" style="text-align:center;cursor:pointer;display:block">Load a backup file<input type="file" accept=".json" style="display:none" onchange="loadBackup(this)"></label>
-  <button class="ghost" onclick="closeModal();showSetup()">All saves and new game</button><button class="ghost" onclick="closeModal()">Close</button></div>`;
+  const pace=G?G.pace||1:1;
+  m.innerHTML=`<div class="mcard menucard"><div class="mhead"><div><h2>Menu</h2><p class="mute" style="margin:0">${G&&G.saveName?'Playing <b>'+esc(G.saveName)+'</b> · autosaves after every step':'No game open'}</p></div><button class="ghost mx" onclick="closeModal()" aria-label="Close">✕</button></div>
+  ${G?`<div class="msec"><h3>Game</h3>
+    <button class="ghost mbig" onclick="closeModal();showEditor()">👥 Edit, add or remove teams</button>
+    ${menuRow('Game speed','How many points upgrades and wise options need',`<div class="ncount mtg">${[['Fast',.5],['Normal',1],['Slow',1.5]].map(([l,v])=>`<button class="${v===pace?'on':''}" onclick="setSpeed(${v})">${l}</button>`).join('')}</div>`)}</div>
+  <div class="msec"><h3>Optional add-ons</h3>
+    ${menuRow('☢️ Clear radiation','Pay to clean up your radioactive countries',menuToggle(G.clearOn,'toggleClr'))}
+    ${menuRow('🎓 Classes','Each team picks a class with a small bonus',menuToggle(G.classOn,'toggleCls'))}
+    ${menuRow('⭐ Specialties','First to level '+specLvl()+' in a department and buy all its upgrades unlocks a special power',menuToggle(G.specOn,'toggleSpec'))}</div>
+  <div class="msec"><h3>Saves</h3><div class="mgrid">
+    <button class="ghost" onclick="saveSnapshot()">Save a snapshot</button><button class="ghost" onclick="renameSave()">Rename this save</button>
+    <button class="ghost" onclick="downloadSave()">Download backup</button>
+    <label class="ghost" style="text-align:center;cursor:pointer;display:block">Load backup<input type="file" accept=".json" style="display:none" onchange="loadBackup(this)"></label></div></div>`:`<div class="msec"><h3>Saves</h3><div class="mgrid"><label class="ghost" style="text-align:center;cursor:pointer;display:block">Load backup<input type="file" accept=".json" style="display:none" onchange="loadBackup(this)"></label></div></div>`}
+  <div class="mfoot"><button class="ghost" onclick="closeModal()">Back to game</button><button class="primary" onclick="saveExit()">Save and exit</button></div></div>`;
   m.classList.add('on');
 }
+function saveExit(){try{if(G)save()}catch(e){}closeModal();showSetup()}
 function speedPicker(){
   const p=G.pace||1;
   return `<div style="margin:.6rem 0"><div style="font-weight:800;margin-bottom:.3rem">Game speed <small class="mute" style="font-weight:500">How many points upgrades and wise options need</small></div><div class="ncount">${[['Fast',.5],['Normal',1],['Slow',1.5]].map(([l,v])=>`<button class="${v===p?'on':''}" onclick="setSpeed(${v})">${l}</button>`).join('')}</div></div>`;
