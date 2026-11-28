@@ -141,12 +141,22 @@ body {
 }
 
 .bigbig {
+  position: relative;
   font-variation-settings:
         "wght" 700,
-        "ROND" 0,
+        "ROND" 15,
         "opsz" 32;
-      font-size: 6vw;
+      font-size: 5vw;
       text-align: center;
+
+}
+
+.bigbig span {
+  font-size: 7vw;
+  font-variation-settings:
+        "wght" 700,
+        "ROND" 15,
+        "opsz" 32;
 }
 
 
